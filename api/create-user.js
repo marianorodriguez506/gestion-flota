@@ -42,6 +42,10 @@ module.exports = async function handler(req, res) {
     }
 
     const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
+    const anonKey =
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_PUBLISHABLE_KEY ||
+      "sb_publishable_F9WNtGWDuoyTgt1jxYuPjg_GkjADQkP";
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
     if (!serviceKey) {
@@ -50,7 +54,7 @@ module.exports = async function handler(req, res) {
 
     const currentUserResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
-        apikey: serviceKey,
+        apikey: anonKey,
         Authorization: `Bearer ${token}`
       }
     });
@@ -64,7 +68,7 @@ module.exports = async function handler(req, res) {
       `${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=role,status`,
       {
         headers: {
-          apikey: serviceKey,
+          apikey: anonKey,
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"
         }
