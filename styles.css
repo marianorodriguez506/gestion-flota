@@ -31,11 +31,15 @@ body {
 }
 
 .topbar {
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  display: flex;
   align-items: center;
   gap: 10px;
   margin: 6px 0 12px;
+}
+
+.topbar > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .eyebrow {
@@ -124,8 +128,14 @@ label {
   font-size: 20px;
 }
 
-#notifyBtn {
+.text-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--accent-dark);
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .status-pill {
@@ -405,6 +415,77 @@ label {
   background: rgba(255, 255, 255, .65);
 }
 
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 33, 32, .42);
+}
+
+.modal-panel {
+  width: min(100%, 520px);
+  max-height: min(82vh, 720px);
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 14px;
+  box-shadow: 0 20px 60px rgba(22, 33, 32, .22);
+}
+
+.modal-panel h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.modal-list {
+  display: grid;
+  gap: 8px;
+}
+
+.choice-btn {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 58px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  background: #fbfdfd;
+  color: var(--text);
+  text-align: left;
+}
+
+.choice-btn span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  max-width: min(92vw, 420px);
+  border-radius: 8px;
+  background: #162120;
+  color: white;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(22, 33, 32, .22);
+}
+
 .admin-disabled {
   display: none;
 }
@@ -426,5 +507,20 @@ label {
 
   h1 {
     font-size: 22px;
+  }
+
+  .text-btn {
+    min-height: 34px;
+    padding: 0 10px;
+  }
+
+  .modal-actions {
+    display: grid;
+  }
+
+  .toast {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
   }
 }

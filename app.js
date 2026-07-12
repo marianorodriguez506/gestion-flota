@@ -63,7 +63,6 @@
     planDate: document.getElementById("planDate"),
     refreshPlanBtn: document.getElementById("refreshPlanBtn"),
     copyPlanBtn: document.getElementById("copyPlanBtn"),
-    manualPlanForm: document.getElementById("manualPlanForm"),
     availabilityList: document.getElementById("availabilityList"),
     tomorrowList: document.getElementById("tomorrowList"),
     myJobsList: document.getElementById("myJobsList"),
@@ -82,7 +81,12 @@
     usersList: document.getElementById("usersList"),
     usersBtn: document.getElementById("usersBtn"),
     notificationsList: document.getElementById("notificationsList"),
-    clearNotifications: document.getElementById("clearNotifications")
+    clearNotifications: document.getElementById("clearNotifications"),
+    modalRoot: document.getElementById("modalRoot"),
+    modalTitle: document.getElementById("modalTitle"),
+    modalBody: document.getElementById("modalBody"),
+    modalActions: document.getElementById("modalActions"),
+    toast: document.getElementById("toast")
   };
 
   function uid() {
@@ -247,7 +251,7 @@
       await navigator.clipboard.writeText(text);
       return true;
     }
-    prompt("Copiá este texto:", text);
+    showToast("No pude copiar automáticamente en este navegador.");
     return false;
   }
 
@@ -302,6 +306,85 @@
     return node;
   }
 
+  function showToast(message) {
+    if (!el.toast) return;
+    el.toast.textContent = message;
+    el.toast.classList.remove("hidden");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+      el.toast.classList.add("hidden");
+      el.toast.textContent = "";
+    }, 2600);
+  }
+
+  function closeModal() {
+    if (!el.modalRoot) return;
+    el.modalRoot.classList.add("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "true");
+    el.modalTitle.textContent = "";
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+  }
+
+  function openChoiceModal(title, rows, renderRow, emptyText) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const list = document.createElement("div");
+      list.className = "modal-list";
+      if (!rows.length) {
+        list.appendChild(empty(emptyText || "No hay opciones disponibles."));
+      }
+      rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.innerHTML = renderRow(row);
+        btn.addEventListener("click", () => {
+          closeModal();
+          resolve(row);
+        });
+        list.appendChild(btn);
+      });
+      el.modalBody.appendChild(list);
+
+      const cancel = button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      });
+      el.modalActions.appendChild(cancel);
+    });
+  }
+
+  function openTextModal(title, placeholder) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const textarea = document.createElement("textarea");
+      textarea.placeholder = placeholder || "";
+      el.modalBody.appendChild(textarea);
+
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", () => {
+        const value = textarea.value.trim();
+        closeModal();
+        resolve(value);
+      }));
+      textarea.focus();
+    });
+  }
+
   function fillSelect(select, rows, options) {
     const previousValue = select.value;
     const includeAll = options && options.all;
@@ -325,6 +408,40 @@
 
   function approvedWorkers() {
     return state.users.filter((user) => user.status === "aprobado" && user.accountStatus !== "inactivo" && (user.role === "trabajador" || user.role === "mecanico"));
+  }
+
+  async function assignReportToWorker(report, worker) {
+    await updateReport(report.id, { mechanic_id: worker.id, plan_date: state.planDate });
+    await createNotification(`${report.equipment} asignado a ${worker.name}`);
+    showToast(`${report.equipment} asignado a ${worker.name}`);
+    await refreshAllData();
+  }
+
+  async function chooseMechanicForReport(report) {
+    const selected = await openChoiceModal(
+      "Asignar mecánico",
+      approvedWorkers(),
+      (worker) => `
+        <strong>${worker.name}</strong>
+        <span>${specialtyLabel(worker.specialty)} · ${workerAvailability(worker.id) === "franco" ? "Franco" : "Disponible"}</span>
+      `,
+      "No hay mecánicos activos."
+    );
+    if (selected) await assignReportToWorker(report, selected);
+  }
+
+  async function chooseReportForWorker(worker) {
+    const rows = activeReports().filter((report) => report.mechanicId !== worker.id);
+    const selected = await openChoiceModal(
+      `Agregar equipo a ${worker.name}`,
+      rows,
+      (report) => `
+        <strong>${report.equipment}</strong>
+        <span>${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · ${displayStatus(report.status)}${report.mechanicId ? ` · Asignado a ${workerName(report.mechanicId)}` : ""}</span>
+      `,
+      "No hay reportes activos para asignar."
+    );
+    if (selected) await assignReportToWorker(selected, worker);
   }
 
   function todayLabel() {
@@ -403,20 +520,7 @@ filteredReports.forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [];
       if (isAdmin()) {
-        actions.push(button("Asignar", "secondary", async () => {
-          const names = approvedWorkers().map((user, index) => `${index + 1}. ${user.name}`).join("\n");
-          const choice = prompt(`Elegir trabajador:\n${names}`);
-          if (choice === null) return;
-          const selected = approvedWorkers()[Number(choice) - 1];
-          if (!selected) return;
-          if (workerAvailability(selected.id) === "franco") {
-            const ok = confirm(`${selected.name} figura de franco para el plan. ¿Asignar igual?`);
-            if (!ok) return;
-          }
-          await updateReport(report.id, { mechanic_id: selected.id, plan_date: state.planDate });
-          await createNotification(`${report.equipment} asignado a ${selected.name}`);
-          await refreshAllData();
-        }));
+        actions.push(button("Asignar", "secondary", async () => chooseMechanicForReport(report)));
         if (displayStatus(report.status) === "PV") {
           actions.push(button("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
           actions.push(button("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
@@ -428,7 +532,7 @@ filteredReports.forEach((report) => {
           await refreshAllData();
         }));
         actions.push(button("Eliminar", "danger", async () => {
-          const ok = confirm(`¿Eliminar el reporte ${report.equipment}?`);
+          const ok = await openChoiceModal("Eliminar reporte", [{ id: "delete", name: `Eliminar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Esta acción quita el reporte activo.</span>`, "Sin acciones.");
           if (!ok) return;
           await supabase.from("reports").delete().eq("id", report.id);
           await refreshAllData();
@@ -442,10 +546,6 @@ filteredReports.forEach((report) => {
 
   function renderTomorrow() {
     if (el.planDate && el.planDate.value !== state.planDate) el.planDate.value = state.planDate;
-    if (el.manualPlanForm?.elements?.mechanic) {
-      fillSelect(el.manualPlanForm.elements.mechanic, approvedWorkers(), { placeholder: "Elegir mecánico" });
-      el.manualPlanForm.classList.toggle("hidden", !isAdmin());
-    }
     el.tomorrowList.innerHTML = "";
     renderAvailability();
 
@@ -462,6 +562,7 @@ filteredReports.forEach((report) => {
       const available = workerAvailability(worker.id);
       const actions = [];
       if (isAdmin()) {
+        actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
         actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
 
@@ -482,7 +583,7 @@ filteredReports.forEach((report) => {
         list.appendChild(empty("Sin equipos asignados."));
       } else {
         workerRows.forEach((report) => {
-          const reportActions = [button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`))];
+          const reportActions = [button("Detalle", "secondary", () => showToast(reportLine(report)))];
           if (isAdmin() || report.mechanicId === state.currentUser.id) {
             reportActions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
           }
@@ -507,7 +608,7 @@ filteredReports.forEach((report) => {
     }
     own.forEach((report) => {
       el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
-        button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`)),
+        button("Detalle", "secondary", () => showToast(reportLine(report))),
         button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
       ]));
     });
@@ -545,15 +646,15 @@ filteredReports.forEach((report) => {
       status
     };
     const { error } = await supabase.from("worker_availability").upsert(payload, { onConflict: "worker_id,date" });
-    if (error) alert("Falta aplicar la migración de disponibilidad en Supabase.");
+    if (error) showToast("Falta aplicar la migración de disponibilidad en Supabase.");
   }
 
   async function markRepairDone(report) {
-    const description = prompt("Escribí qué reparación realizaste:");
+    const description = await openTextModal("Reparación realizada", "Escribí qué reparación realizaste");
     if (description === null) return;
     const note = description.trim();
     if (!note) {
-      alert("Para marcar la reparación, tenés que escribir qué hiciste.");
+      showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
       return;
     }
     await updateReport(report.id, {
@@ -570,7 +671,7 @@ filteredReports.forEach((report) => {
   }
 
   async function validateReport(report) {
-    const ok = confirm(`¿Validar ${report.equipment} y pasarlo a Operativos?`);
+    const ok = await openChoiceModal("Validar operativo", [{ id: "ok", name: `Validar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Pasarlo a Operativos.</span>`, "Sin acciones.");
     if (!ok) return;
     await updateReport(report.id, {
       status: "Operativo validado",
@@ -584,7 +685,7 @@ filteredReports.forEach((report) => {
   }
 
   async function rejectReport(report) {
-    const observation = prompt("Observación para devolver el trabajo a revisión:");
+    const observation = await openTextModal("Rechazar revisión", "Observación para devolver el trabajo a revisión");
     if (observation === null) return;
     const nextStatus = report.previousStatus && report.previousStatus !== "PV" ? report.previousStatus : "FS";
     await updateReport(report.id, {
@@ -618,12 +719,11 @@ filteredReports.forEach((report) => {
 
   async function copyPlan(workerId) {
     const text = buildPlanText(workerId);
-    await writeClipboard(text);
+    const copied = await writeClipboard(text);
     if (navigator.share && !workerId) {
-      const share = confirm("Plan copiado. ¿También querés abrir Compartir del celular?");
-      if (share) await navigator.share({ text });
+      await navigator.share({ text });
     } else {
-      alert("Plan copiado.");
+      showToast(copied ? "Plan copiado." : "No pude copiar el plan.");
     }
   }
 
@@ -744,7 +844,7 @@ filteredReports.forEach((report) => {
           await refreshAllData();
         }));
         actions.push(button("Eliminar", "danger", async () => {
-          const ok = confirm(`¿Eliminar el perfil de ${user.name}? No se borra la cuenta Auth de Supabase desde el navegador.`);
+          const ok = await openChoiceModal("Eliminar perfil", [{ id: "delete", name: `Eliminar ${user.name}` }], (item) => `<strong>${item.name}</strong><span>No borra la cuenta Auth de Supabase.</span>`, "Sin acciones.");
           if (!ok) return;
           await supabase.from("profiles").delete().eq("id", user.id);
           await refreshAllData();
@@ -758,11 +858,11 @@ filteredReports.forEach((report) => {
   }
 
   async function editUser(user) {
-    const name = prompt("Nombre completo:", user.name);
+    const name = await openTextModal("Nombre completo", user.name);
     if (name === null) return;
-    const username = prompt("Usuario:", user.username);
+    const username = await openTextModal("Usuario", user.username);
     if (username === null) return;
-    const specialty = prompt("Especialidad:", user.specialty || "mecanico-maquinaria-pesada");
+    const specialty = await openTextModal("Especialidad", user.specialty || "mecanico-maquinaria-pesada");
     if (specialty === null) return;
     await supabase.from("profiles").update({
       name: name.trim(),
@@ -857,7 +957,7 @@ filteredReports.forEach((report) => {
     if (!supabase) return;
     const { error } = await supabase.from("reports").update(updates).eq("id", id);
     if (error) {
-      alert(`No se pudo actualizar el reporte. Revisá la migración de Supabase.\n${error.message}`);
+      showToast(`No se pudo actualizar el reporte: ${error.message}`);
       throw error;
     }
   }
@@ -908,33 +1008,6 @@ filteredReports.forEach((report) => {
   el.refreshPlanBtn?.addEventListener("click", () => refreshAllData());
   el.copyPlanBtn?.addEventListener("click", () => copyPlan());
 
-  el.manualPlanForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (!isAdmin()) return;
-    const form = new FormData(el.manualPlanForm);
-    const mechanicId = form.get("mechanic") || null;
-    const selected = state.users.find((user) => user.id === mechanicId);
-    if (selected && workerAvailability(selected.id) === "franco") {
-      const ok = confirm(`${selected.name} figura de franco. ¿Agregar equipo al plan igual?`);
-      if (!ok) return;
-    }
-    await supabase.from("reports").insert({
-      id: uid(),
-      equipment: normalizeEquipment(form.get("equipment")),
-      location: form.get("location").trim(),
-      deviation: form.get("deviation").trim(),
-      status: form.get("status") || "FS",
-      mechanic_id: mechanicId,
-      plan_date: state.planDate,
-      hourmeter: form.get("hourmeter").trim(),
-      created_at: new Date().toISOString(),
-      created_by: state.currentUser.id
-    });
-    await createNotification(`Equipo agregado al Plan Mañana: ${normalizeEquipment(form.get("equipment"))}`);
-    el.manualPlanForm.reset();
-    await refreshAllData();
-  });
-
   el.immediateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!state.currentUser) return;
@@ -960,7 +1033,7 @@ filteredReports.forEach((report) => {
   const texto = el.reportPaste.value.trim();
 
   if (!texto) {
-    alert("Pegá primero un reporte.");
+    showToast("Pegá primero un reporte.");
     return;
   }
 
@@ -970,7 +1043,7 @@ filteredReports.forEach((report) => {
   );
 
   if (!internoEncontrado) {
-    alert("No pude encontrar el interno en el reporte.");
+    showToast("No pude encontrar el interno en el reporte.");
     return;
   }
 
@@ -1041,10 +1114,7 @@ if (!falla) faltantes.push("falla");
 if (!estado) faltantes.push("estado");
 
 if (faltantes.length) {
-  alert(
-    `No pude identificar: ${faltantes.join(", ")}.\n` +
-    "Completá o corregí esos datos y tocá Guardar reporte."
-  );
+  showToast(`No pude identificar: ${faltantes.join(", ")}. Completá o corregí esos datos.`);
   return;
 }
 

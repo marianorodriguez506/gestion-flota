@@ -158,20 +158,6 @@
         </div>
         <p class="hint">Cada mecánico ve sus trabajos y también el plan completo del equipo.</p>
       </section>
-      <form id="manualPlanForm" class="panel form-grid admin-only hidden">
-        <h3>Agregar equipo al plan</h3>
-        <input name="equipment" placeholder="Interno / equipo" required>
-        <input name="location" placeholder="Ubicación" required>
-        <input name="deviation" placeholder="Falla o trabajo" required>
-        <input name="hourmeter" placeholder="Horómetro si está disponible">
-        <select name="status">
-          <option value="FS">FS - Fuera de servicio</option>
-          <option value="OBS">OBS - Operativo con observaciones</option>
-          <option value="PV">PV - Pendiente de validación</option>
-        </select>
-        <select name="mechanic" required></select>
-        <button class="primary" type="submit">Agregar al Plan Mañana</button>
-      </form>
       <section id="availabilityList" class="panel compact admin-only"></section>
       <section id="tomorrowList" class="list"></section>
     </section>
@@ -259,6 +245,14 @@
       <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
     </section>
   </main>
+  <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </section>
+  </div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
