@@ -182,9 +182,12 @@ module.exports = async function handler(req, res) {
       created_at: new Date().toISOString()
     };
 
-    const profileUpsert = await supabaseFetch(supabaseUrl, serviceKey, "/rest/v1/profiles", {
+    const profileUpsert = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
       method: "POST",
       headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates"
       },
       body: JSON.stringify(profilePayload)
