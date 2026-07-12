@@ -35,17 +35,17 @@ module.exports = async function handler(req, res) {
       return json(res, 405, { error: "Método no permitido." });
     }
 
-    const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-    if (!serviceKey) {
-      return json(res, 500, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
-    }
-
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) {
       return json(res, 401, { error: "Sesión requerida." });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+    if (!serviceKey) {
+      return json(res, 503, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
     }
 
   const currentUserResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
