@@ -44,7 +44,6 @@
 
   const el = {
     backBtn: document.getElementById("backBtn"),
-    notifyBtn: document.getElementById("notifyBtn"),
     screenTitle: document.getElementById("screenTitle"),
     screenLabel: document.getElementById("screenLabel"),
     loginForm: document.getElementById("loginForm"),
@@ -356,13 +355,11 @@
     if (!isLoggedIn()) {
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
-      el.notifyBtn.classList.add("hidden");
       return;
     }
 
     el.userInfoStrip.classList.remove("hidden");
     el.logoutBtn.classList.remove("hidden");
-    el.notifyBtn.classList.remove("hidden");
     el.userNameDisplay.textContent = state.currentUser.name;
     el.rolePill.textContent = isAdmin() ? "Administrador" : "Trabajador";
     el.welcomeText.textContent = `Hola, ${state.currentUser.name}`;
@@ -372,8 +369,6 @@
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
 
-    const unread = state.notifications.filter((item) => !item.read).length;
-    el.notifyBtn.textContent = String(unread);
   }
 
   function renderHome() {
@@ -793,7 +788,6 @@ filteredReports.forEach((report) => {
       el.loginError.textContent = "";
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
-      el.notifyBtn.classList.add("hidden");
       return;
     }
     renderHome();
@@ -902,7 +896,6 @@ filteredReports.forEach((report) => {
   });
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
-  el.notifyBtn.addEventListener("click", () => setScreen("notifications"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
 
   el.planDate?.addEventListener("change", async () => {
@@ -1126,38 +1119,31 @@ el.immediateForm.requestSubmit();
       return;
     }
 
-    const email = userToEmail(username);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          username,
-          role,
-          specialty
-        }
-      }
-    });
-
-    if (error) {
-      el.userFeedback.textContent = error.message;
+    const sessionResult = await supabase.auth.getSession();
+    const token = sessionResult.data?.session?.access_token;
+    if (!token) {
+      el.userFeedback.textContent = "Volvé a iniciar sesión como administrador.";
       return;
     }
 
-    const userId = data?.user?.id || data?.session?.user?.id;
-    if (userId) {
-      await supabase.from("profiles").upsert({
-        id: userId,
-        email,
+    const response = await fetch("/api/create-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
         name,
-        username: username.toLowerCase(),
-        role,
-        status: "aprobado",
-        account_status: accountStatus,
-        specialty,
-        created_at: new Date().toISOString()
-      });
+        username,
+        password,
+        specialty
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      el.userFeedback.textContent = result.error || "No se pudo crear el mecánico.";
+      return;
     }
 
     el.userFeedback.textContent = `Usuario creado: ${username}. Entra con usuario y contraseña, sin correo.`;
@@ -1217,54 +1203,7 @@ el.immediateForm.requestSubmit();
 
   el.registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const form = new FormData(el.registerForm);
-    const name = form.get("name").trim();
-    const username = form.get("username").trim();
-    const password = form.get("password").trim();
-    const specialty = form.get("specialty").trim();
-    const email = userToEmail(username);
-
-    if (!name || !username || !password || !specialty || !email) {
-      el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          username,
-          role: "trabajador",
-          specialty
-        }
-      }
-    });
-
-    if (error) {
-      el.registerFeedback.textContent = error.message;
-      return;
-    }
-
-    const userId = data?.user?.id || data?.session?.user?.id;
-    if (userId) {
-      await supabase.from("profiles").upsert({
-        id: userId,
-        email,
-        name,
-        username,
-        role: "trabajador",
-        status: "pendiente",
-        specialty,
-        created_at: new Date().toISOString()
-      });
-      
-    }
-
-    el.registerFeedback.textContent = "Solicitud enviada. El administrador deberá aprobarla.";
-    el.registerForm.reset();
-    await refreshAllData();
+    el.registerFeedback.textContent = "Las cuentas las crea el administrador desde Gestión de mecánicos.";
   });
 
   el.activeReportSearch?.addEventListener("input", () => {
