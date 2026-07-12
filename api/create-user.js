@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
 
     const currentUser = await currentUserResponse.json();
     const profileResponse = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=role,status,account_status`,
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=role,status`,
       {
         headers: {
           apikey: serviceKey,
@@ -79,13 +79,11 @@ module.exports = async function handler(req, res) {
     const adminProfile = profiles[0];
     const role = String(adminProfile?.role || "").toLowerCase();
     const status = String(adminProfile?.status || "").toLowerCase();
-    const accountStatus = String(adminProfile?.account_status || "activo").toLowerCase();
 
     if (
       !adminProfile ||
       !["admin", "administrador"].includes(role) ||
-      status !== "aprobado" ||
-      accountStatus === "inactivo"
+      status !== "aprobado"
     ) {
       return json(res, 403, { error: "Solo el administrador puede crear mecanicos." });
     }
