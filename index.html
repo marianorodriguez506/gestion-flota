@@ -11,12 +11,13 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">←</button>
+      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">‹</button>
       <div>
         <p class="eyebrow" id="screenLabel">Inicio</p>
         <h1 id="screenTitle">Gestion de Flota</h1>
       </div>
-      <button id="logoutBtn" class="text-btn hidden" type="button" aria-label="Cerrar sesión">Salir</button>
+      <button id="notifyBtn" class="icon-btn hidden" type="button" aria-label="Notificaciones">0</button>
+      <button id="logoutBtn" class="icon-btn hidden" type="button" aria-label="Cerrar sesión">⟲</button>
     </header>
 
     <section id="userInfoStrip" class="user-strip hidden">
@@ -83,21 +84,23 @@
       <div class="quick-actions">
         <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
 
-        <button class="quick-btn" data-screen="myJobs">Mis trabajos</button>
+        <button class="quick-btn" data-screen="tomorrow">🔧 Mis trabajos</button>
 
         <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
-        <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
       </div>
+
+      <section class="feed-block hidden">
+        <h2>Actividad reciente</h2>
+        <div id="homeFeed" class="feed-list"></div>
+      </section>
 
       <div class="home-grid">
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
-        <button class="module-btn admin-only" data-screen="immediate">Panel</button>
-        <button class="module-btn admin-only" data-screen="tomorrow">Validaciones pendientes</button>
-        <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
+        <button class="module-btn" data-screen="immediate">Panel</button>
       </div>
-      <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
+      <button id="usersBtn" class="wide-btn" type="button">Gestión de usuarios</button>
     </section>
     
     <section id="immediateScreen" class="screen">
@@ -147,27 +150,9 @@
 
     <section id="tomorrowScreen" class="screen">
       <section class="panel compact">
-        <h2>Plan Mañana</h2>
-        <label>
-          Fecha del plan
-          <input id="planDate" type="date">
-        </label>
-        <div class="card-actions">
-          <button id="refreshPlanBtn" class="secondary" type="button">Actualizar</button>
-          <button id="copyPlanBtn" class="primary" type="button">Copiar Plan Mañana</button>
-        </div>
-        <p class="hint">Cada mecánico ve sus trabajos y también el plan completo del equipo.</p>
+        <p class="hint">Cada mecanico ve sus asignaciones. El admin ve todo.</p>
       </section>
-      <section id="availabilityList" class="panel compact admin-only"></section>
       <section id="tomorrowList" class="list"></section>
-    </section>
-
-    <section id="myJobsScreen" class="screen">
-      <section class="panel compact">
-        <h2>Mis trabajos</h2>
-        <p class="hint">Equipos asignados al usuario actual.</p>
-      </section>
-      <section id="myJobsList" class="list"></section>
     </section>
 
     <section id="mechanicScreen" class="screen">
@@ -209,16 +194,7 @@
       <section id="fleetList" class="list"></section>
     </section>
 
-    <section id="operativesScreen" class="screen">
-      <p class="hint">Equipos validados por el administrador y quitados de Reportes Activos.</p>
-      <section id="operativesList" class="list"></section>
-    </section>
-
     <section id="usersScreen" class="screen">
-      <section class="panel compact">
-        <h2>GESTIÓN DE MECÁNICOS</h2>
-        <p class="hint">Creá y administrá las cuentas de los mecánicos del taller.</p>
-      </section>
       <form id="userForm" class="panel form-grid">
         <input name="name" placeholder="Nombre completo" required>
         <input name="username" placeholder="Usuario" required>
@@ -230,7 +206,7 @@
           <option value="soldador">Soldador</option>
           <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
         </select>
-        <button class="primary" type="submit">Crear usuario</button>
+        <button class="primary" type="submit">Enviar solicitud</button>
         <p id="userFeedback" class="hint"></p>
       </form>
       <label class="filter-row">
@@ -245,14 +221,6 @@
       <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
     </section>
   </main>
-  <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
-    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <h2 id="modalTitle"></h2>
-      <div id="modalBody" class="modal-body"></div>
-      <div id="modalActions" class="modal-actions"></div>
-    </section>
-  </div>
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
