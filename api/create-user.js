@@ -30,22 +30,23 @@ async function supabaseFetch(url, serviceKey, path, options = {}) {
 }
 
 module.exports = async function handler(req, res) {
-  if (req.method !== "POST") {
-    return json(res, 405, { error: "Método no permitido." });
-  }
+  try {
+    if (req.method !== "POST") {
+      return json(res, 405, { error: "Método no permitido." });
+    }
 
-  const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-  if (!serviceKey) {
-    return json(res, 500, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
-  }
+    if (!serviceKey) {
+      return json(res, 500, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
+    }
 
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) {
-    return json(res, 401, { error: "Sesión requerida." });
-  }
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) {
+      return json(res, 401, { error: "Sesión requerida." });
+    }
 
   const currentUserResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
     headers: {
@@ -76,7 +77,8 @@ module.exports = async function handler(req, res) {
     return json(res, 403, { error: "Solo el administrador puede crear mecánicos." });
   }
 
-  const { name, username, password, specialty } = req.body || {};
+    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+    const { name, username, password, specialty } = body;
   const normalizedUsername = normalizeUsername(username);
 
   if (!name || !normalizedUsername || !password || !specialty) {
@@ -130,8 +132,11 @@ module.exports = async function handler(req, res) {
     return json(res, profileUpsert.status, { error: profileError.message || "El usuario Auth se creó, pero falló el perfil." });
   }
 
-  return json(res, 200, {
-    ok: true,
-    username: normalizedUsername
-  });
+    return json(res, 200, {
+      ok: true,
+      username: normalizedUsername
+    });
+  } catch (error) {
+    return json(res, 500, { error: error.message || "Error inesperado creando usuario." });
+  }
 };
