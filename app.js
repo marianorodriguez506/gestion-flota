@@ -94,14 +94,16 @@
   }
 
   function normalizeUser(row) {
+    const storedStatus = row.status || "pendiente";
+    const appStatus = storedStatus === "pendiente" && row.role === "trabajador" && row.specialty ? "aprobado" : storedStatus;
     return {
       id: row.id,
       name: row.name || "",
       username: row.username || "",
       email: row.email || "",
       role: row.role || "trabajador",
-      status: row.status || "pendiente",
-      accountStatus: row.account_status || (row.status === "rechazado" ? "inactivo" : "activo"),
+      status: appStatus,
+      accountStatus: row.account_status || (appStatus === "rechazado" ? "inactivo" : "activo"),
       specialty: row.specialty || "",
       requestedAt: row.created_at || ""
     };

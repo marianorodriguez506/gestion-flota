@@ -126,7 +126,7 @@ module.exports = async function handler(req, res) {
         user_metadata: {
           name,
           username: normalizedUsername,
-          role: "mecanico",
+          role: "trabajador",
           specialty
         }
       })
@@ -155,7 +155,7 @@ module.exports = async function handler(req, res) {
           user_metadata: {
             name,
             username: normalizedUsername,
-            role: "mecanico",
+            role: "trabajador",
             specialty
           }
         })
@@ -176,8 +176,8 @@ module.exports = async function handler(req, res) {
       email,
       name,
       username: normalizedUsername,
-      role: "mecanico",
-      status: "aprobado",
+      role: "trabajador",
+      status: "pendiente",
       specialty,
       created_at: new Date().toISOString()
     };
