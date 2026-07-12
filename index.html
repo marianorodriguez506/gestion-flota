@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <title>Gestion de Flota</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">‹</button>
+      <div>
+        <p class="eyebrow" id="screenLabel">Inicio</p>
+        <h1 id="screenTitle">Gestion de Flota</h1>
+      </div>
+      <button id="notifyBtn" class="icon-btn" type="button" aria-label="Notificaciones">0</button>
+    </header>
+
+    <section class="user-strip">
+      <label>
+        Usuario actual
+        <select id="currentUser"></select>
+      </label>
+      <span id="rolePill" class="status-pill">Admin</span>
+    </section>
+
+    <section id="homeScreen" class="screen active">
+      <section class="feed-hero">
+        <strong id="welcomeText">Hola</strong>
+        <p>Trabajos, pedidos y avisos del dia en un solo lugar.</p>
+      </section>
+
+      <div class="quick-actions">
+        <button class="quick-btn urgent" data-screen="immediate">Reportar</button>
+        <button class="quick-btn" data-screen="tomorrow">Mis trabajos</button>
+        <button class="quick-btn" data-screen="orders">Pedido</button>
+      </div>
+
+      <section class="feed-block">
+        <h2>Actividad reciente</h2>
+        <div id="homeFeed" class="feed-list"></div>
+      </section>
+
+      <div class="home-grid">
+        <button class="module-btn" data-screen="mechanic">Reporte Mecanico</button>
+        <button class="module-btn" data-screen="history">Historial de Pedidos</button>
+        <button class="module-btn" data-screen="fleet">Informacion de Flota</button>
+        <button class="module-btn" data-screen="immediate">Tablero General</button>
+      </div>
+      <button id="usersBtn" class="wide-btn" type="button">Gestion de usuarios</button>
+    </section>
+
+    <section id="immediateScreen" class="screen">
+      <form id="immediateForm" class="panel form-grid">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <input name="location" placeholder="Ubicacion" required>
+        <input name="deviation" placeholder="Desvio / falla" required>
+        <select name="status">
+          <option>Pendiente</option>
+          <option>Asignado</option>
+          <option>Operativo validado</option>
+        </select>
+        <select name="mechanic"></select>
+        <button class="primary" type="submit">Guardar reporte</button>
+      </form>
+      <section id="immediateList" class="list"></section>
+    </section>
+
+    <section id="tomorrowScreen" class="screen">
+      <section class="panel compact">
+        <p class="hint">Cada mecanico ve sus asignaciones. El admin ve todo.</p>
+      </section>
+      <section id="tomorrowList" class="list"></section>
+    </section>
+
+    <section id="mechanicScreen" class="screen">
+      <form id="mechanicForm" class="panel form-grid">
+        <input name="equipment" placeholder="Interno" required>
+        <input name="deviation" placeholder="Desvio / observacion" required>
+        <textarea name="notes" placeholder="Detalle del mecanico"></textarea>
+        <button class="primary" type="submit">Guardar observacion</button>
+      </form>
+      <section id="mechanicList" class="list"></section>
+    </section>
+
+    <section id="ordersScreen" class="screen">
+      <form id="orderForm" class="panel form-grid">
+        <input name="equipment" placeholder="Interno" required>
+        <select name="requester"></select>
+        <input name="need" placeholder="Que se necesita" required>
+        <button class="primary" type="submit">Cargar pedido</button>
+      </form>
+      <label class="filter-row">
+        Filtrar por mecanico
+        <select id="orderFilter"></select>
+      </label>
+      <section id="ordersList" class="list"></section>
+    </section>
+
+    <section id="historyScreen" class="screen">
+      <p class="hint">Vista para todos: muestra que se pidio, sin detalles de piezas.</p>
+      <section id="historyList" class="list"></section>
+    </section>
+
+    <section id="fleetScreen" class="screen">
+      <form id="fleetForm" class="panel form-grid admin-only">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <input name="parts" placeholder="Piezas principales" required>
+        <input name="notes" placeholder="Notas">
+        <button class="primary" type="submit">Guardar equipo</button>
+      </form>
+      <section id="fleetList" class="list"></section>
+    </section>
+
+    <section id="usersScreen" class="screen">
+      <form id="userForm" class="panel form-grid">
+        <input name="name" placeholder="Nombre" required>
+        <select name="role">
+          <option value="mecanico">Mecanico</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="primary" type="submit">Crear usuario</button>
+      </form>
+      <section id="usersList" class="list"></section>
+    </section>
+
+    <section id="notificationsScreen" class="screen">
+      <section id="notificationsList" class="list"></section>
+      <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
