@@ -6,6 +6,8 @@
     { value: "mecanico-vehiculos-livianos", label: "Mecánico de vehículos livianos" }
   ];
 
+  const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
+
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
     home: { id: "homeScreen", title: "Gestión de Flota", label: "Inicio" },
@@ -99,25 +101,32 @@
       email: row.email || "",
       role: row.role || "trabajador",
       status: row.status || "pendiente",
+      accountStatus: row.account_status || (row.status === "rechazado" ? "inactivo" : "activo"),
       specialty: row.specialty || "",
       requestedAt: row.created_at || ""
     };
   }
 
+  function userToEmail(value) {
+    const username = String(value || "").trim().toLowerCase();
+    return username.includes("@") ? username : `${username.replace(/\s+/g, ".")}@gestion-flota.local`;
+  }
+
   function normalizeEquipment(value) {
-  const text = String(value || "")
-  .trim()
-  .toUpperCase()
-  .replace(/^T0/, "TO")
-  .replace(/[_\s]+/g, "-")
-  .replace(/-+/g, "-");
+    const text = String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/^T0/, "TO")
+      .replace(/[_\s]+/g, "-")
+      .replace(/-+/g, "-");
 
-  const match = text.match(/^([A-Z]+)-?(\d+)$/);
+    const match = text.match(/^([A-Z]+)-?(\d{1,4})$/);
+    if (!match) return text;
 
-  if (!match) return text;
-
-  return `${match[1]}-${match[2]}`;
-}
+    const prefix = match[1] === "T0" ? "TO" : match[1];
+    if (!EQUIPMENT_PREFIXES.includes(prefix)) return text;
+    return `${prefix}-${match[2]}`;
+  }
 
   function normalizeReport(row) {
     return {
@@ -304,7 +313,7 @@
   }
 
   function approvedWorkers() {
-    return state.users.filter((user) => user.status === "aprobado" && (user.role === "trabajador" || user.role === "mecanico"));
+    return state.users.filter((user) => user.status === "aprobado" && user.accountStatus !== "inactivo" && (user.role === "trabajador" || user.role === "mecanico"));
   }
 
   function todayLabel() {
@@ -717,27 +726,56 @@ filteredReports.forEach((report) => {
       if (isAdmin() && user.id !== state.currentUser.id) {
         if (user.status === "pendiente") {
           actions.push(button("Aprobar", "primary", async () => {
-            await supabase.from("profiles").update({ status: "aprobado" }).eq("id", user.id);
+            await supabase.from("profiles").update({ status: "aprobado", account_status: "activo" }).eq("id", user.id);
             await createNotification(`Cuenta aprobada para ${user.name}`);
             await refreshAllData();
           }));
           actions.push(button("Rechazar", "danger", async () => {
-            await supabase.from("profiles").update({ status: "rechazado" }).eq("id", user.id);
+            await supabase.from("profiles").update({ status: "rechazado", account_status: "inactivo" }).eq("id", user.id);
             await refreshAllData();
           }));
         }
-        if (user.status !== "pendiente") {
-          actions.push(button("Eliminar", "danger", async () => {
-            await supabase.from("profiles").delete().eq("id", user.id);
-            await refreshAllData();
-          }));
-        }
+        actions.push(button("Editar", "secondary", async () => editUser(user)));
+        actions.push(button(user.accountStatus === "inactivo" ? "Activar" : "Bloquear", "secondary", async () => {
+          await supabase.from("profiles").update({ account_status: user.accountStatus === "inactivo" ? "activo" : "inactivo" }).eq("id", user.id);
+          await refreshAllData();
+        }));
+        actions.push(button("Eliminar", "danger", async () => {
+          const ok = confirm(`¿Eliminar el perfil de ${user.name}? No se borra la cuenta Auth de Supabase desde el navegador.`);
+          if (!ok) return;
+          await supabase.from("profiles").delete().eq("id", user.id);
+          await refreshAllData();
+        }));
       }
       const roleLabel = user.role === "admin" ? "Administrador" : "Trabajador";
       const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
-      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Estado: ${statusLabel}`;
+      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Aprobación: ${statusLabel} · Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
       el.usersList.appendChild(card(user.name, roleLabel, details, actions));
     });
+  }
+
+  async function editUser(user) {
+    const name = prompt("Nombre completo:", user.name);
+    if (name === null) return;
+    const username = prompt("Usuario:", user.username);
+    if (username === null) return;
+    const specialty = prompt("Especialidad:", user.specialty || "mecanico-maquinaria-pesada");
+    if (specialty === null) return;
+    const role = prompt("Rol: mecanico, trabajador o admin", user.role || "mecanico");
+    if (role === null) return;
+    const accountStatus = prompt("Estado: activo o inactivo", user.accountStatus || "activo");
+    if (accountStatus === null) return;
+    const cleanRole = ["admin", "trabajador", "mecanico"].includes(role.trim()) ? role.trim() : user.role;
+    const cleanStatus = accountStatus.trim().toLowerCase() === "inactivo" ? "inactivo" : "activo";
+    await supabase.from("profiles").update({
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      email: userToEmail(username),
+      specialty: specialty.trim(),
+      role: cleanRole,
+      account_status: cleanStatus
+    }).eq("id", user.id);
+    await refreshAllData();
   }
 
   function renderNotifications() {
@@ -1081,16 +1119,15 @@ el.immediateForm.requestSubmit();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
     const specialty = form.get("specialty").trim();
+    const role = form.get("role") || "mecanico";
+    const accountStatus = form.get("accountStatus") || "activo";
 
     if (!name || !username || !password || !specialty) {
       el.userFeedback.textContent = "Completá todos los campos.";
       return;
     }
 
-    const email = username
-  .trim()
-  .toLowerCase()
-  .replace(/\s+/g, ".") + "@gmail.com";
+    const email = userToEmail(username);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -1098,7 +1135,7 @@ el.immediateForm.requestSubmit();
         data: {
           name,
           username,
-          role: "trabajador",
+          role,
           specialty
         }
       }
@@ -1115,15 +1152,16 @@ el.immediateForm.requestSubmit();
         id: userId,
         email,
         name,
-        username,
-        role: "trabajador",
-        status: "pendiente",
+        username: username.toLowerCase(),
+        role,
+        status: "aprobado",
+        account_status: accountStatus,
         specialty,
         created_at: new Date().toISOString()
       });
     }
 
-    el.userFeedback.textContent = "Solicitud enviada. El administrador podrá aprobarla o rechazarla.";
+    el.userFeedback.textContent = `Usuario creado: ${username}. Entra con usuario y contraseña, sin correo.`;
     el.userForm.reset();
     await refreshAllData();
   });
@@ -1145,9 +1183,7 @@ el.immediateForm.requestSubmit();
     const form = new FormData(el.loginForm);
     const usuario = form.get("email").trim().toLowerCase();
 
-    const email = usuario.includes("@")
-  ? usuario
-  : usuario.replace(/\s+/g, ".") + "@gestion-flota.local";
+    const email = userToEmail(usuario);
     const password = form.get("password").trim();
 
     if (!usuario || !password) {
@@ -1163,6 +1199,13 @@ el.immediateForm.requestSubmit();
     await loadCurrentUser(data.user.id);
     if (!state.currentUser || state.currentUser.status !== "aprobado") {
       el.loginError.textContent = "Tu cuenta está pendiente de aprobación.";
+      await supabase.auth.signOut();
+      state.currentUser = null;
+      return;
+    }
+
+    if (state.currentUser.accountStatus === "inactivo") {
+      el.loginError.textContent = "Tu usuario está inactivo. Consultá al administrador.";
       await supabase.auth.signOut();
       state.currentUser = null;
       return;

@@ -13,9 +13,12 @@ create table if not exists public.profiles (
   username text not null unique,
   role text not null default 'trabajador' check (role in ('admin', 'trabajador', 'mecanico')),
   status text not null default 'pendiente' check (status in ('pendiente', 'aprobado', 'rechazado')),
+  account_status text not null default 'activo' check (account_status in ('activo', 'inactivo')),
   specialty text,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists account_status text not null default 'activo';
 
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
@@ -114,6 +117,7 @@ as $$
     from public.profiles p
     where p.id = auth.uid()
       and p.status = 'aprobado'
+      and coalesce(p.account_status, 'activo') = 'activo'
   );
 $$;
 
@@ -135,13 +139,13 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    if new.role is distinct from 'trabajador' then
-      raise exception 'Only trabajadores can be created through this flow';
+    if not private.is_admin() and new.role not in ('trabajador', 'mecanico') then
+      raise exception 'Only workers can be created through this flow';
     end if;
-    if new.status is distinct from 'pendiente' then
+    if not private.is_admin() and new.status is distinct from 'pendiente' then
       raise exception 'New profiles must start as pending';
     end if;
-    if new.id <> auth.uid() then
+    if not private.is_admin() and new.id <> auth.uid() then
       raise exception 'Users can only create their own profile';
     end if;
   end if;
@@ -155,6 +159,9 @@ begin
     end if;
     if old is not null and old.status is distinct from new.status and not private.is_admin() then
       raise exception 'status cannot be changed by a user';
+    end if;
+    if old is not null and old.account_status is distinct from new.account_status and not private.is_admin() then
+      raise exception 'account status cannot be changed by a user';
     end if;
   end if;
 
@@ -180,6 +187,9 @@ begin
     end if;
     if (old.status is distinct from new.status) and not private.is_admin() then
       raise exception 'Only admins can change status';
+    end if;
+    if (old.account_status is distinct from new.account_status) and not private.is_admin() then
+      raise exception 'Only admins can change account status';
     end if;
     if (old.email is distinct from new.email) and not private.is_admin() then
       raise exception 'Only admins can change email';
@@ -224,9 +234,13 @@ create policy profiles_select_admin
 create policy profiles_insert_self
   on public.profiles for insert to authenticated
   with check (
-    auth.uid() = id
-    and role = 'trabajador'
-    and status = 'pendiente'
+    private.is_admin()
+    or (
+      auth.uid() = id
+      and role in ('trabajador', 'mecanico')
+      and status = 'pendiente'
+      and account_status = 'activo'
+    )
   );
 
 create policy profiles_update_self_safe

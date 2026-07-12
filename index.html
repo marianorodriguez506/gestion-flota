@@ -229,6 +229,15 @@
       <form id="userForm" class="panel form-grid">
         <input name="name" placeholder="Nombre completo" required>
         <input name="username" placeholder="Usuario" required>
+        <select name="role" required>
+          <option value="mecanico">Mecánico</option>
+          <option value="trabajador">Trabajador</option>
+          <option value="admin">Administrador</option>
+        </select>
+        <select name="accountStatus" required>
+          <option value="activo">Activo</option>
+          <option value="inactivo">Inactivo</option>
+        </select>
         <input name="password" type="password" placeholder="Contraseña" required>
         <select name="specialty" required>
           <option value="">Seleccioná especialidad</option>
@@ -237,7 +246,7 @@
           <option value="soldador">Soldador</option>
           <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
         </select>
-        <button class="primary" type="submit">Enviar solicitud</button>
+        <button class="primary" type="submit">Crear usuario</button>
         <p id="userFeedback" class="hint"></p>
       </form>
       <label class="filter-row">
