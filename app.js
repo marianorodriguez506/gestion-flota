@@ -15,6 +15,7 @@
     orders: { id: "ordersScreen", title: "Pedidos", label: "Solicitudes" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
+    operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
     users: { id: "usersScreen", title: "Gestión de usuarios", label: "Usuarios" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
@@ -30,7 +31,9 @@
     reports: [],
     orders: [],
     fleet: [],
-    notifications: []
+    notifications: [],
+    availability: [],
+    planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   };
 
   let activeScreen = "auth";
@@ -53,6 +56,14 @@
     homeFeed: document.getElementById("homeFeed"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
+    reportPaste: document.getElementById("reportPaste"),
+    processReportBtn: document.getElementById("processReportBtn"),
+    activeReportSearch: document.getElementById("activeReportSearch"),
+    planDate: document.getElementById("planDate"),
+    refreshPlanBtn: document.getElementById("refreshPlanBtn"),
+    copyPlanBtn: document.getElementById("copyPlanBtn"),
+    manualPlanForm: document.getElementById("manualPlanForm"),
+    availabilityList: document.getElementById("availabilityList"),
     tomorrowList: document.getElementById("tomorrowList"),
     mechanicForm: document.getElementById("mechanicForm"),
     mechanicList: document.getElementById("mechanicList"),
@@ -62,6 +73,7 @@
     historyList: document.getElementById("historyList"),
     fleetForm: document.getElementById("fleetForm"),
     fleetList: document.getElementById("fleetList"),
+    operativesList: document.getElementById("operativesList"),
     userForm: document.getElementById("userForm"),
     userFeedback: document.getElementById("userFeedback"),
     userFilter: document.getElementById("userFilter"),
@@ -92,16 +104,39 @@
     };
   }
 
+  function normalizeEquipment(value) {
+  const text = String(value || "")
+  .trim()
+  .toUpperCase()
+  .replace(/^T0/, "TO")
+  .replace(/[_\s]+/g, "-")
+  .replace(/-+/g, "-");
+
+  const match = text.match(/^([A-Z]+)-?(\d+)$/);
+
+  if (!match) return text;
+
+  return `${match[1]}-${match[2]}`;
+}
+
   function normalizeReport(row) {
     return {
       id: row.id,
-      equipment: row.equipment || "",
+      equipment: normalizeEquipment(row.equipment),
       location: row.location || "",
       deviation: row.deviation || "",
       status: row.status || "Pendiente",
       mechanicId: row.mechanic_id || null,
+      planDate: row.plan_date || "",
+      hourmeter: row.hourmeter || "",
+      previousStatus: row.previous_status || "",
+      repairNote: row.repair_note || row.operation_note || "",
+      repairedBy: row.repaired_by || row.operated_by || "",
+      repairedAt: row.repaired_at || "",
       createdAt: row.created_at || "",
+      createdBy: row.created_by || "",
       validatedBy: row.validated_by || "",
+      validatedAt: row.validated_at || "",
       operationNote: row.operation_note || "",
       operatedBy: row.operated_by || ""
     };
@@ -110,7 +145,7 @@
   function normalizeOrder(row) {
     return {
       id: row.id,
-      equipment: row.equipment || "",
+      equipment: normalizeEquipment(row.equipment),
       requesterId: row.requester_id || null,
       requesterName: row.requester_name || "",
       need: row.need || "",
@@ -122,7 +157,7 @@
   function normalizeFleet(row) {
     return {
       id: row.id,
-      equipment: row.equipment || "",
+      equipment: normalizeEquipment(row.equipment),
       parts: row.parts || "",
       notes: row.notes || ""
     };
@@ -135,6 +170,65 @@
       at: row.created_at || "",
       read: Boolean(row.is_read)
     };
+  }
+
+  function normalizeAvailability(row) {
+    return {
+      id: row.id || `${row.worker_id}-${row.date}`,
+      workerId: row.worker_id,
+      date: row.date,
+      status: row.status || "disponible"
+    };
+  }
+
+  function activeReports() {
+    return state.reports.filter((report) => report.status !== "Operativo validado");
+  }
+
+  function displayStatus(status) {
+    if (/^PV$/i.test(status) || /pendiente de valid/i.test(status)) return "PV";
+    if (/^OBS$/i.test(status) || /observ/i.test(status)) return "OBS";
+    if (/^FS$/i.test(status) || /fuera/i.test(status)) return "FS";
+    if (/asignado/i.test(status)) return "FS";
+    return status || "FS";
+  }
+
+  function workerAvailability(workerId, date = state.planDate) {
+    return state.availability.find((row) => row.workerId === workerId && row.date === date)?.status || "disponible";
+  }
+
+  function workerName(workerId) {
+    return state.users.find((user) => user.id === workerId)?.name || "Sin asignar";
+  }
+
+  function planReports() {
+    return activeReports().filter((report) => report.mechanicId && (!report.planDate || report.planDate === state.planDate));
+  }
+
+  function myReports() {
+    if (!state.currentUser) return [];
+    return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "";
+    return new Date(value).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function reportLine(report) {
+    const mechanic = workerName(report.mechanicId);
+    const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
+    const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
+    return `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
+  }
+
+  async function writeClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    prompt("Copiá este texto:", text);
+    return false;
   }
 
   function card(title, tag, body, actions) {
@@ -265,41 +359,32 @@
 
   function renderHome() {
     el.homeFeed.innerHTML = "";
-    const rows = [];
-
-    state.reports
-      .filter((report) => report.status !== "Operativo validado")
-      .filter((report) => isAdmin() || report.mechanicId === state.currentUser.id)
-      .slice(0, 4)
-      .forEach((report) => {
-        rows.push(feedCard(`Equipo ${report.equipment}`, report.status, `${report.location} · ${report.deviation}`, "pending"));
-      });
-
-    state.orders.slice(0, 2).forEach((order) => {
-      rows.push(feedCard(`Pedido ${order.equipment}`, order.status, `${order.requesterName} pidió: ${order.need}`, "order"));
-    });
-
-    state.notifications.slice(0, 2).forEach((item) => {
-      rows.push(feedCard(item.at, item.read ? "Aviso" : "Nuevo", item.text, ""));
-    });
-
-    if (!rows.length) {
-      el.homeFeed.appendChild(empty("Sin novedades por ahora."));
-      return;
-    }
-
-    rows.forEach((row) => el.homeFeed.appendChild(row));
   }
 
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
     el.immediateList.innerHTML = "";
-    if (!state.reports.length) {
+    const reports = activeReports();
+    if (!reports.length) {
       el.immediateList.appendChild(empty("Todavía no hay reportes inmediatos."));
       return;
     }
 
-    state.reports.forEach((report) => {
+    const search = normalizeEquipment(
+  el.activeReportSearch?.value || ""
+).toLowerCase();
+
+const filteredReports = reports.filter((report) => {
+  if (!search) return true;
+
+  return (
+    report.equipment?.toLowerCase().includes(search) ||
+    report.location?.toLowerCase().includes(search) ||
+    report.deviation?.toLowerCase().includes(search)
+  );
+});
+
+filteredReports.forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [];
       if (isAdmin()) {
@@ -309,59 +394,225 @@
           if (choice === null) return;
           const selected = approvedWorkers()[Number(choice) - 1];
           if (!selected) return;
-          await updateReport(report.id, { mechanic_id: selected.id, status: "Asignado" });
+          if (workerAvailability(selected.id) === "franco") {
+            const ok = confirm(`${selected.name} figura de franco para el plan. ¿Asignar igual?`);
+            if (!ok) return;
+          }
+          await updateReport(report.id, { mechanic_id: selected.id, plan_date: state.planDate });
           await createNotification(`${report.equipment} asignado a ${selected.name}`);
           await refreshAllData();
         }));
-        actions.push(button("Validar operativo", "ok", async () => {
-          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
-          await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
+        if (displayStatus(report.status) === "PV") {
+          actions.push(button("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
+          actions.push(button("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
+        } else {
+          actions.push(button("Validar operativo", "ok", async () => validateReport(report)));
+        }
+        actions.push(button("Quitar asignación", "secondary", async () => {
+          await updateReport(report.id, { mechanic_id: null, plan_date: null });
           await refreshAllData();
         }));
         actions.push(button("Eliminar", "danger", async () => {
+          const ok = confirm(`¿Eliminar el reporte ${report.equipment}?`);
+          if (!ok) return;
           await supabase.from("reports").delete().eq("id", report.id);
           await refreshAllData();
         }));
+      } else {
+        actions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
       }
-      el.immediateList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
+      el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
   }
 
   function renderTomorrow() {
+    if (el.planDate && el.planDate.value !== state.planDate) el.planDate.value = state.planDate;
+    if (el.manualPlanForm?.elements?.mechanic) {
+      fillSelect(el.manualPlanForm.elements.mechanic, approvedWorkers(), { placeholder: "Elegir mecánico" });
+      el.manualPlanForm.classList.toggle("hidden", !isAdmin());
+    }
     el.tomorrowList.innerHTML = "";
-    const assignments = state.reports.filter((report) => {
-      if (report.status === "Operativo validado") return false;
-      return isAdmin() || report.mechanicId === state.currentUser.id;
-    });
+    renderAvailability();
 
-    if (!assignments.length) {
-      el.tomorrowList.appendChild(empty("No hay asignaciones para mostrar."));
+    const rows = planReports();
+    const workers = approvedWorkers();
+
+    if (!isAdmin()) {
+      const mySection = document.createElement("article");
+      mySection.className = "card my-jobs";
+      mySection.innerHTML = `<div class="card-head"><h2>Mis trabajos</h2><span class="tag warn">${myReports().length}</span></div><div class="plan-items"></div>`;
+      const myList = mySection.querySelector(".plan-items");
+      const own = myReports();
+      if (!own.length) {
+        myList.appendChild(empty("No tenés equipos asignados."));
+      } else {
+        own.forEach((report) => {
+          myList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
+            button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`)),
+            button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
+          ]));
+        });
+      }
+      el.tomorrowList.appendChild(mySection);
+    }
+
+    if (!workers.length) {
+      el.tomorrowList.appendChild(empty("No hay mecánicos aprobados."));
       return;
     }
 
-    assignments.forEach((report) => {
-      const actions = [
-        button("Marcar operativo", "ok", async () => {
-          const description = prompt("Descripción del trabajo realizado:");
-          if (description === null) return;
-          await updateReport(report.id, {
-            status: "Operativo informado",
-            operation_note: description.trim(),
-            operated_by: state.currentUser.name
-          });
-          await createNotification(`${report.equipment} informado operativo por ${state.currentUser.name}`);
-          await refreshAllData();
-        })
-      ];
+    workers.forEach((worker) => {
+      const workerRows = rows.filter((report) => report.mechanicId === worker.id);
+      const available = workerAvailability(worker.id);
+      const actions = [];
       if (isAdmin()) {
-        actions.push(button("Validar", "primary", async () => {
-          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
-          await createNotification(`${report.equipment} validado operativo`);
-          await refreshAllData();
-        }));
+        actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
-      el.tomorrowList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation}${report.operationNote ? " · " + report.operationNote : ""}`, actions));
+
+      const section = document.createElement("article");
+      section.className = "card plan-worker";
+      section.innerHTML = `
+        <div class="card-head">
+          <h2>${worker.name}</h2>
+          <span class="tag ${available === "franco" ? "danger" : "ok"}">${available === "franco" ? "Franco" : "Disponible"}</span>
+        </div>
+        <div class="worker-actions"></div>
+        <div class="plan-items"></div>
+      `;
+      const actionBox = section.querySelector(".worker-actions");
+      actions.forEach((action) => actionBox.appendChild(action));
+      const list = section.querySelector(".plan-items");
+      if (!workerRows.length) {
+        list.appendChild(empty("Sin equipos asignados."));
+      } else {
+        workerRows.forEach((report) => {
+          const reportActions = [button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`))];
+          if (isAdmin() || report.mechanicId === state.currentUser.id) {
+            reportActions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
+          }
+          if (isAdmin() && displayStatus(report.status) === "PV") {
+            reportActions.push(button("Validar", "primary", async () => validateReport(report)));
+            reportActions.push(button("Rechazar", "secondary", async () => rejectReport(report)));
+          }
+          list.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), reportActions));
+        });
+      }
+      el.tomorrowList.appendChild(section);
     });
+  }
+
+  function renderAvailability() {
+    if (!el.availabilityList) return;
+    el.availabilityList.innerHTML = "";
+    if (!isAdmin()) {
+      el.availabilityList.classList.add("hidden");
+      return;
+    }
+    el.availabilityList.classList.remove("hidden");
+    approvedWorkers().forEach((worker) => {
+      const row = document.createElement("div");
+      row.className = "availability-row";
+      row.innerHTML = `<strong>${worker.name}</strong><select aria-label="Disponibilidad"></select>`;
+      const select = row.querySelector("select");
+      select.appendChild(new Option("Disponible", "disponible"));
+      select.appendChild(new Option("Franco", "franco"));
+      select.value = workerAvailability(worker.id);
+      select.addEventListener("change", async () => {
+        await saveAvailability(worker.id, select.value);
+        await refreshAllData();
+      });
+      el.availabilityList.appendChild(row);
+    });
+  }
+
+  async function saveAvailability(workerId, status) {
+    if (!supabase || !isAdmin()) return;
+    const payload = {
+      worker_id: workerId,
+      date: state.planDate,
+      status
+    };
+    const { error } = await supabase.from("worker_availability").upsert(payload, { onConflict: "worker_id,date" });
+    if (error) alert("Falta aplicar la migración de disponibilidad en Supabase.");
+  }
+
+  async function markRepairDone(report) {
+    const description = prompt("Escribí qué reparación realizaste:");
+    if (description === null) return;
+    const note = description.trim();
+    if (!note) {
+      alert("Para marcar la reparación, tenés que escribir qué hiciste.");
+      return;
+    }
+    await updateReport(report.id, {
+      status: "PV",
+      previous_status: displayStatus(report.status) === "PV" ? report.previousStatus || "FS" : displayStatus(report.status),
+      repair_note: note,
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString(),
+      operation_note: note,
+      operated_by: state.currentUser.name
+    });
+    await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
+    await refreshAllData();
+  }
+
+  async function validateReport(report) {
+    const ok = confirm(`¿Validar ${report.equipment} y pasarlo a Operativos?`);
+    if (!ok) return;
+    await updateReport(report.id, {
+      status: "Operativo validado",
+      mechanic_id: null,
+      plan_date: null,
+      validated_by: state.currentUser.name,
+      validated_at: new Date().toISOString()
+    });
+    await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
+    await refreshAllData();
+  }
+
+  async function rejectReport(report) {
+    const observation = prompt("Observación para devolver el trabajo a revisión:");
+    if (observation === null) return;
+    const nextStatus = report.previousStatus && report.previousStatus !== "PV" ? report.previousStatus : "FS";
+    await updateReport(report.id, {
+      status: nextStatus,
+      repair_note: report.repairNote ? `${report.repairNote} | Rechazado: ${observation.trim()}` : `Rechazado: ${observation.trim()}`
+    });
+    await createNotification(`${report.equipment} requiere revisión. ${observation.trim()}`);
+    await refreshAllData();
+  }
+
+  function buildPlanText(workerId) {
+    const workers = workerId ? approvedWorkers().filter((worker) => worker.id === workerId) : approvedWorkers();
+    const lines = [`PLAN MAÑANA - ${state.planDate}`, ""];
+    workers.forEach((worker) => {
+      const reports = planReports().filter((report) => report.mechanicId === worker.id);
+      lines.push(worker.name.toUpperCase());
+      if (workerAvailability(worker.id) === "franco") lines.push("FRANCO");
+      if (!reports.length) {
+        lines.push("Sin equipos asignados", "");
+        return;
+      }
+      reports.forEach((report) => {
+        lines.push(`${report.equipment} - ${report.location || "Sin ubicación"}`);
+        lines.push(report.deviation || "Sin detalle");
+        lines.push(`Estado: ${displayStatus(report.status)}`);
+        lines.push("");
+      });
+    });
+    return lines.join("\n").trim();
+  }
+
+  async function copyPlan(workerId) {
+    const text = buildPlanText(workerId);
+    await writeClipboard(text);
+    if (navigator.share && !workerId) {
+      const share = confirm("Plan copiado. ¿También querés abrir Compartir del celular?");
+      if (share) await navigator.share({ text });
+    } else {
+      alert("Plan copiado.");
+    }
   }
 
   function renderMechanicReports() {
@@ -426,6 +677,28 @@
         }));
       }
       el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
+    });
+  }
+
+  function renderOperatives() {
+    if (!el.operativesList) return;
+    el.operativesList.innerHTML = "";
+    if (!isAdmin()) {
+      el.operativesList.appendChild(empty("Solo el administrador puede ver Operativos."));
+      return;
+    }
+    const rows = state.reports.filter((report) => report.status === "Operativo validado");
+    if (!rows.length) {
+      el.operativesList.appendChild(empty("Todavía no hay equipos validados como operativos."));
+      return;
+    }
+    rows.forEach((report) => {
+      el.operativesList.appendChild(card(
+        report.equipment,
+        "Operativo",
+        `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · Validó: ${report.validatedBy || "sin dato"}${report.validatedAt ? " · " + formatDateTime(report.validatedAt) : ""}`,
+        []
+      ));
     });
   }
 
@@ -494,6 +767,7 @@
     renderOrders();
     renderHistory();
     renderFleet();
+    renderOperatives();
     renderUsers();
     renderNotifications();
   }
@@ -505,12 +779,13 @@
 
   async function refreshAllData() {
     if (!supabase) return;
-    const [profiles, reports, orders, fleet, notifications] = await Promise.all([
+    const [profiles, reports, orders, fleet, notifications, availability] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("reports").select("*").order("created_at", { ascending: false }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
-      supabase.from("notifications").select("*").order("created_at", { ascending: false })
+      supabase.from("notifications").select("*").order("created_at", { ascending: false }),
+      supabase.from("worker_availability").select("*").eq("date", state.planDate)
     ]);
 
     state.users = (profiles.data || []).map(normalizeUser);
@@ -518,6 +793,7 @@
     state.orders = (orders.data || []).map(normalizeOrder);
     state.fleet = (fleet.data || []).map(normalizeFleet);
     state.notifications = (notifications.data || []).map(normalizeNotification);
+    state.availability = (availability.data || []).map(normalizeAvailability);
 
     if (state.currentUser) {
       const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
@@ -546,7 +822,11 @@
 
   async function updateReport(id, updates) {
     if (!supabase) return;
-    await supabase.from("reports").update(updates).eq("id", id);
+    const { error } = await supabase.from("reports").update(updates).eq("id", id);
+    if (error) {
+      alert(`No se pudo actualizar el reporte. Revisá la migración de Supabase.\n${error.message}`);
+      throw error;
+    }
   }
 
   async function initializeApp() {
@@ -576,6 +856,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
       .subscribe();
   }
 
@@ -587,13 +868,48 @@
   el.notifyBtn.addEventListener("click", () => setScreen("notifications"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
 
+  el.planDate?.addEventListener("change", async () => {
+    state.planDate = el.planDate.value || state.planDate;
+    await refreshAllData();
+  });
+
+  el.refreshPlanBtn?.addEventListener("click", () => refreshAllData());
+  el.copyPlanBtn?.addEventListener("click", () => copyPlan());
+
+  el.manualPlanForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!isAdmin()) return;
+    const form = new FormData(el.manualPlanForm);
+    const mechanicId = form.get("mechanic") || null;
+    const selected = state.users.find((user) => user.id === mechanicId);
+    if (selected && workerAvailability(selected.id) === "franco") {
+      const ok = confirm(`${selected.name} figura de franco. ¿Agregar equipo al plan igual?`);
+      if (!ok) return;
+    }
+    await supabase.from("reports").insert({
+      id: uid(),
+      equipment: normalizeEquipment(form.get("equipment")),
+      location: form.get("location").trim(),
+      deviation: form.get("deviation").trim(),
+      status: form.get("status") || "FS",
+      mechanic_id: mechanicId,
+      plan_date: state.planDate,
+      hourmeter: form.get("hourmeter").trim(),
+      created_at: new Date().toISOString(),
+      created_by: state.currentUser.id
+    });
+    await createNotification(`Equipo agregado al Plan Mañana: ${normalizeEquipment(form.get("equipment"))}`);
+    el.manualPlanForm.reset();
+    await refreshAllData();
+  });
+
   el.immediateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!state.currentUser) return;
     const form = new FormData(el.immediateForm);
     const report = {
       id: uid(),
-      equipment: form.get("equipment").trim(),
+      equipment: normalizeEquipment(form.get("equipment")),
       location: form.get("location").trim(),
       deviation: form.get("deviation").trim(),
       status: form.get("status") || "Pendiente",
@@ -605,7 +921,104 @@
     await createNotification(`Nuevo reporte: ${report.equipment}`);
     await refreshAllData();
     el.immediateForm.reset();
+    el.reportPaste.value = "";
   });
+
+  el.processReportBtn?.addEventListener("click", () => {
+  const texto = el.reportPaste.value.trim();
+
+  if (!texto) {
+    alert("Pegá primero un reporte.");
+    return;
+  }
+
+  // 1. DETECTAR INTERNO
+  const internoEncontrado = texto.match(
+    /\b(MN|TO|T0|CF|PR|RE|CT|CV|CR|CA|RN|RV|SB|ST|CC|CP|GE|CM|TP|CB|PL|CCH)[\s_-]*\d{1,3}\b/i
+  );
+
+  if (!internoEncontrado) {
+    alert("No pude encontrar el interno en el reporte.");
+    return;
+  }
+
+  const interno = normalizeEquipment(internoEncontrado[0]);
+
+  // 2. DETECTAR UBICACIÓN
+  const ubicacionEncontrada = texto.match(
+    /ubicaci[oó]n\s*:?\s*([^\n\r]+)/i
+  );
+
+  const ubicacion = ubicacionEncontrada
+    ? ubicacionEncontrada[1].trim().replace(/[.,]+$/, "")
+    : "";
+
+  // 3. DETECTAR FALLA O DESVÍO
+  const fallaEncontrada = texto.match(
+    /(?:falla(?:\s+detectada)?|desv[ií]o)\s*:?\s*([\s\S]*?)(?=\n\s*(?:estado|obs\.?|observaci[oó]n|adjuntar)\s*:|$)/i
+  );
+
+  const falla = fallaEncontrada
+    ? fallaEncontrada[1]
+        .trim()
+        .split(/\r?\n/)
+        .map((linea) => linea.trim())
+        .filter(Boolean)
+        .join(" - ")
+    : "";
+
+  // 4. DETECTAR ESTADO
+  const textoMayuscula = texto.toUpperCase();
+
+  let estado = "";
+
+  if (
+    textoMayuscula.includes("FUERA DE SERVICIO") ||
+    textoMayuscula.includes("PARADO") ||
+    /\bFS\b/.test(textoMayuscula)
+  ) {
+    estado = "FS";
+  } else if (
+    textoMayuscula.includes("OPERATIVO CON OBS") ||
+    textoMayuscula.includes("OPERATIVA CON OBS") ||
+    textoMayuscula.includes("CON OBSERVACIONES") ||
+    textoMayuscula.includes("CON OBSERVACION") ||
+    textoMayuscula.includes("CON PRECAUCIONES") ||
+    textoMayuscula.includes("ANDANDO CON OBSERVACIONES") ||
+    textoMayuscula.includes("OPERATIVO") ||
+    textoMayuscula.includes("OPERATIVA") ||
+    /\bOBS\b/.test(textoMayuscula)
+  ) {
+    estado = "OBS";
+  }
+
+  // 5. COMPLETAR LA CARGA MANUAL
+  el.immediateForm.elements.equipment.value = interno;
+  el.immediateForm.elements.location.value = ubicacion;
+  el.immediateForm.elements.deviation.value = falla;
+
+  if (estado) {
+    el.immediateForm.elements.status.value = estado;
+  }
+
+  const faltantes = [];
+
+if (!interno) faltantes.push("interno");
+if (!ubicacion) faltantes.push("ubicación");
+if (!falla) faltantes.push("falla");
+if (!estado) faltantes.push("estado");
+
+if (faltantes.length) {
+  alert(
+    `No pude identificar: ${faltantes.join(", ")}.\n` +
+    "Completá o corregí esos datos y tocá Guardar reporte."
+  );
+  return;
+}
+
+el.immediateForm.requestSubmit();
+
+});
 
   el.mechanicForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -674,7 +1087,10 @@
       return;
     }
 
-    const email = `${username.toLowerCase().replace(/[^a-z0-9]+/g, "")}@fleet.local`;
+    const email = username
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, ".") + "@gmail.com";
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -727,12 +1143,15 @@
   el.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = new FormData(el.loginForm);
-    const email = form.get("email").trim();
+    const usuario = form.get("email").trim().toLowerCase();
+
+    const email = usuario.includes("@")
+  ? usuario
+  : usuario.replace(/\s+/g, ".") + "@gestion-flota.local";
     const password = form.get("password").trim();
 
-    if (!email || !password) {
-      el.loginError.textContent = "Ingresá correo y contraseña.";
-      return;
+    if (!usuario || !password) {
+  el.loginError.textContent = "Ingresá usuario y contraseña.";
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -761,7 +1180,10 @@
     const username = form.get("username").trim();
     const password = form.get("password").trim();
     const specialty = form.get("specialty").trim();
-    const email = form.get("email").trim();
+    const email = username
+  .trim()
+  .toLowerCase()
+  .replace(/\s+/g, ".") + "@gestion-flota.local";
 
     if (!name || !username || !password || !specialty || !email) {
       el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";
@@ -798,12 +1220,17 @@
         specialty,
         created_at: new Date().toISOString()
       });
+      
     }
 
     el.registerFeedback.textContent = "Solicitud enviada. El administrador deberá aprobarla.";
     el.registerForm.reset();
     await refreshAllData();
   });
+
+  el.activeReportSearch?.addEventListener("input", () => {
+  renderImmediate();
+});
 
   populateUserFilter();
   initializeApp();

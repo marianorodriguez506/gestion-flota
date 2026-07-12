@@ -31,6 +31,23 @@ create table if not exists public.reports (
   operated_by text
 );
 
+alter table public.reports add column if not exists previous_status text;
+alter table public.reports add column if not exists repair_note text;
+alter table public.reports add column if not exists repaired_by text;
+alter table public.reports add column if not exists repaired_at timestamptz;
+alter table public.reports add column if not exists validated_at timestamptz;
+alter table public.reports add column if not exists plan_date date;
+alter table public.reports add column if not exists hourmeter text;
+
+create table if not exists public.worker_availability (
+  id uuid primary key default gen_random_uuid(),
+  worker_id uuid not null references public.profiles(id) on delete cascade,
+  date date not null,
+  status text not null default 'disponible' check (status in ('disponible', 'franco')),
+  created_at timestamptz not null default now(),
+  unique(worker_id, date)
+);
+
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
   equipment text not null,
@@ -59,15 +76,18 @@ create table if not exists public.notifications (
 
 create index if not exists profiles_username_idx on public.profiles(username);
 create index if not exists reports_mechanic_idx on public.reports(mechanic_id);
+create index if not exists reports_plan_date_idx on public.reports(plan_date);
 create index if not exists reports_created_by_idx on public.reports(created_by);
 create index if not exists orders_requester_idx on public.orders(requester_id);
 create index if not exists notifications_created_by_idx on public.notifications(created_by);
+create index if not exists worker_availability_worker_date_idx on public.worker_availability(worker_id, date);
 
 alter table public.profiles enable row level security;
 alter table public.reports enable row level security;
 alter table public.orders enable row level security;
 alter table public.fleet_items enable row level security;
 alter table public.notifications enable row level security;
+alter table public.worker_availability enable row level security;
 
 create or replace function private.is_admin()
 returns boolean
@@ -363,6 +383,28 @@ create policy notifications_delete_admin_or_self
       private.is_approved_user() and created_by = auth.uid()
     )
   );
+
+drop policy if exists worker_availability_select_approved on public.worker_availability;
+drop policy if exists worker_availability_insert_admin on public.worker_availability;
+drop policy if exists worker_availability_update_admin on public.worker_availability;
+drop policy if exists worker_availability_delete_admin on public.worker_availability;
+
+create policy worker_availability_select_approved
+  on public.worker_availability for select to authenticated
+  using (private.is_approved_user());
+
+create policy worker_availability_insert_admin
+  on public.worker_availability for insert to authenticated
+  with check (private.is_admin());
+
+create policy worker_availability_update_admin
+  on public.worker_availability for update to authenticated
+  using (private.is_admin())
+  with check (private.is_admin());
+
+create policy worker_availability_delete_admin
+  on public.worker_availability for delete to authenticated
+  using (private.is_admin());
 
 -- Manual bootstrap for the first admin account after creating the user in Supabase Auth:
 -- 1) Create the Auth user in Supabase Auth.

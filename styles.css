@@ -114,7 +114,7 @@ label {
 }
 
 .hidden {
-  visibility: hidden;
+  display: none !important;
 }
 
 .icon-btn {
@@ -369,6 +369,30 @@ label {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  margin-top: 10px;
+}
+
+.availability-row,
+.worker-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.availability-row select {
+  min-width: 150px;
+}
+
+.plan-worker,
+.my-jobs {
+  border-left: 4px solid var(--accent);
+}
+
+.plan-items {
+  display: grid;
+  gap: 10px;
   margin-top: 10px;
 }
 
