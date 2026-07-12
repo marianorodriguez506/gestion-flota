@@ -44,6 +44,24 @@ async function findAuthUserByEmail(supabaseUrl, serviceKey, email) {
   return (usersData.users || []).find((user) => String(user.email || "").toLowerCase() === email.toLowerCase()) || null;
 }
 
+async function signInUser(supabaseUrl, anonKey, email, password) {
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error_description || data.msg || data.message || "No se pudo iniciar sesion interna del mecanico.");
+  }
+
+  return data;
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -171,8 +189,9 @@ module.exports = async function handler(req, res) {
       authUser = updated;
     }
 
+    const mechanicSession = await signInUser(supabaseUrl, anonKey, email, password);
     const profilePayload = {
-      id: authUser.id,
+      id: mechanicSession.user.id || authUser.id,
       email,
       name,
       username: normalizedUsername,
@@ -186,7 +205,7 @@ module.exports = async function handler(req, res) {
       method: "POST",
       headers: {
         apikey: anonKey,
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${mechanicSession.access_token}`,
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates"
       },
