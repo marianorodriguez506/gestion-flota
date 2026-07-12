@@ -219,6 +219,23 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    const profileApproval = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${profilePayload.id}`, {
+      method: "PATCH",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ status: "aprobado" })
+    });
+
+    if (!profileApproval.ok) {
+      const approvalError = await profileApproval.json().catch(() => ({}));
+      return json(res, profileApproval.status, {
+        error: approvalError.message || "El usuario se creo, pero no se pudo aprobar el perfil."
+      });
+    }
+
     return json(res, 200, {
       ok: true,
       username: normalizedUsername
