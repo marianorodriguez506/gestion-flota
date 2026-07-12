@@ -32,13 +32,13 @@ async function supabaseFetch(url, serviceKey, path, options = {}) {
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return json(res, 405, { error: "Método no permitido." });
+      return json(res, 405, { error: "Metodo no permitido." });
     }
 
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) {
-      return json(res, 401, { error: "Sesión requerida." });
+      return json(res, 401, { error: "Sesion requerida." });
     }
 
     const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
@@ -48,89 +48,105 @@ module.exports = async function handler(req, res) {
       return json(res, 503, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
     }
 
-  const currentUserResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${token}`
+    const currentUserResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!currentUserResponse.ok) {
+      return json(res, 401, { error: "Sesion invalida." });
     }
-  });
 
-  if (!currentUserResponse.ok) {
-    return json(res, 401, { error: "Sesión inválida." });
-  }
+    const currentUser = await currentUserResponse.json();
+    const profileResponse = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${currentUser.id}&select=role,status,account_status`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
 
-  const currentUser = await currentUserResponse.json();
-  const profileResponse = await supabaseFetch(
-    supabaseUrl,
-    serviceKey,
-    `/rest/v1/profiles?id=eq.${currentUser.id}&select=role,status,account_status`
-  );
-  const profiles = await profileResponse.json();
-  const adminProfile = profiles[0];
+    if (!profileResponse.ok) {
+      return json(res, profileResponse.status, { error: "No se pudo verificar el perfil administrador." });
+    }
 
-  if (
-    !adminProfile ||
-    adminProfile.role !== "admin" ||
-    adminProfile.status !== "aprobado" ||
-    adminProfile.account_status === "inactivo"
-  ) {
-    return json(res, 403, { error: "Solo el administrador puede crear mecánicos." });
-  }
+    const profiles = await profileResponse.json();
+    const adminProfile = profiles[0];
+    const role = String(adminProfile?.role || "").toLowerCase();
+    const status = String(adminProfile?.status || "").toLowerCase();
+    const accountStatus = String(adminProfile?.account_status || "activo").toLowerCase();
+
+    if (
+      !adminProfile ||
+      !["admin", "administrador"].includes(role) ||
+      status !== "aprobado" ||
+      accountStatus === "inactivo"
+    ) {
+      return json(res, 403, { error: "Solo el administrador puede crear mecanicos." });
+    }
 
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     const { name, username, password, specialty } = body;
-  const normalizedUsername = normalizeUsername(username);
+    const normalizedUsername = normalizeUsername(username);
 
-  if (!name || !normalizedUsername || !password || !specialty) {
-    return json(res, 400, { error: "Completá nombre, usuario, contraseña y especialidad." });
-  }
+    if (!name || !normalizedUsername || !password || !specialty) {
+      return json(res, 400, { error: "Completa nombre, usuario, contrasena y especialidad." });
+    }
 
-  const email = `marianorodriguez506+${normalizedUsername}@gmail.com`;
+    const email = `marianorodriguez506+${normalizedUsername}@gmail.com`;
+    const createResponse = await supabaseFetch(supabaseUrl, serviceKey, "/auth/v1/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          name,
+          username: normalizedUsername,
+          role: "mecanico",
+          specialty
+        }
+      })
+    });
 
-  const createResponse = await supabaseFetch(supabaseUrl, serviceKey, "/auth/v1/admin/users", {
-    method: "POST",
-    body: JSON.stringify({
+    const created = await createResponse.json();
+    if (!createResponse.ok) {
+      return json(res, createResponse.status, {
+        error: created.msg || created.message || "No se pudo crear el usuario."
+      });
+    }
+
+    const profilePayload = {
+      id: created.id,
       email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        name,
-        username: normalizedUsername,
-        role: "mecanico",
-        specialty
-      }
-    })
-  });
+      name,
+      username: normalizedUsername,
+      role: "mecanico",
+      status: "aprobado",
+      account_status: "activo",
+      specialty,
+      created_at: new Date().toISOString()
+    };
 
-  const created = await createResponse.json();
-  if (!createResponse.ok) {
-    return json(res, createResponse.status, { error: created.msg || created.message || "No se pudo crear el usuario." });
-  }
+    const profileUpsert = await supabaseFetch(supabaseUrl, serviceKey, "/rest/v1/profiles", {
+      method: "POST",
+      headers: {
+        Prefer: "resolution=merge-duplicates"
+      },
+      body: JSON.stringify(profilePayload)
+    });
 
-  const profilePayload = {
-    id: created.id,
-    email,
-    name,
-    username: normalizedUsername,
-    role: "mecanico",
-    status: "aprobado",
-    account_status: "activo",
-    specialty,
-    created_at: new Date().toISOString()
-  };
-
-  const profileUpsert = await supabaseFetch(supabaseUrl, serviceKey, "/rest/v1/profiles", {
-    method: "POST",
-    headers: {
-      Prefer: "resolution=merge-duplicates"
-    },
-    body: JSON.stringify(profilePayload)
-  });
-
-  if (!profileUpsert.ok) {
-    const profileError = await profileUpsert.json().catch(() => ({}));
-    return json(res, profileUpsert.status, { error: profileError.message || "El usuario Auth se creó, pero falló el perfil." });
-  }
+    if (!profileUpsert.ok) {
+      const profileError = await profileUpsert.json().catch(() => ({}));
+      return json(res, profileUpsert.status, {
+        error: profileError.message || "El usuario Auth se creo, pero fallo el perfil."
+      });
+    }
 
     return json(res, 200, {
       ok: true,
