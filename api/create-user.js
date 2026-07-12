@@ -36,6 +36,14 @@ async function supabaseFetch(url, serviceKey, path, options = {}) {
   });
 }
 
+async function findAuthUserByEmail(supabaseUrl, serviceKey, email) {
+  const usersResponse = await supabaseFetch(supabaseUrl, serviceKey, "/auth/v1/admin/users?page=1&per_page=1000");
+  if (!usersResponse.ok) return null;
+
+  const usersData = await usersResponse.json().catch(() => ({}));
+  return (usersData.users || []).find((user) => String(user.email || "").toLowerCase() === email.toLowerCase()) || null;
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") {
@@ -125,20 +133,51 @@ module.exports = async function handler(req, res) {
     });
 
     const created = await createResponse.json();
+    let authUser = created;
+
     if (!createResponse.ok) {
-      return json(res, createResponse.status, {
-        error: created.msg || created.message || "No se pudo crear el usuario."
+      const createError = created.msg || created.message || "";
+      const existingUser = /already|registered|exists|exist|duplicate/i.test(createError)
+        ? await findAuthUserByEmail(supabaseUrl, serviceKey, email)
+        : null;
+
+      if (!existingUser?.id) {
+        return json(res, createResponse.status, {
+          error: createError || "No se pudo crear el usuario."
+        });
+      }
+
+      const updateResponse = await supabaseFetch(supabaseUrl, serviceKey, `/auth/v1/admin/users/${existingUser.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          password,
+          email_confirm: true,
+          user_metadata: {
+            name,
+            username: normalizedUsername,
+            role: "mecanico",
+            specialty
+          }
+        })
       });
+
+      const updated = await updateResponse.json().catch(() => ({}));
+      if (!updateResponse.ok) {
+        return json(res, updateResponse.status, {
+          error: updated.msg || updated.message || "No se pudo actualizar el usuario existente."
+        });
+      }
+
+      authUser = updated;
     }
 
     const profilePayload = {
-      id: created.id,
+      id: authUser.id,
       email,
       name,
       username: normalizedUsername,
       role: "mecanico",
       status: "aprobado",
-      account_status: "activo",
       specialty,
       created_at: new Date().toISOString()
     };
