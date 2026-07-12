@@ -94,6 +94,25 @@ label {
   font-weight: 800;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.checkbox-row input {
+  width: auto;
+  min-height: auto;
+}
+
+.danger-text {
+  color: var(--danger);
+  margin: 0;
+  font-size: 13px;
+}
+
 .hidden {
   visibility: hidden;
 }

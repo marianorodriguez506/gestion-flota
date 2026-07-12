@@ -1,44 +1,53 @@
-(function () {
-  const STORAGE_KEY = "fleet-app-v1";
-
-  const defaultData = {
-    currentUserId: "admin-1",
-    users: [
-      { id: "admin-1", name: "Mariano", role: "admin" },
-      { id: "mec-1", name: "Mecanico 1", role: "mecanico" },
-      { id: "mec-2", name: "Mecanico 2", role: "mecanico" }
-    ],
-    immediate: [],
-    mechanicReports: [],
-    orders: [],
-    fleet: [
-      { id: uid(), equipment: "1001", parts: "Filtros, correas, aceite", notes: "Base" },
-      { id: uid(), equipment: "1002", parts: "Pastillas, bateria, mangueras", notes: "Base" }
-    ],
-    notifications: []
-  };
+﻿(function () {
+  const SPECIALTY_OPTIONS = [
+    { value: "mecanico-maquinaria-pesada", label: "Mecánico de maquinaria pesada" },
+    { value: "electricista", label: "Electricista" },
+    { value: "soldador", label: "Soldador" },
+    { value: "mecanico-vehiculos-livianos", label: "Mecánico de vehículos livianos" }
+  ];
 
   const screens = {
-    home: { id: "homeScreen", title: "Gestion de Flota", label: "Inicio" },
-    immediate: { id: "immediateScreen", title: "Reporte Inmediato", label: "Tablero" },
-    tomorrow: { id: "tomorrowScreen", title: "Plan Manana", label: "Asignaciones" },
-    mechanic: { id: "mechanicScreen", title: "Reporte Mecanico", label: "Observaciones" },
+    auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
+    home: { id: "homeScreen", title: "Gestión de Flota", label: "Inicio" },
+    immediate: { id: "immediateScreen", title: "Reporte inmediato", label: "Tablero" },
+    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Asignaciones" },
+    mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
     orders: { id: "ordersScreen", title: "Pedidos", label: "Solicitudes" },
-    history: { id: "historyScreen", title: "Historial de Pedidos", label: "Consulta" },
-    fleet: { id: "fleetScreen", title: "Informacion de Flota", label: "Equipos" },
-    users: { id: "usersScreen", title: "Gestion de usuarios", label: "Roles" },
+    history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
+    fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
+    users: { id: "usersScreen", title: "Gestión de usuarios", label: "Usuarios" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
 
-  let data = loadData();
-  let activeScreen = "home";
+  const config = window.SUPABASE_CONFIG || {};
+  const supabase = window.supabase && window.supabase.createClient
+    ? window.supabase.createClient(config.url || "https://your-project.supabase.co", config.anonKey || "your-anon-key")
+    : null;
+
+  let state = {
+    currentUser: null,
+    users: [],
+    reports: [],
+    orders: [],
+    fleet: [],
+    notifications: []
+  };
+
+  let activeScreen = "auth";
+  let realtimeChannel = null;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
     notifyBtn: document.getElementById("notifyBtn"),
     screenTitle: document.getElementById("screenTitle"),
     screenLabel: document.getElementById("screenLabel"),
-    currentUser: document.getElementById("currentUser"),
+    loginForm: document.getElementById("loginForm"),
+    registerForm: document.getElementById("registerForm"),
+    registerFeedback: document.getElementById("registerFeedback"),
+    logoutBtn: document.getElementById("logoutBtn"),
+    userInfoStrip: document.getElementById("userInfoStrip"),
+    userNameDisplay: document.getElementById("userNameDisplay"),
+    loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
     welcomeText: document.getElementById("welcomeText"),
     homeFeed: document.getElementById("homeFeed"),
@@ -54,6 +63,8 @@
     fleetForm: document.getElementById("fleetForm"),
     fleetList: document.getElementById("fleetList"),
     userForm: document.getElementById("userForm"),
+    userFeedback: document.getElementById("userFeedback"),
+    userFilter: document.getElementById("userFilter"),
     usersList: document.getElementById("usersList"),
     usersBtn: document.getElementById("usersBtn"),
     notificationsList: document.getElementById("notificationsList"),
@@ -61,56 +72,69 @@
   };
 
   function uid() {
-    return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    return globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
-  function loadData() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      if (!saved) return structuredClone(defaultData);
-      return {
-        ...structuredClone(defaultData),
-        ...saved,
-        users: saved.users && saved.users.length ? saved.users : defaultData.users
-      };
-    } catch {
-      return structuredClone(defaultData);
-    }
+  function specialtyLabel(value) {
+    return SPECIALTY_OPTIONS.find((option) => option.value === value)?.label || value || "Sin especialidad";
   }
 
-  function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  function normalizeUser(row) {
+    return {
+      id: row.id,
+      name: row.name || "",
+      username: row.username || "",
+      email: row.email || "",
+      role: row.role || "trabajador",
+      status: row.status || "pendiente",
+      specialty: row.specialty || "",
+      requestedAt: row.created_at || ""
+    };
   }
 
-  function currentUser() {
-    return data.users.find((user) => user.id === data.currentUserId) || data.users[0];
+  function normalizeReport(row) {
+    return {
+      id: row.id,
+      equipment: row.equipment || "",
+      location: row.location || "",
+      deviation: row.deviation || "",
+      status: row.status || "Pendiente",
+      mechanicId: row.mechanic_id || null,
+      createdAt: row.created_at || "",
+      validatedBy: row.validated_by || "",
+      operationNote: row.operation_note || "",
+      operatedBy: row.operated_by || ""
+    };
   }
 
-  function mechanics() {
-    return data.users.filter((user) => user.role === "mecanico");
+  function normalizeOrder(row) {
+    return {
+      id: row.id,
+      equipment: row.equipment || "",
+      requesterId: row.requester_id || null,
+      requesterName: row.requester_name || "",
+      need: row.need || "",
+      status: row.status || "Pedido",
+      createdAt: row.created_at || ""
+    };
   }
 
-  function isAdmin() {
-    return currentUser().role === "admin";
+  function normalizeFleet(row) {
+    return {
+      id: row.id,
+      equipment: row.equipment || "",
+      parts: row.parts || "",
+      notes: row.notes || ""
+    };
   }
 
-  function todayLabel() {
-    return new Date().toLocaleString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  }
-
-  function notify(text) {
-    data.notifications.unshift({
-      id: uid(),
-      text,
-      at: todayLabel(),
-      read: false
-    });
-    saveData();
+  function normalizeNotification(row) {
+    return {
+      id: row.id,
+      text: row.text || "",
+      at: row.created_at || "",
+      read: Boolean(row.is_read)
+    };
   }
 
   function card(title, tag, body, actions) {
@@ -127,8 +151,8 @@
     article.querySelector("h2").textContent = title;
     const tagEl = article.querySelector(".tag");
     tagEl.textContent = tag;
-    tagEl.classList.toggle("ok", /operativo|cerrado/i.test(tag));
-    tagEl.classList.toggle("warn", /asignado|pedido/i.test(tag));
+    tagEl.classList.toggle("ok", /operativo|cerrado|aprobado/i.test(tag));
+    tagEl.classList.toggle("warn", /asignado|pedido|pendiente/i.test(tag));
     tagEl.classList.toggle("danger", /pendiente/i.test(tag));
     article.querySelector(".meta").textContent = body;
 
@@ -177,49 +201,85 @@
     }
   }
 
+  function isLoggedIn() {
+    return Boolean(state.currentUser);
+  }
+
+  function isAdmin() {
+    return state.currentUser?.role === "admin";
+  }
+
+  function approvedWorkers() {
+    return state.users.filter((user) => user.status === "aprobado" && (user.role === "trabajador" || user.role === "mecanico"));
+  }
+
+  function todayLabel() {
+    return new Date().toLocaleString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  function setScreen(name) {
+    if (name !== "auth" && !isLoggedIn()) {
+      name = "auth";
+    }
+    activeScreen = name;
+    Object.values(screens).forEach((screen) => {
+      document.getElementById(screen.id).classList.remove("active");
+    });
+    const screen = screens[name];
+    document.getElementById(screen.id).classList.add("active");
+    el.screenTitle.textContent = screen.title;
+    el.screenLabel.textContent = screen.label;
+    el.backBtn.classList.toggle("hidden", name === "home" || name === "auth");
+    el.logoutBtn.classList.toggle("hidden", name === "auth");
+    render();
+  }
+
   function renderUserControls() {
-    fillSelect(el.currentUser, data.users);
-    el.currentUser.value = data.currentUserId;
-    el.rolePill.textContent = isAdmin() ? "Admin" : "Mecanico";
-    el.welcomeText.textContent = `Hola, ${currentUser().name}`;
+    if (!isLoggedIn()) {
+      el.userInfoStrip.classList.add("hidden");
+      el.logoutBtn.classList.add("hidden");
+      el.notifyBtn.classList.add("hidden");
+      return;
+    }
+
+    el.userInfoStrip.classList.remove("hidden");
+    el.logoutBtn.classList.remove("hidden");
+    el.notifyBtn.classList.remove("hidden");
+    el.userNameDisplay.textContent = state.currentUser.name;
+    el.rolePill.textContent = isAdmin() ? "Administrador" : "Trabajador";
+    el.welcomeText.textContent = `Hola, ${state.currentUser.name}`;
 
     document.querySelectorAll(".admin-only").forEach((node) => {
       node.classList.toggle("admin-disabled", !isAdmin());
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
 
-    const unread = data.notifications.filter((item) => !item.read).length;
+    const unread = state.notifications.filter((item) => !item.read).length;
     el.notifyBtn.textContent = String(unread);
   }
 
   function renderHome() {
     el.homeFeed.innerHTML = "";
     const rows = [];
-    const user = currentUser();
 
-    data.immediate
+    state.reports
       .filter((report) => report.status !== "Operativo validado")
-      .filter((report) => isAdmin() || report.mechanicId === user.id)
+      .filter((report) => isAdmin() || report.mechanicId === state.currentUser.id)
       .slice(0, 4)
       .forEach((report) => {
-        rows.push(feedCard(
-          `Equipo ${report.equipment}`,
-          report.status,
-          `${report.location} | ${report.deviation}`,
-          "pending"
-        ));
+        rows.push(feedCard(`Equipo ${report.equipment}`, report.status, `${report.location} · ${report.deviation}`, "pending"));
       });
 
-    data.orders.slice(0, 2).forEach((order) => {
-      rows.push(feedCard(
-        `Pedido ${order.equipment}`,
-        order.status,
-        `${order.requesterName} pidio: ${order.need}`,
-        "order"
-      ));
+    state.orders.slice(0, 2).forEach((order) => {
+      rows.push(feedCard(`Pedido ${order.equipment}`, order.status, `${order.requesterName} pidió: ${order.need}`, "order"));
     });
 
-    data.notifications.slice(0, 2).forEach((item) => {
+    state.notifications.slice(0, 2).forEach((item) => {
       rows.push(feedCard(item.at, item.read ? "Aviso" : "Nuevo", item.text, ""));
     });
 
@@ -231,75 +291,47 @@
     rows.forEach((row) => el.homeFeed.appendChild(row));
   }
 
-  function setScreen(name) {
-    activeScreen = name;
-    Object.values(screens).forEach((screen) => {
-      document.getElementById(screen.id).classList.remove("active");
-    });
-    const screen = screens[name];
-    document.getElementById(screen.id).classList.add("active");
-    el.screenTitle.textContent = screen.title;
-    el.screenLabel.textContent = screen.label;
-    el.backBtn.classList.toggle("hidden", name === "home");
-    if (name === "notifications") {
-      data.notifications.forEach((item) => { item.read = true; });
-      saveData();
-    }
-    render();
-  }
-
   function renderImmediate() {
-    fillSelect(el.immediateForm.elements.mechanic, mechanics(), { placeholder: "Sin asignar" });
+    fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
     el.immediateList.innerHTML = "";
-    if (!data.immediate.length) {
-      el.immediateList.appendChild(empty("Todavia no hay reportes inmediatos."));
+    if (!state.reports.length) {
+      el.immediateList.appendChild(empty("Todavía no hay reportes inmediatos."));
       return;
     }
 
-    data.immediate.forEach((report) => {
-      const mechanic = data.users.find((user) => user.id === report.mechanicId);
+    state.reports.forEach((report) => {
+      const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [];
       if (isAdmin()) {
-        actions.push(button("Asignar", "secondary", () => {
-          const names = mechanics().map((user, index) => `${index + 1}. ${user.name}`).join("\n");
-          const choice = prompt(`Elegir mecanico:\n${names}`);
+        actions.push(button("Asignar", "secondary", async () => {
+          const names = approvedWorkers().map((user, index) => `${index + 1}. ${user.name}`).join("\n");
+          const choice = prompt(`Elegir trabajador:\n${names}`);
           if (choice === null) return;
-          const selected = mechanics()[Number(choice) - 1];
+          const selected = approvedWorkers()[Number(choice) - 1];
           if (!selected) return;
-          report.mechanicId = selected.id;
-          report.status = "Asignado";
-          notify(`${report.equipment} asignado a ${selected.name}`);
-          saveData();
-          render();
+          await updateReport(report.id, { mechanic_id: selected.id, status: "Asignado" });
+          await createNotification(`${report.equipment} asignado a ${selected.name}`);
+          await refreshAllData();
         }));
-        actions.push(button("Validar operativo", "ok", () => {
-          report.status = "Operativo validado";
-          report.validatedBy = currentUser().name;
-          notify(`${report.equipment} validado operativo por ${currentUser().name}`);
-          saveData();
-          render();
+        actions.push(button("Validar operativo", "ok", async () => {
+          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
+          await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
+          await refreshAllData();
         }));
-        actions.push(button("Eliminar", "danger", () => {
-          data.immediate = data.immediate.filter((item) => item.id !== report.id);
-          saveData();
-          render();
+        actions.push(button("Eliminar", "danger", async () => {
+          await supabase.from("reports").delete().eq("id", report.id);
+          await refreshAllData();
         }));
       }
-      el.immediateList.appendChild(card(
-        report.equipment,
-        report.status,
-        `${report.location} | ${report.deviation} | Mecanico: ${mechanic ? mechanic.name : "sin asignar"}`,
-        actions
-      ));
+      el.immediateList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
   }
 
   function renderTomorrow() {
     el.tomorrowList.innerHTML = "";
-    const user = currentUser();
-    const assignments = data.immediate.filter((report) => {
+    const assignments = state.reports.filter((report) => {
       if (report.status === "Operativo validado") return false;
-      return isAdmin() || report.mechanicId === user.id;
+      return isAdmin() || report.mechanicId === state.currentUser.id;
     });
 
     if (!assignments.length) {
@@ -309,55 +341,49 @@
 
     assignments.forEach((report) => {
       const actions = [
-        button("Marcar operativo", "ok", () => {
-          const description = prompt("Descripcion del trabajo realizado:");
+        button("Marcar operativo", "ok", async () => {
+          const description = prompt("Descripción del trabajo realizado:");
           if (description === null) return;
-          report.status = "Operativo informado";
-          report.operationNote = description.trim();
-          report.operatedBy = currentUser().name;
-          notify(`${report.equipment} informado operativo por ${currentUser().name}`);
-          saveData();
-          render();
+          await updateReport(report.id, {
+            status: "Operativo informado",
+            operation_note: description.trim(),
+            operated_by: state.currentUser.name
+          });
+          await createNotification(`${report.equipment} informado operativo por ${state.currentUser.name}`);
+          await refreshAllData();
         })
       ];
       if (isAdmin()) {
-        actions.push(button("Validar", "primary", () => {
-          report.status = "Operativo validado";
-          report.validatedBy = currentUser().name;
-          notify(`${report.equipment} validado operativo`);
-          saveData();
-          render();
+        actions.push(button("Validar", "primary", async () => {
+          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
+          await createNotification(`${report.equipment} validado operativo`);
+          await refreshAllData();
         }));
       }
-      el.tomorrowList.appendChild(card(
-        report.equipment,
-        report.status,
-        `${report.location} | ${report.deviation}${report.operationNote ? " | " + report.operationNote : ""}`,
-        actions
-      ));
+      el.tomorrowList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation}${report.operationNote ? " · " + report.operationNote : ""}`, actions));
     });
   }
 
   function renderMechanicReports() {
     el.mechanicList.innerHTML = "";
     const rows = isAdmin()
-      ? data.mechanicReports
-      : data.mechanicReports.filter((row) => row.userId === currentUser().id);
+      ? state.reports.filter((row) => row.id)
+      : state.reports.filter((row) => row.id);
     if (!rows.length) {
       el.mechanicList.appendChild(empty("No hay observaciones cargadas."));
       return;
     }
     rows.forEach((row) => {
-      el.mechanicList.appendChild(card(row.equipment, row.userName, `${row.deviation} | ${row.notes || "sin detalle"}`, []));
+      el.mechanicList.appendChild(card(row.equipment, row.status, `${row.deviation} · ${row.operationNote || "sin detalle"}`, []));
     });
   }
 
   function renderOrders() {
-    fillSelect(el.orderForm.elements.requester, mechanics());
-    fillSelect(el.orderFilter, mechanics(), { all: true });
+    fillSelect(el.orderForm.elements.requester, approvedWorkers());
+    fillSelect(el.orderFilter, approvedWorkers(), { all: true });
     const selected = el.orderFilter.value || "all";
     el.ordersList.innerHTML = "";
-    const rows = data.orders.filter((order) => selected === "all" || order.requesterId === selected);
+    const rows = state.orders.filter((order) => selected === "all" || order.requesterId === selected);
     if (!rows.length) {
       el.ordersList.appendChild(empty("No hay pedidos cargados."));
       return;
@@ -365,79 +391,102 @@
     rows.forEach((order) => {
       const actions = [];
       if (isAdmin()) {
-        actions.push(button(order.status === "Cerrado" ? "Reabrir" : "Cerrar", "secondary", () => {
-          order.status = order.status === "Cerrado" ? "Pedido" : "Cerrado";
-          saveData();
-          render();
+        actions.push(button(order.status === "Cerrado" ? "Reabrir" : "Cerrar", "secondary", async () => {
+          await supabase.from("orders").update({ status: order.status === "Cerrado" ? "Pedido" : "Cerrado" }).eq("id", order.id);
+          await refreshAllData();
         }));
       }
-      el.ordersList.appendChild(card(order.equipment, order.status, `${order.requesterName} pidio: ${order.need}`, actions));
+      el.ordersList.appendChild(card(order.equipment, order.status, `${order.requesterName} pidió: ${order.need}`, actions));
     });
   }
 
   function renderHistory() {
     el.historyList.innerHTML = "";
-    if (!data.orders.length) {
-      el.historyList.appendChild(empty("El historial esta vacio."));
+    if (!state.orders.length) {
+      el.historyList.appendChild(empty("El historial está vacío."));
       return;
     }
-    data.orders.forEach((order) => {
+    state.orders.forEach((order) => {
       el.historyList.appendChild(card(order.equipment, order.status, `${order.requesterName} hizo un pedido el ${order.createdAt}`, []));
     });
   }
 
   function renderFleet() {
     el.fleetList.innerHTML = "";
-    if (!data.fleet.length) {
+    if (!state.fleet.length) {
       el.fleetList.appendChild(empty("No hay equipos cargados."));
       return;
     }
-    data.fleet.forEach((item) => {
+    state.fleet.forEach((item) => {
       const actions = [];
       if (isAdmin()) {
-        actions.push(button("Eliminar", "danger", () => {
-          data.fleet = data.fleet.filter((row) => row.id !== item.id);
-          saveData();
-          render();
+        actions.push(button("Eliminar", "danger", async () => {
+          await supabase.from("fleet_items").delete().eq("id", item.id);
+          await refreshAllData();
         }));
       }
-      el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " | " + item.notes : ""}`, actions));
+      el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
     });
   }
 
   function renderUsers() {
     el.usersList.innerHTML = "";
-    data.users.forEach((user) => {
+    const selectedSpecialty = el.userFilter.value || "all";
+    const visibleUsers = state.users.filter((user) => selectedSpecialty === "all" || user.specialty === selectedSpecialty);
+
+    if (!visibleUsers.length) {
+      el.usersList.appendChild(empty("No hay usuarios para mostrar con ese filtro."));
+      return;
+    }
+
+    visibleUsers.forEach((user) => {
       const actions = [];
-      if (user.id !== data.currentUserId) {
-        actions.push(button("Editar rol", "secondary", () => {
-          user.role = user.role === "admin" ? "mecanico" : "admin";
-          saveData();
-          render();
-        }));
-        actions.push(button("Eliminar", "danger", () => {
-          data.users = data.users.filter((item) => item.id !== user.id);
-          saveData();
-          render();
-        }));
+      if (isAdmin() && user.id !== state.currentUser.id) {
+        if (user.status === "pendiente") {
+          actions.push(button("Aprobar", "primary", async () => {
+            await supabase.from("profiles").update({ status: "aprobado" }).eq("id", user.id);
+            await createNotification(`Cuenta aprobada para ${user.name}`);
+            await refreshAllData();
+          }));
+          actions.push(button("Rechazar", "danger", async () => {
+            await supabase.from("profiles").update({ status: "rechazado" }).eq("id", user.id);
+            await refreshAllData();
+          }));
+        }
+        if (user.status !== "pendiente") {
+          actions.push(button("Eliminar", "danger", async () => {
+            await supabase.from("profiles").delete().eq("id", user.id);
+            await refreshAllData();
+          }));
+        }
       }
-      el.usersList.appendChild(card(user.name, user.role, "Usuario de la app", actions));
+      const roleLabel = user.role === "admin" ? "Administrador" : "Trabajador";
+      const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
+      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Estado: ${statusLabel}`;
+      el.usersList.appendChild(card(user.name, roleLabel, details, actions));
     });
   }
 
   function renderNotifications() {
     el.notificationsList.innerHTML = "";
-    if (!data.notifications.length) {
+    if (!state.notifications.length) {
       el.notificationsList.appendChild(empty("No hay notificaciones."));
       return;
     }
-    data.notifications.forEach((item) => {
-      el.notificationsList.appendChild(card(item.at, item.read ? "Leida" : "Nueva", item.text, []));
+    state.notifications.forEach((item) => {
+      el.notificationsList.appendChild(card(item.at, item.read ? "Leída" : "Nueva", item.text, []));
     });
   }
 
   function render() {
     renderUserControls();
+    if (!isLoggedIn()) {
+      el.loginError.textContent = "";
+      el.userInfoStrip.classList.add("hidden");
+      el.logoutBtn.classList.add("hidden");
+      el.notifyBtn.classList.add("hidden");
+      return;
+    }
     renderHome();
     renderImmediate();
     renderTomorrow();
@@ -449,6 +498,87 @@
     renderNotifications();
   }
 
+  function populateUserFilter() {
+    const options = SPECIALTY_OPTIONS.map((option) => ({ id: option.value, name: option.label }));
+    fillSelect(el.userFilter, options, { all: true });
+  }
+
+  async function refreshAllData() {
+    if (!supabase) return;
+    const [profiles, reports, orders, fleet, notifications] = await Promise.all([
+      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+      supabase.from("reports").select("*").order("created_at", { ascending: false }),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
+      supabase.from("notifications").select("*").order("created_at", { ascending: false })
+    ]);
+
+    state.users = (profiles.data || []).map(normalizeUser);
+    state.reports = (reports.data || []).map(normalizeReport);
+    state.orders = (orders.data || []).map(normalizeOrder);
+    state.fleet = (fleet.data || []).map(normalizeFleet);
+    state.notifications = (notifications.data || []).map(normalizeNotification);
+
+    if (state.currentUser) {
+      const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
+      if (freshProfile) state.currentUser = freshProfile;
+    }
+    render();
+  }
+
+  async function loadCurrentUser(userId) {
+    if (!supabase || !userId) return;
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single();
+    if (!error && data) {
+      state.currentUser = normalizeUser(data);
+    }
+  }
+
+  async function createNotification(text) {
+    if (!supabase || !state.currentUser) return;
+    await supabase.from("notifications").insert({
+      id: uid(),
+      text,
+      is_read: false,
+      created_by: state.currentUser.id
+    });
+  }
+
+  async function updateReport(id, updates) {
+    if (!supabase) return;
+    await supabase.from("reports").update(updates).eq("id", id);
+  }
+
+  async function initializeApp() {
+    if (!supabase) {
+      el.loginError.textContent = "Falta cargar Supabase. Revisá supabase-config.js.";
+      setScreen("auth");
+      return;
+    }
+
+    if (!config.url || !config.anonKey || config.url.includes("your-project") || config.anonKey.includes("your-anon")) {
+      el.loginError.textContent = "Configurá los valores de Supabase en supabase-config.js antes de usar la app.";
+      setScreen("auth");
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await loadCurrentUser(session.user.id);
+    }
+    await refreshAllData();
+    setScreen(state.currentUser ? "home" : "auth");
+
+    realtimeChannel = supabase.channel("fleet-realtime");
+    realtimeChannel
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
+      .subscribe();
+  }
+
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
@@ -456,110 +586,225 @@
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.notifyBtn.addEventListener("click", () => setScreen("notifications"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
-  el.currentUser.addEventListener("change", () => {
-    data.currentUserId = el.currentUser.value;
-    saveData();
-    render();
-  });
 
-  el.immediateForm.addEventListener("submit", (event) => {
+  el.immediateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!state.currentUser) return;
     const form = new FormData(el.immediateForm);
-    const mechanicId = form.get("mechanic");
-    const status = mechanicId ? "Asignado" : form.get("status");
     const report = {
       id: uid(),
       equipment: form.get("equipment").trim(),
       location: form.get("location").trim(),
       deviation: form.get("deviation").trim(),
-      status,
-      mechanicId,
-      createdAt: todayLabel()
+      status: form.get("status") || "Pendiente",
+      mechanic_id: form.get("mechanic") || null,
+      created_at: new Date().toISOString(),
+      created_by: state.currentUser.id
     };
-    data.immediate.unshift(report);
-    if (mechanicId) {
-      const mechanic = data.users.find((user) => user.id === mechanicId);
-      notify(`${report.equipment} asignado a ${mechanic ? mechanic.name : "mecanico"}`);
-    }
-    saveData();
+    await supabase.from("reports").insert(report);
+    await createNotification(`Nuevo reporte: ${report.equipment}`);
+    await refreshAllData();
     el.immediateForm.reset();
-    render();
   });
 
-  el.mechanicForm.addEventListener("submit", (event) => {
+  el.mechanicForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!state.currentUser) return;
     const form = new FormData(el.mechanicForm);
-    data.mechanicReports.unshift({
+    await supabase.from("reports").insert({
       id: uid(),
       equipment: form.get("equipment").trim(),
       deviation: form.get("deviation").trim(),
-      notes: form.get("notes").trim(),
-      userId: currentUser().id,
-      userName: currentUser().name,
-      createdAt: todayLabel()
+      operation_note: form.get("notes").trim(),
+      status: "Pendiente",
+      created_at: new Date().toISOString(),
+      created_by: state.currentUser.id
     });
-    saveData();
+    await refreshAllData();
     el.mechanicForm.reset();
-    render();
   });
 
-  el.orderForm.addEventListener("submit", (event) => {
+  el.orderForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!state.currentUser) return;
     const form = new FormData(el.orderForm);
-    const requester = data.users.find((user) => user.id === form.get("requester"));
-    data.orders.unshift({
+    const requester = state.users.find((user) => user.id === form.get("requester"));
+    await supabase.from("orders").insert({
       id: uid(),
       equipment: form.get("equipment").trim(),
-      requesterId: requester.id,
-      requesterName: requester.name,
+      requester_id: requester?.id || state.currentUser.id,
+      requester_name: requester?.name || state.currentUser.name,
       need: form.get("need").trim(),
       status: "Pedido",
-      createdAt: todayLabel()
+      created_at: new Date().toISOString()
     });
-    notify(`Nuevo pedido cargado por ${requester.name}`);
-    saveData();
+    await createNotification(`Nuevo pedido cargado por ${requester?.name || state.currentUser.name}`);
+    await refreshAllData();
     el.orderForm.reset();
-    render();
   });
 
   el.orderFilter.addEventListener("change", renderOrders);
+  el.userFilter.addEventListener("change", renderUsers);
 
-  el.fleetForm.addEventListener("submit", (event) => {
+  el.fleetForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (!state.currentUser) return;
     const form = new FormData(el.fleetForm);
-    data.fleet.unshift({
+    await supabase.from("fleet_items").insert({
       id: uid(),
       equipment: form.get("equipment").trim(),
       parts: form.get("parts").trim(),
-      notes: form.get("notes").trim()
+      notes: form.get("notes").trim(),
+      created_at: new Date().toISOString()
     });
-    saveData();
+    await refreshAllData();
     el.fleetForm.reset();
-    render();
   });
 
-  el.userForm.addEventListener("submit", (event) => {
+  el.userForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = new FormData(el.userForm);
-    data.users.push({
-      id: uid(),
-      name: form.get("name").trim(),
-      role: form.get("role")
+    const name = form.get("name").trim();
+    const username = form.get("username").trim();
+    const password = form.get("password").trim();
+    const specialty = form.get("specialty").trim();
+
+    if (!name || !username || !password || !specialty) {
+      el.userFeedback.textContent = "Completá todos los campos.";
+      return;
+    }
+
+    const email = `${username.toLowerCase().replace(/[^a-z0-9]+/g, "")}@fleet.local`;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          username,
+          role: "trabajador",
+          specialty
+        }
+      }
     });
-    saveData();
+
+    if (error) {
+      el.userFeedback.textContent = error.message;
+      return;
+    }
+
+    const userId = data?.user?.id || data?.session?.user?.id;
+    if (userId) {
+      await supabase.from("profiles").upsert({
+        id: userId,
+        email,
+        name,
+        username,
+        role: "trabajador",
+        status: "pendiente",
+        specialty,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    el.userFeedback.textContent = "Solicitud enviada. El administrador podrá aprobarla o rechazarla.";
     el.userForm.reset();
-    render();
+    await refreshAllData();
   });
 
-  el.clearNotifications.addEventListener("click", () => {
-    data.notifications = [];
-    saveData();
-    render();
+  el.clearNotifications.addEventListener("click", async () => {
+    if (!supabase) return;
+    await supabase.from("notifications").delete().gte("id", "");
+    await refreshAllData();
   });
 
-  render();
+  el.logoutBtn.addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    state.currentUser = null;
+    setScreen("auth");
+  });
 
-  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+  el.loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(el.loginForm);
+    const email = form.get("email").trim();
+    const password = form.get("password").trim();
+
+    if (!email || !password) {
+      el.loginError.textContent = "Ingresá correo y contraseña.";
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      el.loginError.textContent = "Usuario o contraseña incorrectos.";
+      return;
+    }
+
+    await loadCurrentUser(data.user.id);
+    if (!state.currentUser || state.currentUser.status !== "aprobado") {
+      el.loginError.textContent = "Tu cuenta está pendiente de aprobación.";
+      await supabase.auth.signOut();
+      state.currentUser = null;
+      return;
+    }
+
+    await refreshAllData();
+    el.loginError.textContent = "";
+    setScreen("home");
+  });
+
+  el.registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = new FormData(el.registerForm);
+    const name = form.get("name").trim();
+    const username = form.get("username").trim();
+    const password = form.get("password").trim();
+    const specialty = form.get("specialty").trim();
+    const email = form.get("email").trim();
+
+    if (!name || !username || !password || !specialty || !email) {
+      el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          username,
+          role: "trabajador",
+          specialty
+        }
+      }
+    });
+
+    if (error) {
+      el.registerFeedback.textContent = error.message;
+      return;
+    }
+
+    const userId = data?.user?.id || data?.session?.user?.id;
+    if (userId) {
+      await supabase.from("profiles").upsert({
+        id: userId,
+        email,
+        name,
+        username,
+        role: "trabajador",
+        status: "pendiente",
+        specialty,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    el.registerFeedback.textContent = "Solicitud enviada. El administrador deberá aprobarla.";
+    el.registerForm.reset();
+    await refreshAllData();
+  });
+
+  populateUserFilter();
+  initializeApp();
 })();

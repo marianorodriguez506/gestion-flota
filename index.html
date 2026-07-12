@@ -16,27 +16,78 @@
         <p class="eyebrow" id="screenLabel">Inicio</p>
         <h1 id="screenTitle">Gestion de Flota</h1>
       </div>
-      <button id="notifyBtn" class="icon-btn" type="button" aria-label="Notificaciones">0</button>
+      <button id="notifyBtn" class="icon-btn hidden" type="button" aria-label="Notificaciones">0</button>
+      <button id="logoutBtn" class="icon-btn hidden" type="button" aria-label="Cerrar sesión">⟲</button>
     </header>
 
-    <section class="user-strip">
-      <label>
-        Usuario actual
-        <select id="currentUser"></select>
-      </label>
+    <section id="userInfoStrip" class="user-strip hidden">
+      <div>
+        <p class="eyebrow">Usuario</p>
+        <strong id="userNameDisplay"></strong>
+      </div>
       <span id="rolePill" class="status-pill">Admin</span>
     </section>
 
-    <section id="homeScreen" class="screen active">
+    <section id="authScreen" class="screen">
+      <form id="loginForm" class="panel form-grid">
+        <label>
+          Correo electrónico
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>
+          Contraseña
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" name="remember" checked>
+          Recordarme en este dispositivo
+        </label>
+        <button class="primary" type="submit">Iniciar sesión</button>
+        <p id="loginError" class="hint danger-text"></p>
+      </form>
+      <form id="registerForm" class="panel form-grid">
+        <p class="hint">Solicitá una cuenta de trabajador. La aprobación del administrador es requerida.</p>
+        <label>
+          Nombre completo
+          <input name="name" required>
+        </label>
+        <label>
+          Correo electrónico
+          <input name="email" type="email" required>
+        </label>
+        <label>
+          Usuario
+          <input name="username" required>
+        </label>
+        <label>
+          Contraseña
+          <input name="password" type="password" required>
+        </label>
+        <label>
+          Especialidad
+          <select name="specialty" required>
+            <option value="">Seleccioná una especialidad</option>
+            <option value="mecanico-maquinaria-pesada">Mecánico de maquinaria pesada</option>
+            <option value="electricista">Electricista</option>
+            <option value="soldador">Soldador</option>
+            <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
+          </select>
+        </label>
+        <button class="secondary" type="submit">Solicitar cuenta</button>
+        <p id="registerFeedback" class="hint"></p>
+      </form>
+    </section>
+
+    <section id="homeScreen" class="screen">
       <section class="feed-hero">
         <strong id="welcomeText">Hola</strong>
-        <p>Trabajos, pedidos y avisos del dia en un solo lugar.</p>
+        <p>Trabajos, pedidos y alertas del día en un solo lugar.</p>
       </section>
 
       <div class="quick-actions">
         <button class="quick-btn urgent" data-screen="immediate">Reportar</button>
-        <button class="quick-btn" data-screen="tomorrow">Mis trabajos</button>
-        <button class="quick-btn" data-screen="orders">Pedido</button>
+        <button class="quick-btn" data-screen="tomorrow">Mi trabajo</button>
+        <button class="quick-btn" data-screen="orders">Solicitar</button>
       </div>
 
       <section class="feed-block">
@@ -45,19 +96,19 @@
       </section>
 
       <div class="home-grid">
-        <button class="module-btn" data-screen="mechanic">Reporte Mecanico</button>
-        <button class="module-btn" data-screen="history">Historial de Pedidos</button>
-        <button class="module-btn" data-screen="fleet">Informacion de Flota</button>
-        <button class="module-btn" data-screen="immediate">Tablero General</button>
+        <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
+        <button class="module-btn" data-screen="history">Historial de pedidos</button>
+        <button class="module-btn" data-screen="fleet">Información de flota</button>
+        <button class="module-btn" data-screen="immediate">Panel</button>
       </div>
-      <button id="usersBtn" class="wide-btn" type="button">Gestion de usuarios</button>
+      <button id="usersBtn" class="wide-btn" type="button">Gestión de usuarios</button>
     </section>
 
     <section id="immediateScreen" class="screen">
       <form id="immediateForm" class="panel form-grid">
         <input name="equipment" placeholder="Interno / equipo" required>
-        <input name="location" placeholder="Ubicacion" required>
-        <input name="deviation" placeholder="Desvio / falla" required>
+        <input name="location" placeholder="Ubicación" required>
+        <input name="deviation" placeholder="Desvío / falla" required>
         <select name="status">
           <option>Pendiente</option>
           <option>Asignado</option>
@@ -117,13 +168,23 @@
 
     <section id="usersScreen" class="screen">
       <form id="userForm" class="panel form-grid">
-        <input name="name" placeholder="Nombre" required>
-        <select name="role">
-          <option value="mecanico">Mecanico</option>
-          <option value="admin">Admin</option>
+        <input name="name" placeholder="Nombre completo" required>
+        <input name="username" placeholder="Usuario" required>
+        <input name="password" type="password" placeholder="Contraseña" required>
+        <select name="specialty" required>
+          <option value="">Seleccioná especialidad</option>
+          <option value="mecanico-maquinaria-pesada">Mecánico de maquinaria pesada</option>
+          <option value="electricista">Electricista</option>
+          <option value="soldador">Soldador</option>
+          <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
         </select>
-        <button class="primary" type="submit">Crear usuario</button>
+        <button class="primary" type="submit">Enviar solicitud</button>
+        <p id="userFeedback" class="hint"></p>
       </form>
+      <label class="filter-row">
+        Filtrar por especialidad
+        <select id="userFilter"></select>
+      </label>
       <section id="usersList" class="list"></section>
     </section>
 
@@ -133,6 +194,8 @@
     </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
