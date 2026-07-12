@@ -17,6 +17,13 @@ function json(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function cleanEnvKey(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
 async function supabaseFetch(url, serviceKey, path, options = {}) {
   return fetch(`${url}${path}`, {
     ...options,
@@ -42,11 +49,12 @@ module.exports = async function handler(req, res) {
     }
 
     const supabaseUrl = process.env.SUPABASE_URL || "https://qnyvwnvfrrtcifnetggv.supabase.co";
-    const anonKey =
+    const anonKey = cleanEnvKey(
       process.env.SUPABASE_ANON_KEY ||
       process.env.SUPABASE_PUBLISHABLE_KEY ||
-      "sb_publishable_F9WNtGWDuoyTgt1jxYuPjg_GkjADQkP";
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+      "sb_publishable_F9WNtGWDuoyTgt1jxYuPjg_GkjADQkP"
+    );
+    const serviceKey = cleanEnvKey(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
 
     if (!serviceKey) {
       return json(res, 503, { error: "Falta configurar SUPABASE_SERVICE_ROLE_KEY en Vercel." });
