@@ -110,7 +110,16 @@
 
   function userToEmail(value) {
     const username = String(value || "").trim().toLowerCase();
-    return username.includes("@") ? username : `${username.replace(/\s+/g, ".")}@gestionflota.app`;
+    if (username.includes("@")) return username;
+    const normalized = username
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s._-]/g, "")
+      .replace(/[_-]+/g, " ")
+      .trim()
+      .replace(/\s+/g, ".")
+      .replace(/\.+/g, ".");
+    return `marianorodriguez506+${normalized}@gmail.com`;
   }
 
   function normalizeEquipment(value) {
@@ -1213,10 +1222,7 @@ el.immediateForm.requestSubmit();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
     const specialty = form.get("specialty").trim();
-    const email = username
-  .trim()
-  .toLowerCase()
-  .replace(/\s+/g, ".") + "@gestionflota.app";
+    const email = userToEmail(username);
 
     if (!name || !username || !password || !specialty || !email) {
       el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";
