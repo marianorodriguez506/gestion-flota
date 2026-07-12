@@ -12,13 +12,14 @@
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
     home: { id: "homeScreen", title: "Gestión de Flota", label: "Inicio" },
     immediate: { id: "immediateScreen", title: "Reporte inmediato", label: "Tablero" },
-    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Asignaciones" },
+    myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
+    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
     mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
     orders: { id: "ordersScreen", title: "Pedidos", label: "Solicitudes" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
     operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
-    users: { id: "usersScreen", title: "Gestión de usuarios", label: "Usuarios" },
+    users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
 
@@ -55,7 +56,6 @@
     loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
     welcomeText: document.getElementById("welcomeText"),
-    homeFeed: document.getElementById("homeFeed"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
     reportPaste: document.getElementById("reportPaste"),
@@ -67,6 +67,7 @@
     manualPlanForm: document.getElementById("manualPlanForm"),
     availabilityList: document.getElementById("availabilityList"),
     tomorrowList: document.getElementById("tomorrowList"),
+    myJobsList: document.getElementById("myJobsList"),
     mechanicForm: document.getElementById("mechanicForm"),
     mechanicList: document.getElementById("mechanicList"),
     orderForm: document.getElementById("orderForm"),
@@ -109,7 +110,7 @@
 
   function userToEmail(value) {
     const username = String(value || "").trim().toLowerCase();
-    return username.includes("@") ? username : `${username.replace(/\s+/g, ".")}@gestion-flota.local`;
+    return username.includes("@") ? username : `${username.replace(/\s+/g, ".")}@gestionflota.app`;
   }
 
   function normalizeEquipment(value) {
@@ -367,7 +368,6 @@
   }
 
   function renderHome() {
-    el.homeFeed.innerHTML = "";
   }
 
   function renderImmediate() {
@@ -446,25 +446,6 @@ filteredReports.forEach((report) => {
     const rows = planReports();
     const workers = approvedWorkers();
 
-    if (!isAdmin()) {
-      const mySection = document.createElement("article");
-      mySection.className = "card my-jobs";
-      mySection.innerHTML = `<div class="card-head"><h2>Mis trabajos</h2><span class="tag warn">${myReports().length}</span></div><div class="plan-items"></div>`;
-      const myList = mySection.querySelector(".plan-items");
-      const own = myReports();
-      if (!own.length) {
-        myList.appendChild(empty("No tenés equipos asignados."));
-      } else {
-        own.forEach((report) => {
-          myList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
-            button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`)),
-            button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
-          ]));
-        });
-      }
-      el.tomorrowList.appendChild(mySection);
-    }
-
     if (!workers.length) {
       el.tomorrowList.appendChild(empty("No hay mecánicos aprobados."));
       return;
@@ -507,6 +488,22 @@ filteredReports.forEach((report) => {
         });
       }
       el.tomorrowList.appendChild(section);
+    });
+  }
+
+  function renderMyJobs() {
+    if (!el.myJobsList) return;
+    el.myJobsList.innerHTML = "";
+    const own = myReports();
+    if (!own.length) {
+      el.myJobsList.appendChild(empty("No tenés equipos asignados."));
+      return;
+    }
+    own.forEach((report) => {
+      el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
+        button("Detalle", "secondary", () => alert(`${report.equipment}\n${reportLine(report)}`)),
+        button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
+      ]));
     });
   }
 
@@ -761,19 +758,11 @@ filteredReports.forEach((report) => {
     if (username === null) return;
     const specialty = prompt("Especialidad:", user.specialty || "mecanico-maquinaria-pesada");
     if (specialty === null) return;
-    const role = prompt("Rol: mecanico, trabajador o admin", user.role || "mecanico");
-    if (role === null) return;
-    const accountStatus = prompt("Estado: activo o inactivo", user.accountStatus || "activo");
-    if (accountStatus === null) return;
-    const cleanRole = ["admin", "trabajador", "mecanico"].includes(role.trim()) ? role.trim() : user.role;
-    const cleanStatus = accountStatus.trim().toLowerCase() === "inactivo" ? "inactivo" : "activo";
     await supabase.from("profiles").update({
       name: name.trim(),
       username: username.trim().toLowerCase(),
       email: userToEmail(username),
-      specialty: specialty.trim(),
-      role: cleanRole,
-      account_status: cleanStatus
+      specialty: specialty.trim()
     }).eq("id", user.id);
     await refreshAllData();
   }
@@ -800,6 +789,7 @@ filteredReports.forEach((report) => {
     }
     renderHome();
     renderImmediate();
+    renderMyJobs();
     renderTomorrow();
     renderMechanicReports();
     renderOrders();
@@ -1119,8 +1109,8 @@ el.immediateForm.requestSubmit();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
     const specialty = form.get("specialty").trim();
-    const role = form.get("role") || "mecanico";
-    const accountStatus = form.get("accountStatus") || "activo";
+    const role = "mecanico";
+    const accountStatus = "activo";
 
     if (!name || !username || !password || !specialty) {
       el.userFeedback.textContent = "Completá todos los campos.";
@@ -1226,7 +1216,7 @@ el.immediateForm.requestSubmit();
     const email = username
   .trim()
   .toLowerCase()
-  .replace(/\s+/g, ".") + "@gestion-flota.local";
+  .replace(/\s+/g, ".") + "@gestionflota.app";
 
     if (!name || !username || !password || !specialty || !email) {
       el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";

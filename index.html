@@ -11,13 +11,13 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">‹</button>
+      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">←</button>
       <div>
         <p class="eyebrow" id="screenLabel">Inicio</p>
         <h1 id="screenTitle">Gestion de Flota</h1>
       </div>
       <button id="notifyBtn" class="icon-btn hidden" type="button" aria-label="Notificaciones">0</button>
-      <button id="logoutBtn" class="icon-btn hidden" type="button" aria-label="Cerrar sesión">⟲</button>
+      <button id="logoutBtn" class="text-btn hidden" type="button" aria-label="Cerrar sesión">Salir</button>
     </header>
 
     <section id="userInfoStrip" class="user-strip hidden">
@@ -84,15 +84,11 @@
       <div class="quick-actions">
         <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
 
-        <button class="quick-btn" data-screen="tomorrow">🔧 Mis trabajos</button>
+        <button class="quick-btn" data-screen="myJobs">Mis trabajos</button>
 
         <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
+        <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
       </div>
-
-      <section class="feed-block hidden">
-        <h2>Actividad reciente</h2>
-        <div id="homeFeed" class="feed-list"></div>
-      </section>
 
       <div class="home-grid">
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
@@ -102,7 +98,7 @@
         <button class="module-btn admin-only" data-screen="tomorrow">Validaciones pendientes</button>
         <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
       </div>
-      <button id="usersBtn" class="wide-btn" type="button">Gestión de usuarios</button>
+      <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
     </section>
     
     <section id="immediateScreen" class="screen">
@@ -181,6 +177,14 @@
       <section id="tomorrowList" class="list"></section>
     </section>
 
+    <section id="myJobsScreen" class="screen">
+      <section class="panel compact">
+        <h2>Mis trabajos</h2>
+        <p class="hint">Equipos asignados al usuario actual.</p>
+      </section>
+      <section id="myJobsList" class="list"></section>
+    </section>
+
     <section id="mechanicScreen" class="screen">
       <form id="mechanicForm" class="panel form-grid">
         <input name="equipment" placeholder="Interno" required>
@@ -226,18 +230,13 @@
     </section>
 
     <section id="usersScreen" class="screen">
+      <section class="panel compact">
+        <h2>GESTIÓN DE MECÁNICOS</h2>
+        <p class="hint">Creá y administrá las cuentas de los mecánicos del taller.</p>
+      </section>
       <form id="userForm" class="panel form-grid">
         <input name="name" placeholder="Nombre completo" required>
         <input name="username" placeholder="Usuario" required>
-        <select name="role" required>
-          <option value="mecanico">Mecánico</option>
-          <option value="trabajador">Trabajador</option>
-          <option value="admin">Administrador</option>
-        </select>
-        <select name="accountStatus" required>
-          <option value="activo">Activo</option>
-          <option value="inactivo">Inactivo</option>
-        </select>
         <input name="password" type="password" placeholder="Contraseña" required>
         <select name="specialty" required>
           <option value="">Seleccioná especialidad</option>
