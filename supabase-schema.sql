@@ -13,9 +13,12 @@ create table if not exists public.profiles (
   username text not null unique,
   role text not null default 'trabajador' check (role in ('admin', 'trabajador', 'mecanico')),
   status text not null default 'pendiente' check (status in ('pendiente', 'aprobado', 'rechazado')),
+  account_status text not null default 'activo' check (account_status in ('activo', 'inactivo')),
   specialty text,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists account_status text not null default 'activo';
 
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
@@ -29,6 +32,23 @@ create table if not exists public.reports (
   validated_by text,
   operation_note text,
   operated_by text
+);
+
+alter table public.reports add column if not exists previous_status text;
+alter table public.reports add column if not exists repair_note text;
+alter table public.reports add column if not exists repaired_by text;
+alter table public.reports add column if not exists repaired_at timestamptz;
+alter table public.reports add column if not exists validated_at timestamptz;
+alter table public.reports add column if not exists plan_date date;
+alter table public.reports add column if not exists hourmeter text;
+
+create table if not exists public.worker_availability (
+  id uuid primary key default gen_random_uuid(),
+  worker_id uuid not null references public.profiles(id) on delete cascade,
+  date date not null,
+  status text not null default 'disponible' check (status in ('disponible', 'franco')),
+  created_at timestamptz not null default now(),
+  unique(worker_id, date)
 );
 
 create table if not exists public.orders (
@@ -59,15 +79,18 @@ create table if not exists public.notifications (
 
 create index if not exists profiles_username_idx on public.profiles(username);
 create index if not exists reports_mechanic_idx on public.reports(mechanic_id);
+create index if not exists reports_plan_date_idx on public.reports(plan_date);
 create index if not exists reports_created_by_idx on public.reports(created_by);
 create index if not exists orders_requester_idx on public.orders(requester_id);
 create index if not exists notifications_created_by_idx on public.notifications(created_by);
+create index if not exists worker_availability_worker_date_idx on public.worker_availability(worker_id, date);
 
 alter table public.profiles enable row level security;
 alter table public.reports enable row level security;
 alter table public.orders enable row level security;
 alter table public.fleet_items enable row level security;
 alter table public.notifications enable row level security;
+alter table public.worker_availability enable row level security;
 
 create or replace function private.is_admin()
 returns boolean
@@ -94,6 +117,7 @@ as $$
     from public.profiles p
     where p.id = auth.uid()
       and p.status = 'aprobado'
+      and coalesce(p.account_status, 'activo') = 'activo'
   );
 $$;
 
@@ -115,13 +139,13 @@ begin
   end if;
 
   if tg_op = 'INSERT' then
-    if new.role is distinct from 'trabajador' then
-      raise exception 'Only trabajadores can be created through this flow';
+    if not private.is_admin() and new.role not in ('trabajador', 'mecanico') then
+      raise exception 'Only workers can be created through this flow';
     end if;
-    if new.status is distinct from 'pendiente' then
+    if not private.is_admin() and new.status is distinct from 'pendiente' then
       raise exception 'New profiles must start as pending';
     end if;
-    if new.id <> auth.uid() then
+    if not private.is_admin() and new.id <> auth.uid() then
       raise exception 'Users can only create their own profile';
     end if;
   end if;
@@ -135,6 +159,9 @@ begin
     end if;
     if old is not null and old.status is distinct from new.status and not private.is_admin() then
       raise exception 'status cannot be changed by a user';
+    end if;
+    if old is not null and old.account_status is distinct from new.account_status and not private.is_admin() then
+      raise exception 'account status cannot be changed by a user';
     end if;
   end if;
 
@@ -160,6 +187,9 @@ begin
     end if;
     if (old.status is distinct from new.status) and not private.is_admin() then
       raise exception 'Only admins can change status';
+    end if;
+    if (old.account_status is distinct from new.account_status) and not private.is_admin() then
+      raise exception 'Only admins can change account status';
     end if;
     if (old.email is distinct from new.email) and not private.is_admin() then
       raise exception 'Only admins can change email';
@@ -204,9 +234,13 @@ create policy profiles_select_admin
 create policy profiles_insert_self
   on public.profiles for insert to authenticated
   with check (
-    auth.uid() = id
-    and role = 'trabajador'
-    and status = 'pendiente'
+    private.is_admin()
+    or (
+      auth.uid() = id
+      and role in ('trabajador', 'mecanico')
+      and status = 'pendiente'
+      and account_status = 'activo'
+    )
   );
 
 create policy profiles_update_self_safe
@@ -363,6 +397,28 @@ create policy notifications_delete_admin_or_self
       private.is_approved_user() and created_by = auth.uid()
     )
   );
+
+drop policy if exists worker_availability_select_approved on public.worker_availability;
+drop policy if exists worker_availability_insert_admin on public.worker_availability;
+drop policy if exists worker_availability_update_admin on public.worker_availability;
+drop policy if exists worker_availability_delete_admin on public.worker_availability;
+
+create policy worker_availability_select_approved
+  on public.worker_availability for select to authenticated
+  using (private.is_approved_user());
+
+create policy worker_availability_insert_admin
+  on public.worker_availability for insert to authenticated
+  with check (private.is_admin());
+
+create policy worker_availability_update_admin
+  on public.worker_availability for update to authenticated
+  using (private.is_admin())
+  with check (private.is_admin());
+
+create policy worker_availability_delete_admin
+  on public.worker_availability for delete to authenticated
+  using (private.is_admin());
 
 -- Manual bootstrap for the first admin account after creating the user in Supabase Auth:
 -- 1) Create the Auth user in Supabase Auth.

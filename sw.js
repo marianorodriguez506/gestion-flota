@@ -1,4 +1,4 @@
-const CACHE = "gestion-flota-v2";
+const CACHE = "gestion-flota-v3";
 const ASSETS = [
   "./index.html",
   "./styles.css",

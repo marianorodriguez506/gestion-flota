@@ -11,13 +11,13 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">‹</button>
+      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">←</button>
       <div>
         <p class="eyebrow" id="screenLabel">Inicio</p>
         <h1 id="screenTitle">Gestion de Flota</h1>
       </div>
       <button id="notifyBtn" class="icon-btn hidden" type="button" aria-label="Notificaciones">0</button>
-      <button id="logoutBtn" class="icon-btn hidden" type="button" aria-label="Cerrar sesión">⟲</button>
+      <button id="logoutBtn" class="text-btn hidden" type="button" aria-label="Cerrar sesión">Salir</button>
     </header>
 
     <section id="userInfoStrip" class="user-strip hidden">
@@ -31,8 +31,8 @@
     <section id="authScreen" class="screen">
       <form id="loginForm" class="panel form-grid">
         <label>
-          Correo electrónico
-          <input name="email" type="email" autocomplete="email" required>
+          Usuario
+          <input name="email" type="text" autocomplete="username" required>
         </label>
         <label>
           Contraseña
@@ -45,16 +45,13 @@
         <button class="primary" type="submit">Iniciar sesión</button>
         <p id="loginError" class="hint danger-text"></p>
       </form>
-      <form id="registerForm" class="panel form-grid">
+      <form id="registerForm" class="panel form-grid hidden">
         <p class="hint">Solicitá una cuenta de trabajador. La aprobación del administrador es requerida.</p>
         <label>
           Nombre completo
           <input name="name" required>
         </label>
-        <label>
-          Correo electrónico
-          <input name="email" type="email" required>
-        </label>
+       
         <label>
           Usuario
           <input name="username" required>
@@ -85,46 +82,107 @@
       </section>
 
       <div class="quick-actions">
-        <button class="quick-btn urgent" data-screen="immediate">Reportar</button>
-        <button class="quick-btn" data-screen="tomorrow">Mi trabajo</button>
-        <button class="quick-btn" data-screen="orders">Solicitar</button>
-      </div>
+        <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
 
-      <section class="feed-block">
-        <h2>Actividad reciente</h2>
-        <div id="homeFeed" class="feed-list"></div>
-      </section>
+        <button class="quick-btn" data-screen="myJobs">Mis trabajos</button>
+
+        <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
+        <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
+      </div>
 
       <div class="home-grid">
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
-        <button class="module-btn" data-screen="immediate">Panel</button>
+        <button class="module-btn admin-only" data-screen="immediate">Panel</button>
+        <button class="module-btn admin-only" data-screen="tomorrow">Validaciones pendientes</button>
+        <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
       </div>
-      <button id="usersBtn" class="wide-btn" type="button">Gestión de usuarios</button>
+      <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
     </section>
-
+    
     <section id="immediateScreen" class="screen">
+      <h2>📋 Reportes Activos</h2>
+      <label>Pegar reporte de WhatsApp</label>
+
+      <textarea
+       id="reportPaste"
+        rows="6"
+       placeholder="Pegá aquí el reporte copiado desde WhatsApp">
+      </textarea>
+
+       <button
+        id="processReportBtn"
+        class="primary"
+        type="button">
+       Procesar reporte
+      </button>
+
+      <h3>➕ Carga manual</h3>
+
       <form id="immediateForm" class="panel form-grid">
         <input name="equipment" placeholder="Interno / equipo" required>
         <input name="location" placeholder="Ubicación" required>
         <input name="deviation" placeholder="Desvío / falla" required>
         <select name="status">
-          <option>Pendiente</option>
-          <option>Asignado</option>
-          <option>Operativo validado</option>
+          <option value="FS">FS - Fuera de servicio</option>
+          <option value="OBS">OBS - Operativo con observaciones</option>
         </select>
         <select name="mechanic"></select>
         <button class="primary" type="submit">Guardar reporte</button>
       </form>
-      <section id="immediateList" class="list"></section>
+      <div class="panel compact">
+        <label>
+          Buscar interno
+          <input
+            id="activeReportSearch"
+            type="text"
+            placeholder="Ej.: CF-38">
+        </label>
+      </div>
+
+    <h3>Reportes cargados</h3>
+
+    <section id="immediateList" class="list"></section>
     </section>
 
     <section id="tomorrowScreen" class="screen">
       <section class="panel compact">
-        <p class="hint">Cada mecanico ve sus asignaciones. El admin ve todo.</p>
+        <h2>Plan Mañana</h2>
+        <label>
+          Fecha del plan
+          <input id="planDate" type="date">
+        </label>
+        <div class="card-actions">
+          <button id="refreshPlanBtn" class="secondary" type="button">Actualizar</button>
+          <button id="copyPlanBtn" class="primary" type="button">Copiar Plan Mañana</button>
+        </div>
+        <p class="hint">Cada mecánico ve sus trabajos y también el plan completo del equipo.</p>
       </section>
+      <form id="manualPlanForm" class="panel form-grid admin-only hidden">
+        <h3>Agregar equipo al plan</h3>
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <input name="location" placeholder="Ubicación" required>
+        <input name="deviation" placeholder="Falla o trabajo" required>
+        <input name="hourmeter" placeholder="Horómetro si está disponible">
+        <select name="status">
+          <option value="FS">FS - Fuera de servicio</option>
+          <option value="OBS">OBS - Operativo con observaciones</option>
+          <option value="PV">PV - Pendiente de validación</option>
+        </select>
+        <select name="mechanic" required></select>
+        <button class="primary" type="submit">Agregar al Plan Mañana</button>
+      </form>
+      <section id="availabilityList" class="panel compact admin-only"></section>
       <section id="tomorrowList" class="list"></section>
+    </section>
+
+    <section id="myJobsScreen" class="screen">
+      <section class="panel compact">
+        <h2>Mis trabajos</h2>
+        <p class="hint">Equipos asignados al usuario actual.</p>
+      </section>
+      <section id="myJobsList" class="list"></section>
     </section>
 
     <section id="mechanicScreen" class="screen">
@@ -166,7 +224,16 @@
       <section id="fleetList" class="list"></section>
     </section>
 
+    <section id="operativesScreen" class="screen">
+      <p class="hint">Equipos validados por el administrador y quitados de Reportes Activos.</p>
+      <section id="operativesList" class="list"></section>
+    </section>
+
     <section id="usersScreen" class="screen">
+      <section class="panel compact">
+        <h2>GESTIÓN DE MECÁNICOS</h2>
+        <p class="hint">Creá y administrá las cuentas de los mecánicos del taller.</p>
+      </section>
       <form id="userForm" class="panel form-grid">
         <input name="name" placeholder="Nombre completo" required>
         <input name="username" placeholder="Usuario" required>
@@ -178,7 +245,7 @@
           <option value="soldador">Soldador</option>
           <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
         </select>
-        <button class="primary" type="submit">Enviar solicitud</button>
+        <button class="primary" type="submit">Crear usuario</button>
         <p id="userFeedback" class="hint"></p>
       </form>
       <label class="filter-row">
