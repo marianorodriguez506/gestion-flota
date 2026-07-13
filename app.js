@@ -394,7 +394,7 @@
     el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
   }
 
-  function compactReportRow(report, actions) {
+  function compactReportRow(report, actions, quickActions) {
     const mechanic = state.users.find((user) => user.id === report.mechanicId);
     const days = reportAgeDays(report);
     const row = document.createElement("article");
@@ -409,7 +409,9 @@
         <span class="report-failure"></span>
         <span class="report-mechanic"></span>
       </div>
-      <button type="button" class="secondary compact-more">Más</button>
+      <div class="report-row-actions">
+        <button type="button" class="secondary compact-more">Más</button>
+      </div>
     `;
     row.querySelector("strong").textContent = report.equipment;
     row.querySelector(".report-status").textContent = displayStatus(report.status);
@@ -418,6 +420,8 @@
     age.classList.add(reportAgeClass(days));
     row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
     row.querySelector(".report-mechanic").textContent = mechanic ? mechanic.name : "Sin asignar";
+    const actionBox = row.querySelector(".report-row-actions");
+    (quickActions || []).forEach((action) => actionBox.insertBefore(action, actionBox.firstChild));
     row.querySelector(".compact-more").addEventListener("click", () => showReportMenu(report, actions));
     return row;
   }
@@ -729,7 +733,9 @@
         button("Ver detalles", "secondary", () => showReportDetails(report)),
         button("Ver historial", "secondary", () => showReportHistory(report))
       ];
+      const quickActions = [];
       if (isAdmin()) {
+        quickActions.push(button("Asignar", "primary compact-assign", async () => chooseMechanicForReport(report)));
         actions.push(button("Asignar", "secondary", async () => chooseMechanicForReport(report)));
         actions.push(button("Editar", "secondary", async () => editReport(report)));
         actions.push(button("Enviar a Plan Mañana", "secondary", async () => {
@@ -754,11 +760,12 @@
           await refreshAllData();
         }));
       } else if (report.mechanicId === state.currentUser.id) {
+        quickActions.push(button("Operativo", "ok compact-assign", async () => markRepairDone(report)));
         actions.push(button("Cambiar a operativo", "ok", async () => markRepairDone(report)));
       }
       const location = groupLocation(report);
       if (!groups.has(location)) groups.set(location, []);
-      groups.get(location).push(compactReportRow(report, actions, mechanic));
+      groups.get(location).push(compactReportRow(report, actions, quickActions));
     });
 
     if (!filteredReports.length) {

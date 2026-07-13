@@ -500,11 +500,23 @@ label {
   text-align: right;
 }
 
-.compact-more {
+.report-row-actions {
   grid-column: 2 / 3;
   grid-row: 1 / span 2;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.compact-more,
+.compact-assign {
   min-height: 38px;
   padding: 8px 10px;
+}
+
+.compact-assign {
+  min-width: 78px;
 }
 
 .availability-row,
