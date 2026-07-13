@@ -264,6 +264,30 @@
     return new Date(value).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
   }
 
+  function formatShortDate(value) {
+    if (!value) return "";
+    return new Date(value).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+  }
+
+  function reportAgeDays(report) {
+    const date = new Date(report.createdAt);
+    if (Number.isNaN(date.getTime())) return 0;
+    const reported = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.max(0, Math.floor((today - reported) / 86400000));
+  }
+
+  function reportAgeClass(days) {
+    if (days >= 7) return "danger";
+    if (days >= 3) return "warn";
+    return "ok";
+  }
+
+  function groupLocation(report) {
+    return (report.location || "Sin ubicación").trim().toUpperCase();
+  }
+
   function reportLine(report) {
     const mechanic = workerName(report.mechanicId);
     const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
@@ -336,6 +360,67 @@
       { label: "Historial del equipo", value: history.length ? `${history.length} movimientos registrados` : "" },
       { label: "Ficha de flota", value: fleet ? `${fleet.parts}${fleet.notes ? " · " + fleet.notes : ""}` : "" }
     ]);
+  }
+
+  function showReportMenu(report, actions) {
+    const mechanic = state.users.find((user) => user.id === report.mechanicId);
+    const days = reportAgeDays(report);
+    openInfoModal(report.equipment, [
+      { label: "Estado", value: displayStatus(report.status) },
+      { label: "Ubicación", value: report.location },
+      { label: "Falla", value: report.deviation },
+      { label: "Mecánico", value: mechanic ? mechanic.name : "Sin asignar" },
+      { label: "Fecha", value: formatDateTime(report.createdAt) },
+      { label: "Días", value: `${days}` }
+    ]);
+    el.modalActions.innerHTML = "";
+    actions.forEach((action) => el.modalActions.appendChild(action));
+    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+  }
+
+  function compactReportRow(report, actions) {
+    const mechanic = state.users.find((user) => user.id === report.mechanicId);
+    const days = reportAgeDays(report);
+    const row = document.createElement("article");
+    row.className = "report-row";
+    row.innerHTML = `
+      <div class="report-main">
+        <strong></strong>
+        <span class="report-status"></span>
+        <span class="age-pill"></span>
+      </div>
+      <div class="report-summary">
+        <span class="report-failure"></span>
+        <span class="report-mechanic"></span>
+      </div>
+      <button type="button" class="secondary compact-more">Más</button>
+    `;
+    row.querySelector("strong").textContent = report.equipment;
+    row.querySelector(".report-status").textContent = displayStatus(report.status);
+    const age = row.querySelector(".age-pill");
+    age.textContent = `${days} d`;
+    age.classList.add(reportAgeClass(days));
+    row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
+    row.querySelector(".report-mechanic").textContent = mechanic ? mechanic.name : "Sin asignar";
+    row.querySelector(".compact-more").addEventListener("click", () => showReportMenu(report, actions));
+    return row;
+  }
+
+  function reportGroup(title, rows) {
+    const section = document.createElement("section");
+    section.className = "report-group";
+    section.innerHTML = `
+      <div class="report-group-head">
+        <h2></h2>
+        <span></span>
+      </div>
+      <div class="report-table"></div>
+    `;
+    section.querySelector("h2").textContent = title;
+    section.querySelector("span").textContent = `${rows.length}`;
+    const table = section.querySelector(".report-table");
+    rows.forEach((row) => table.appendChild(row));
+    return section;
   }
 
   async function writeClipboard(text) {
@@ -608,21 +693,21 @@
       return;
     }
 
-    const search = normalizeEquipment(
-  el.activeReportSearch?.value || ""
-).toLowerCase();
+    const search = normalizeEquipment(el.activeReportSearch?.value || "").toLowerCase();
+    const filteredReports = reports.filter((report) => {
+      if (!search) return true;
 
-const filteredReports = reports.filter((report) => {
-  if (!search) return true;
+      return (
+        report.equipment?.toLowerCase().includes(search) ||
+        report.location?.toLowerCase().includes(search) ||
+        report.deviation?.toLowerCase().includes(search)
+      );
+    });
 
-  return (
-    report.equipment?.toLowerCase().includes(search) ||
-    report.location?.toLowerCase().includes(search) ||
-    report.deviation?.toLowerCase().includes(search)
-  );
-});
-
-filteredReports.forEach((report) => {
+    const groups = new Map();
+    filteredReports
+      .sort((a, b) => groupLocation(a).localeCompare(groupLocation(b)) || reportAgeDays(b) - reportAgeDays(a) || a.equipment.localeCompare(b.equipment))
+      .forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [
         button("Ver detalles", "secondary", () => showReportDetails(report)),
@@ -655,8 +740,18 @@ filteredReports.forEach((report) => {
       } else if (report.mechanicId === state.currentUser.id) {
         actions.push(button("Cambiar a operativo", "ok", async () => markRepairDone(report)));
       }
-      const meta = reportMeta(report);
-      el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Prioridad: ${meta.priority} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
+      const location = groupLocation(report);
+      if (!groups.has(location)) groups.set(location, []);
+      groups.get(location).push(compactReportRow(report, actions, mechanic));
+    });
+
+    if (!filteredReports.length) {
+      el.immediateList.appendChild(empty("No encontré reportes con ese filtro."));
+      return;
+    }
+
+    groups.forEach((rows, location) => {
+      el.immediateList.appendChild(reportGroup(location, rows));
     });
   }
 

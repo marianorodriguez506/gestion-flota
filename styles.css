@@ -383,6 +383,130 @@ label {
   margin-top: 10px;
 }
 
+.report-group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.report-group-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line);
+}
+
+.report-group-head h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.report-group-head span {
+  min-width: 28px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(20, 184, 166, .18);
+  color: var(--accent);
+  text-align: center;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.report-table {
+  display: grid;
+}
+
+.report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.report-row:last-child {
+  border-bottom: 0;
+}
+
+.report-main,
+.report-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.report-main strong {
+  font-size: 15px;
+}
+
+.report-status {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-weight: 900;
+  font-size: 11px;
+}
+
+.age-pill {
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.age-pill.ok {
+  background: rgba(52, 211, 153, .18);
+  color: var(--ok);
+}
+
+.age-pill.warn {
+  background: rgba(251, 191, 36, .2);
+  color: var(--warn);
+}
+
+.age-pill.danger {
+  background: rgba(248, 113, 113, .18);
+  color: var(--danger);
+}
+
+.report-summary {
+  grid-column: 1 / 2;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.report-failure,
+.report-mechanic {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-failure {
+  flex: 1 1 auto;
+}
+
+.report-mechanic {
+  flex: 0 1 38%;
+  text-align: right;
+}
+
+.compact-more {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
 .availability-row,
 .worker-actions {
   display: grid;
