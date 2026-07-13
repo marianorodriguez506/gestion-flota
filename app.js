@@ -256,7 +256,8 @@
   }
 
   function visibleActiveReports() {
-    return activeReports();
+    if (!state.currentUser || isAdmin()) return activeReports();
+    return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
   }
 
   function formatDateTime(value) {
