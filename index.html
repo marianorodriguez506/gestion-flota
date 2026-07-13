@@ -83,7 +83,7 @@
       <div class="quick-actions">
         <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
 
-        <button class="quick-btn" data-screen="myJobs">Mis trabajos</button>
+        <button class="quick-btn mechanic-only" data-screen="myJobs">Mis trabajos</button>
 
         <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
         <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
@@ -93,8 +93,8 @@
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
-        <button class="module-btn admin-only" data-screen="immediate">Panel</button>
-        <button class="module-btn admin-only" data-screen="tomorrow">Validaciones pendientes</button>
+        <button class="module-btn admin-only" data-screen="panel">Panel</button>
+        <button class="module-btn admin-only" data-screen="validations">Validaciones pendientes</button>
         <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
       </div>
       <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
@@ -124,6 +124,14 @@
         <input name="equipment" placeholder="Interno / equipo" required>
         <input name="location" placeholder="Ubicación" required>
         <input name="deviation" placeholder="Desvío / falla" required>
+        <select name="priority">
+          <option value="Media">Prioridad media</option>
+          <option value="Alta">Prioridad alta</option>
+          <option value="Critica">Prioridad critica</option>
+          <option value="Baja">Prioridad baja</option>
+        </select>
+        <input name="hourmeter" placeholder="Horometro / kilometraje">
+        <textarea name="notes" placeholder="Observaciones"></textarea>
         <select name="status">
           <option value="FS">FS - Fuera de servicio</option>
           <option value="OBS">OBS - Operativo con observaciones</option>
@@ -213,6 +221,23 @@
     <section id="operativesScreen" class="screen">
       <p class="hint">Equipos validados por el administrador y quitados de Reportes Activos.</p>
       <section id="operativesList" class="list"></section>
+    </section>
+
+    <section id="panelScreen" class="screen">
+      <section class="panel compact">
+        <h2>Panel</h2>
+        <p class="hint">Resumen conectado con reportes, pedidos, flota y validaciones.</p>
+      </section>
+      <section id="panelStats" class="dashboard-grid"></section>
+      <section id="panelActivity" class="list"></section>
+    </section>
+
+    <section id="validationsScreen" class="screen">
+      <section class="panel compact">
+        <h2>Validaciones pendientes</h2>
+        <p class="hint">Equipos informados como operativos por los mecánicos.</p>
+      </section>
+      <section id="validationsList" class="list"></section>
     </section>
 
     <section id="usersScreen" class="screen">
