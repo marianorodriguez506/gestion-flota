@@ -609,7 +609,19 @@
 
   async function assignReportToWorker(report, worker) {
     const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
+    let updated = null;
+    try {
+      updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
+    } catch (error) {
+      if (!String(error.message || "").includes("plan_date")) throw error;
+      updated = await updateReport(report.id, { mechanic_id: worker.id });
+    }
+
+    if (!updated || updated.mechanic_id !== worker.id) {
+      showToast("No se pudo confirmar la asignación. Volvé a intentar.");
+      return;
+    }
+
     state.reports = state.reports.map((item) => item.id === report.id ? { ...item, mechanicId: worker.id, planDate } : item);
     renderImmediate();
     renderTomorrow();
@@ -1388,11 +1400,17 @@
 
   async function updateReport(id, updates) {
     if (!supabase) return;
-    const { error } = await supabase.from("reports").update(updates).eq("id", id);
+    const { data, error } = await supabase.from("reports").update(updates).eq("id", id).select("*").maybeSingle();
     if (error) {
       showToast(`No se pudo actualizar el reporte: ${error.message}`);
       throw error;
     }
+    if (!data) {
+      const error = new Error("Supabase no devolvió el reporte actualizado.");
+      showToast("No se pudo confirmar el cambio en Supabase.");
+      throw error;
+    }
+    return data;
   }
 
   async function initializeApp() {
