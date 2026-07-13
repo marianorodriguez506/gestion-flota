@@ -404,8 +404,21 @@
       { label: "Días", value: `${days}` }
     ]);
     el.modalActions.innerHTML = "";
-    actions.forEach((action) => el.modalActions.appendChild(action));
+    actions.forEach((action) => {
+      if (action instanceof HTMLElement) {
+        el.modalActions.appendChild(action);
+        return;
+      }
+      el.modalActions.appendChild(button(action.label, action.className, async () => {
+        closeModal();
+        await action.onClick();
+      }));
+    });
     el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+  }
+
+  function menuAction(label, className, onClick) {
+    return { label, className, onClick };
   }
 
   function compactReportRow(report, actions, quickActions) {
@@ -756,30 +769,30 @@
       .forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [
-        button("Ver detalles", "secondary", () => showReportDetails(report)),
-        button("Ver historial", "secondary", () => showReportHistory(report))
+        menuAction("Ver detalles", "secondary", () => showReportDetails(report)),
+        menuAction("Ver historial", "secondary", () => showReportHistory(report))
       ];
       const quickActions = [];
       if (isAdmin()) {
         quickActions.push(button("Asignar", "primary compact-assign", async () => chooseMechanicForReport(report)));
-        actions.push(button("Asignar", "secondary", async () => chooseMechanicForReport(report)));
-        actions.push(button("Editar", "secondary", async () => editReport(report)));
-        actions.push(button("Enviar a Plan Mañana", "secondary", async () => {
+        actions.push(menuAction("Asignar", "secondary", async () => chooseMechanicForReport(report)));
+        actions.push(menuAction("Editar", "secondary", async () => editReport(report)));
+        actions.push(menuAction("Enviar a Plan Mañana", "secondary", async () => {
           await updateReport(report.id, { plan_date: state.planDate });
           await createNotification(`${report.equipment} enviado al Plan Mañana`);
           await refreshAllData();
         }));
         if (isOperativeInformedStatus(report.status)) {
-          actions.push(button("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
-          actions.push(button("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
+          actions.push(menuAction("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
+          actions.push(menuAction("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
         } else {
-          actions.push(button("Validar operativo", "ok", async () => validateReport(report)));
+          actions.push(menuAction("Validar operativo", "ok", async () => validateReport(report)));
         }
-        actions.push(button("Quitar asignación", "secondary", async () => {
+        actions.push(menuAction("Quitar asignación", "secondary", async () => {
           await updateReport(report.id, { mechanic_id: null, plan_date: null });
           await refreshAllData();
         }));
-        actions.push(button("Eliminar", "danger", async () => {
+        actions.push(menuAction("Eliminar", "danger", async () => {
           const ok = await openChoiceModal("Eliminar reporte", [{ id: "delete", name: `Eliminar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Esta acción quita el reporte activo.</span>`, "Sin acciones.");
           if (!ok) return;
           await supabase.from("reports").delete().eq("id", report.id);
@@ -787,7 +800,7 @@
         }));
       } else if (report.mechanicId === state.currentUser.id) {
         quickActions.push(button("Operativo", "ok compact-assign", async () => markRepairDone(report)));
-        actions.push(button("Cambiar a operativo", "ok", async () => markRepairDone(report)));
+        actions.push(menuAction("Cambiar a operativo", "ok", async () => markRepairDone(report)));
       }
       const location = groupLocation(report);
       if (!groups.has(location)) groups.set(location, []);
