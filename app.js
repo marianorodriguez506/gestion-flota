@@ -284,8 +284,24 @@
     return "ok";
   }
 
+  function normalizeLocationText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
   function groupLocation(report) {
-    return (report.location || "Sin ubicación").trim().toUpperCase();
+    const location = normalizeLocationText(report.location);
+    if (!location) return "SIN UBICACIÓN";
+    const compact = location.replace(/\s+/g, "");
+    if (/^AMO30\b/.test(compact)) return "AMO 30";
+    if (/^LC344\b/.test(compact)) return "LC 344";
+    if (/^FDP\b/.test(compact)) return "FDP";
+    return location;
   }
 
   function reportLine(report) {
