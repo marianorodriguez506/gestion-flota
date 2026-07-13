@@ -171,6 +171,19 @@
     };
   }
 
+  function mergeReportUpdate(reportId, row, fallback = {}) {
+    if (!row && !fallback) return;
+    const normalized = row ? normalizeReport(row) : null;
+    state.reports = state.reports.map((item) => {
+      if (item.id !== reportId) return item;
+      return {
+        ...item,
+        ...(normalized || {}),
+        ...fallback
+      };
+    });
+  }
+
   function normalizeOrder(row) {
     return {
       id: row.id,
@@ -299,9 +312,9 @@
     const location = normalizeLocationText(report.location);
     if (!location) return "SIN UBICACIÓN";
     const compact = location.replace(/\s+/g, "");
-    if (/^AMO30\b/.test(compact)) return "AMO 30";
-    if (/^LC344\b/.test(compact)) return "LC 344";
-    if (/^FDP\b/.test(compact)) return "FDP";
+    if (compact.startsWith("AMO30")) return "AMO 30";
+    if (compact.startsWith("LC344")) return "LC 344";
+    if (compact.startsWith("FDP")) return "FDP";
     return location;
   }
 
@@ -618,12 +631,12 @@
       updated = await updateReport(report.id, { mechanic_id: worker.id });
     }
 
-    if (!updated || updated.mechanic_id !== worker.id) {
+    if (!updated || String(updated.mechanic_id || "") !== String(worker.id)) {
       showToast("No se pudo confirmar la asignación. Volvé a intentar.");
       return;
     }
 
-    state.reports = state.reports.map((item) => item.id === report.id ? { ...item, mechanicId: worker.id, planDate } : item);
+    mergeReportUpdate(report.id, updated, { mechanicId: worker.id, planDate });
     renderImmediate();
     renderTomorrow();
     renderMyJobs();
