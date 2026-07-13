@@ -865,9 +865,7 @@ el.immediateForm.requestSubmit();
     const form = new FormData(el.loginForm);
     const usuario = form.get("email").trim().toLowerCase();
 
-    const email = usuario.includes("@")
-  ? usuario
-  : usuario.replace(/\s+/g, ".") + "@gestion-flota.local";
+    const email = userToEmail(usuario);
     const password = form.get("password").trim();
 
     if (!usuario || !password) {
