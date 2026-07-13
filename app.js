@@ -312,7 +312,55 @@
 
     rows.forEach((row) => el.homeFeed.appendChild(row));
   }
+function openOperationModal() {
+  const modal = document.getElementById("operationModal");
+  const operationNote = document.getElementById("operationNote");
+  const cancelBtn = document.getElementById("cancelOperationBtn");
+  const confirmBtn = document.getElementById("confirmOperationBtn");
 
+  return new Promise((resolve) => {
+    operationNote.value = "";
+    modal.style.display = "flex";
+
+    setTimeout(() => operationNote.focus(), 50);
+
+    const closeModal = (result) => {
+      modal.style.display = "none";
+
+      cancelBtn.removeEventListener("click", cancelOperation);
+      confirmBtn.removeEventListener("click", confirmOperation);
+      document.removeEventListener("keydown", handleKeyboard);
+
+      resolve(result);
+    };
+
+    const cancelOperation = () => {
+      closeModal(null);
+    };
+
+    const confirmOperation = () => {
+      const trabajo = operationNote.value.trim();
+
+      if (!trabajo) {
+        operationNote.focus();
+        operationNote.placeholder = "Tenés que escribir el trabajo realizado";
+        return;
+      }
+
+      closeModal(trabajo);
+    };
+
+    const handleKeyboard = (event) => {
+      if (event.key === "Escape") {
+        cancelOperation();
+      }
+    };
+
+    cancelBtn.addEventListener("click", cancelOperation);
+    confirmBtn.addEventListener("click", confirmOperation);
+    document.addEventListener("keydown", handleKeyboard);
+  });
+}
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
     el.immediateList.innerHTML = "";
@@ -359,6 +407,27 @@ filteredReports.forEach((report) => {
           await refreshAllData();
         }));
       }
+      else {
+  if (report.status !== "Operativo informado") {
+    actions.push(button("Cambiar a operativo", "ok", async () => {
+      const trabajo = await openOperationModal();
+
+if (!trabajo) return;
+
+      await updateReport(report.id, {
+        status: "Operativo informado",
+        operation_note: trabajo,
+        operated_by: state.currentUser.name
+      });
+
+      await createNotification(
+        `${report.equipment} informado operativo por ${state.currentUser.name}: ${trabajo}`
+      );
+
+      await refreshAllData();
+    }));
+  }
+}
       el.immediateList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
   }
