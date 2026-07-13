@@ -239,7 +239,15 @@
   }
 
   function planReports() {
-    return activeReports().filter((report) => report.mechanicId && (!report.planDate || report.planDate === state.planDate));
+    return uniqueReports(activeReports().filter((report) => report.mechanicId && isReportInSelectedPlan(report)));
+  }
+
+  function uniqueReports(rows) {
+    return [...new Map(rows.map((report) => [report.id, report])).values()];
+  }
+
+  function isReportInSelectedPlan(report) {
+    return !report.planDate || report.planDate === state.planDate;
   }
 
   function myReports() {
@@ -495,7 +503,12 @@
   }
 
   async function assignReportToWorker(report, worker) {
-    await updateReport(report.id, { mechanic_id: worker.id, plan_date: state.planDate });
+    const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
+    state.reports = state.reports.map((item) => item.id === report.id ? { ...item, mechanicId: worker.id, planDate } : item);
+    renderImmediate();
+    renderTomorrow();
+    renderMyJobs();
     await createNotification(`${report.equipment} asignado a ${worker.name}`);
     showToast(`${report.equipment} asignado a ${worker.name}`);
     await refreshAllData();
@@ -515,7 +528,7 @@
   }
 
   async function chooseReportForWorker(worker) {
-    const rows = activeReports().filter((report) => report.mechanicId !== worker.id);
+    const rows = activeReports().filter((report) => !(report.mechanicId === worker.id && isReportInSelectedPlan(report)));
     const selected = await openChoiceModal(
       `Agregar equipo a ${worker.name}`,
       rows,
