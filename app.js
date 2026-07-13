@@ -1400,17 +1400,29 @@
 
   async function updateReport(id, updates) {
     if (!supabase) return;
-    const { data, error } = await supabase.from("reports").update(updates).eq("id", id).select("*").maybeSingle();
-    if (error) {
-      showToast(`No se pudo actualizar el reporte: ${error.message}`);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      const error = new Error("Sesion requerida.");
+      showToast("Volvé a iniciar sesión.");
       throw error;
     }
-    if (!data) {
-      const error = new Error("Supabase no devolvió el reporte actualizado.");
-      showToast("No se pudo confirmar el cambio en Supabase.");
+
+    const response = await fetch("/api/update-report", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ id, updates })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.report) {
+      const error = new Error(result.error || "No se pudo actualizar el reporte.");
+      showToast(error.message);
       throw error;
     }
-    return data;
+    return result.report;
   }
 
   async function initializeApp() {
