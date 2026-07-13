@@ -19,6 +19,8 @@
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
     operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
+    panel: { id: "panelScreen", title: "Panel", label: "Control" },
+    validations: { id: "validationsScreen", title: "Validaciones pendientes", label: "Revisión" },
     users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
@@ -75,6 +77,9 @@
     fleetForm: document.getElementById("fleetForm"),
     fleetList: document.getElementById("fleetList"),
     operativesList: document.getElementById("operativesList"),
+    panelStats: document.getElementById("panelStats"),
+    panelActivity: document.getElementById("panelActivity"),
+    validationsList: document.getElementById("validationsList"),
     userForm: document.getElementById("userForm"),
     userFeedback: document.getElementById("userFeedback"),
     userFilter: document.getElementById("userFilter"),
@@ -206,7 +211,11 @@
   }
 
   function activeReports() {
-    return state.reports.filter((report) => report.status !== "Operativo validado");
+    return state.reports.filter((report) => report.status !== "Operativo validado" && !isTechnicalObservation(report));
+  }
+
+  function isTechnicalObservation(report) {
+    return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
   }
 
   function displayStatus(status) {
@@ -252,6 +261,73 @@
     const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
     const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
     return `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
+  }
+
+  function reportMeta(report) {
+    const text = report.operationNote || "";
+    const priority = text.match(/Prioridad:\s*([^|]+)/i)?.[1]?.trim() || (/^FS$/i.test(report.status) ? "Alta" : "Media");
+    const notes = text.match(/Observaciones:\s*([^|]+)/i)?.[1]?.trim() || "";
+    return { priority, notes };
+  }
+
+  function relatedOrders(equipment) {
+    return state.orders.filter((order) => normalizeEquipment(order.equipment) === normalizeEquipment(equipment));
+  }
+
+  function relatedReports(equipment) {
+    return state.reports.filter((report) => normalizeEquipment(report.equipment) === normalizeEquipment(equipment));
+  }
+
+  function fleetItem(equipment) {
+    return state.fleet.find((item) => normalizeEquipment(item.equipment) === normalizeEquipment(equipment));
+  }
+
+  function openInfoModal(title, rows) {
+    el.modalTitle.textContent = title;
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+
+    const list = document.createElement("div");
+    list.className = "detail-list";
+    rows.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "detail-row";
+      item.innerHTML = `<strong></strong><span></span>`;
+      item.querySelector("strong").textContent = row.label;
+      item.querySelector("span").textContent = row.value || "Sin dato";
+      list.appendChild(item);
+    });
+    el.modalBody.appendChild(list);
+    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+  }
+
+  function showReportDetails(report) {
+    const meta = reportMeta(report);
+    const fleet = fleetItem(report.equipment);
+    const orders = relatedOrders(report.equipment);
+    const history = relatedReports(report.equipment);
+    openInfoModal(`Detalle ${report.equipment}`, [
+      { label: "Interno", value: report.equipment },
+      { label: "Tipo / piezas", value: fleet?.parts },
+      { label: "Ubicación", value: report.location },
+      { label: "Falla / desvío", value: report.deviation },
+      { label: "Estado", value: displayStatus(report.status) },
+      { label: "Prioridad", value: meta.priority },
+      { label: "Horómetro / km", value: report.hourmeter },
+      { label: "Mecánico asignado", value: workerName(report.mechanicId) },
+      { label: "Fecha del reporte", value: formatDateTime(report.createdAt) },
+      { label: "Observaciones", value: meta.notes || report.operationNote },
+      { label: "Reparación informada", value: report.repairNote },
+      { label: "Reparó", value: report.repairedBy || report.operatedBy },
+      { label: "Fecha reparación", value: formatDateTime(report.repairedAt) },
+      { label: "Validó", value: report.validatedBy },
+      { label: "Fecha validación", value: formatDateTime(report.validatedAt) },
+      { label: "Pedidos relacionados", value: orders.length ? orders.map((order) => `${order.status}: ${order.need}`).join(" / ") : "" },
+      { label: "Historial del equipo", value: history.length ? `${history.length} movimientos registrados` : "" },
+      { label: "Ficha de flota", value: fleet ? `${fleet.parts}${fleet.notes ? " · " + fleet.notes : ""}` : "" }
+    ]);
   }
 
   async function writeClipboard(text) {
@@ -465,6 +541,12 @@
     if (name !== "auth" && !isLoggedIn()) {
       name = "auth";
     }
+    if (isLoggedIn() && isAdmin() && name === "myJobs") {
+      name = "home";
+    }
+    if (isLoggedIn() && !isAdmin() && ["panel", "validations", "operatives", "users"].includes(name)) {
+      name = "home";
+    }
     activeScreen = name;
     Object.values(screens).forEach((screen) => {
       document.getElementById(screen.id).classList.remove("active");
@@ -493,6 +575,9 @@
 
     document.querySelectorAll(".admin-only").forEach((node) => {
       node.classList.toggle("admin-disabled", !isAdmin());
+    });
+    document.querySelectorAll(".mechanic-only").forEach((node) => {
+      node.classList.toggle("admin-disabled", isAdmin());
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
 
@@ -526,9 +611,18 @@ const filteredReports = reports.filter((report) => {
 
 filteredReports.forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
-      const actions = [];
+      const actions = [
+        button("Ver detalles", "secondary", () => showReportDetails(report)),
+        button("Ver historial", "secondary", () => showReportHistory(report))
+      ];
       if (isAdmin()) {
         actions.push(button("Asignar", "secondary", async () => chooseMechanicForReport(report)));
+        actions.push(button("Editar", "secondary", async () => editReport(report)));
+        actions.push(button("Enviar a Plan Mañana", "secondary", async () => {
+          await updateReport(report.id, { plan_date: state.planDate });
+          await createNotification(`${report.equipment} enviado al Plan Mañana`);
+          await refreshAllData();
+        }));
         if (isOperativeInformedStatus(report.status)) {
           actions.push(button("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
           actions.push(button("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
@@ -548,7 +642,8 @@ filteredReports.forEach((report) => {
       } else if (report.mechanicId === state.currentUser.id) {
         actions.push(button("Cambiar a operativo", "ok", async () => markRepairDone(report)));
       }
-      el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
+      const meta = reportMeta(report);
+      el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Prioridad: ${meta.priority} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
   }
 
@@ -591,7 +686,10 @@ filteredReports.forEach((report) => {
         list.appendChild(empty("Sin equipos asignados."));
       } else {
         workerRows.forEach((report) => {
-          const reportActions = [button("Detalle", "secondary", () => showToast(reportLine(report)))];
+          const reportActions = [
+            button("Ver detalles", "secondary", () => showReportDetails(report)),
+            button("Ver historial", "secondary", () => showReportHistory(report))
+          ];
           if (isAdmin() || report.mechanicId === state.currentUser.id) {
             reportActions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
           }
@@ -614,11 +712,28 @@ filteredReports.forEach((report) => {
       el.myJobsList.appendChild(empty("No tenés equipos asignados."));
       return;
     }
-    own.forEach((report) => {
-      el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
-        button("Detalle", "secondary", () => showToast(reportLine(report))),
-        button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
-      ]));
+    [
+      ["Pendientes", own.filter((report) => !isOperativeInformedStatus(report.status))],
+      ["Operativo informado", own.filter((report) => isOperativeInformedStatus(report.status))]
+    ].forEach(([title, rows]) => {
+      if (!rows.length) return;
+      const heading = document.createElement("h3");
+      heading.textContent = title;
+      el.myJobsList.appendChild(heading);
+      rows.forEach((report) => {
+        const actions = [
+          button("Ver detalles", "secondary", () => showReportDetails(report)),
+          button("Ver historial", "secondary", () => showReportHistory(report)),
+          button("Solicitar repuesto", "secondary", () => {
+            setScreen("orders");
+            el.orderForm.elements.equipment.value = report.equipment;
+          })
+        ];
+        if (!isOperativeInformedStatus(report.status)) {
+          actions.push(button("Informar equipo operativo", "ok", async () => markRepairDone(report)));
+        }
+        el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), actions));
+      });
     });
   }
 
@@ -658,7 +773,7 @@ filteredReports.forEach((report) => {
   }
 
   async function markRepairDone(report) {
-    const description = await openTextModal("Reparación realizada", "Escribí qué reparación realizaste");
+    const description = await openTextModal("Informar equipo operativo", "Qué reparación se realizó, repuestos usados, observaciones y horómetro final");
     if (description === null) return;
     const note = description.trim();
     if (!note) {
@@ -675,6 +790,33 @@ filteredReports.forEach((report) => {
       operated_by: state.currentUser.name
     });
     await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
+    await refreshAllData();
+  }
+
+  function showReportHistory(report) {
+    const history = relatedReports(report.equipment)
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .map((item) => ({
+        label: `${formatDateTime(item.createdAt)} · ${displayStatus(item.status)}`,
+        value: `${item.deviation || "Sin falla"}${item.repairNote ? " · Reparación: " + item.repairNote : ""}`
+      }));
+    openInfoModal(`Historial ${report.equipment}`, history.length ? history : [{ label: "Historial", value: "Sin movimientos registrados." }]);
+  }
+
+  async function editReport(report) {
+    if (!isAdmin()) return;
+    const location = await openTextModal("Editar ubicación", report.location || "");
+    if (location === null) return;
+    const deviation = await openTextModal("Editar falla / desvío", report.deviation || "");
+    if (deviation === null) return;
+    const status = await openTextModal("Editar estado", displayStatus(report.status));
+    if (status === null) return;
+    await updateReport(report.id, {
+      location: location.trim(),
+      deviation: deviation.trim(),
+      status: status.trim() || report.status
+    });
+    await createNotification(`${report.equipment} editado por ${state.currentUser.name}`);
     await refreshAllData();
   }
 
@@ -737,15 +879,34 @@ filteredReports.forEach((report) => {
 
   function renderMechanicReports() {
     el.mechanicList.innerHTML = "";
-    const rows = isAdmin()
-      ? state.reports.filter((row) => row.id)
-      : state.reports.filter((row) => row.id);
+    const rows = state.reports.filter((row) => isTechnicalObservation(row) || row.operationNote);
     if (!rows.length) {
       el.mechanicList.appendChild(empty("No hay observaciones cargadas."));
       return;
     }
     rows.forEach((row) => {
-      el.mechanicList.appendChild(card(row.equipment, row.status, `${row.deviation} · ${row.operationNote || "sin detalle"}`, []));
+      const actions = [button("Ver detalles", "secondary", () => showReportDetails(row))];
+      if (isAdmin() && isTechnicalObservation(row)) {
+        actions.push(button("Crear reporte activo", "primary", async () => {
+          await updateReport(row.id, { status: "FS" });
+          await createNotification(`${row.equipment} convertido a reporte activo por ${state.currentUser.name}`);
+          await refreshAllData();
+        }));
+        actions.push(button("Marcar solucionado", "ok", async () => {
+          const note = await openTextModal("Solucionar observación", "Qué se hizo");
+          if (note === null) return;
+          await updateReport(row.id, {
+            status: "Operativo validado",
+            repair_note: note.trim(),
+            repaired_by: state.currentUser.name,
+            repaired_at: new Date().toISOString(),
+            validated_by: state.currentUser.name,
+            validated_at: new Date().toISOString()
+          });
+          await refreshAllData();
+        }));
+      }
+      el.mechanicList.appendChild(card(row.equipment, row.status, `${row.deviation} · ${row.operationNote || "sin detalle"}`, actions));
     });
   }
 
@@ -760,15 +921,49 @@ filteredReports.forEach((report) => {
       return;
     }
     rows.forEach((order) => {
-      const actions = [];
+      const actions = [
+        button("Ver detalles", "secondary", () => openInfoModal(`Pedido ${order.equipment}`, [
+          { label: "Interno", value: order.equipment },
+          { label: "Solicitante", value: order.requesterName },
+          { label: "Repuesto / necesidad", value: order.need },
+          { label: "Estado", value: order.status },
+          { label: "Fecha", value: formatDateTime(order.createdAt) }
+        ])),
+        button("Copiar WhatsApp", "secondary", async () => copyOrder(order))
+      ];
       if (isAdmin()) {
-        actions.push(button(order.status === "Cerrado" ? "Reabrir" : "Cerrar", "secondary", async () => {
+        actions.push(button("Marcar pedido", "secondary", async () => {
+          await supabase.from("orders").update({ status: "Pedido" }).eq("id", order.id);
+          await refreshAllData();
+        }));
+        actions.push(button("Marcar recibido", "ok", async () => {
+          await supabase.from("orders").update({ status: "Recibido" }).eq("id", order.id);
+          await refreshAllData();
+        }));
+        actions.push(button(order.status === "Cerrado" ? "Reabrir" : "Cerrar", "danger", async () => {
           await supabase.from("orders").update({ status: order.status === "Cerrado" ? "Pedido" : "Cerrado" }).eq("id", order.id);
           await refreshAllData();
         }));
       }
       el.ordersList.appendChild(card(order.equipment, order.status, `${order.requesterName} pidió: ${order.need}`, actions));
     });
+  }
+
+  async function copyOrder(order) {
+    const text = [
+      "PEDIDO DE REPUESTOS",
+      "",
+      `Solicita: ${order.requesterName}`,
+      `Equipo: ${order.equipment}`,
+      `Estado: ${order.status}`,
+      "",
+      "REPUESTO / NECESIDAD",
+      order.need,
+      "",
+      `Fecha: ${formatDateTime(order.createdAt)}`
+    ].join("\n");
+    const copied = await writeClipboard(text);
+    showToast(copied ? "Pedido copiado para WhatsApp." : "No pude copiar el pedido.");
   }
 
   function renderHistory() {
@@ -778,7 +973,14 @@ filteredReports.forEach((report) => {
       return;
     }
     state.orders.forEach((order) => {
-      el.historyList.appendChild(card(order.equipment, order.status, `${order.requesterName} hizo un pedido el ${order.createdAt}`, []));
+      el.historyList.appendChild(card(order.equipment, order.status, `${order.requesterName} hizo un pedido el ${formatDateTime(order.createdAt)}`, [
+        button("Ver detalles", "secondary", () => openInfoModal(`Historial ${order.equipment}`, [
+          { label: "Solicitante", value: order.requesterName },
+          { label: "Pedido", value: order.need },
+          { label: "Estado", value: order.status },
+          { label: "Fecha", value: formatDateTime(order.createdAt) }
+        ]))
+      ]));
     });
   }
 
@@ -796,6 +998,14 @@ filteredReports.forEach((report) => {
           await refreshAllData();
         }));
       }
+      actions.unshift(button("Ver ficha", "secondary", () => openInfoModal(`Ficha ${item.equipment}`, [
+        { label: "Interno", value: item.equipment },
+        { label: "Piezas / datos", value: item.parts },
+        { label: "Notas", value: item.notes },
+        { label: "Reportes activos", value: activeReports().filter((report) => normalizeEquipment(report.equipment) === normalizeEquipment(item.equipment)).length },
+        { label: "Pedidos", value: relatedOrders(item.equipment).length },
+        { label: "Historial", value: relatedReports(item.equipment).length }
+      ])));
       el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
     });
   }
@@ -817,9 +1027,91 @@ filteredReports.forEach((report) => {
         report.equipment,
         "Operativo",
         `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · Validó: ${report.validatedBy || "sin dato"}${report.validatedAt ? " · " + formatDateTime(report.validatedAt) : ""}`,
-        []
+        [
+          button("Ver detalles", "secondary", () => showReportDetails(report)),
+          button("Ver historial", "secondary", () => showReportHistory(report)),
+          button("Reabrir reporte", "secondary", async () => reopenReport(report))
+        ]
       ));
     });
+  }
+
+  function renderValidations() {
+    if (!el.validationsList) return;
+    el.validationsList.innerHTML = "";
+    if (!isAdmin()) {
+      el.validationsList.appendChild(empty("Solo el administrador puede validar operativos."));
+      return;
+    }
+    const rows = state.reports.filter((report) => isOperativeInformedStatus(report.status));
+    if (!rows.length) {
+      el.validationsList.appendChild(empty("No hay operativos pendientes de validar."));
+      return;
+    }
+    rows.forEach((report) => {
+      el.validationsList.appendChild(card(report.equipment, "Operativo informado", `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · ${report.repairNote || "Sin detalle de reparación"}`, [
+        button("Ver detalles", "secondary", () => showReportDetails(report)),
+        button("Validar operativo", "ok", async () => validateReport(report)),
+        button("Devolver a Reportes activos", "secondary", async () => rejectReport(report))
+      ]));
+    });
+  }
+
+  function renderPanel() {
+    if (!el.panelStats || !el.panelActivity) return;
+    el.panelStats.innerHTML = "";
+    el.panelActivity.innerHTML = "";
+    if (!isAdmin()) {
+      el.panelStats.appendChild(empty("Solo el administrador puede ver el panel."));
+      return;
+    }
+    const active = activeReports();
+    const pendingValidation = state.reports.filter((report) => isOperativeInformedStatus(report.status));
+    const fs = active.filter((report) => /^FS$/i.test(displayStatus(report.status)));
+    const obs = active.filter((report) => /^OBS$/i.test(displayStatus(report.status)));
+    const ordersPending = state.orders.filter((order) => !/cerrado|entregado|cancelado/i.test(order.status));
+    [
+      ["Reportes activos", active.length],
+      ["Fuera de servicio", fs.length],
+      ["Con observaciones", obs.length],
+      ["Validaciones pendientes", pendingValidation.length],
+      ["Operativos validados", state.reports.filter((report) => report.status === "Operativo validado").length],
+      ["Pedidos pendientes", ordersPending.length],
+      ["Equipos de flota", state.fleet.length],
+      ["Mecánicos activos", approvedWorkers().length]
+    ].forEach(([label, value]) => {
+      const node = document.createElement("article");
+      node.className = "stat-card";
+      node.innerHTML = `<strong></strong><span></span>`;
+      node.querySelector("strong").textContent = value;
+      node.querySelector("span").textContent = label;
+      el.panelStats.appendChild(node);
+    });
+    const recent = [
+      ...active.slice(0, 4).map((report) => ({ title: report.equipment, tag: displayStatus(report.status), body: reportLine(report), report })),
+      ...state.orders.slice(0, 3).map((order) => ({ title: order.equipment, tag: order.status, body: `${order.requesterName}: ${order.need}` }))
+    ];
+    if (!recent.length) {
+      el.panelActivity.appendChild(empty("Sin actividad reciente."));
+      return;
+    }
+    recent.forEach((item) => {
+      el.panelActivity.appendChild(card(item.title, item.tag, item.body, item.report ? [button("Ver detalles", "secondary", () => showReportDetails(item.report))] : []));
+    });
+  }
+
+  async function reopenReport(report) {
+    if (!isAdmin()) return;
+    const reason = await openTextModal("Reabrir reporte", "Motivo de reapertura");
+    if (reason === null) return;
+    await updateReport(report.id, {
+      status: "FS",
+      repair_note: report.repairNote ? `${report.repairNote} | Reabierto: ${reason.trim()}` : `Reabierto: ${reason.trim()}`,
+      validated_by: null,
+      validated_at: null
+    });
+    await createNotification(`${report.equipment} reabierto por ${state.currentUser.name}: ${reason.trim()}`);
+    await refreshAllData();
   }
 
   function renderUsers() {
@@ -909,6 +1201,8 @@ filteredReports.forEach((report) => {
     renderHistory();
     renderFleet();
     renderOperatives();
+    renderPanel();
+    renderValidations();
     renderUsers();
     renderNotifications();
   }
@@ -1027,6 +1321,8 @@ filteredReports.forEach((report) => {
       deviation: form.get("deviation").trim(),
       status: form.get("status") || "Pendiente",
       mechanic_id: form.get("mechanic") || null,
+      hourmeter: form.get("hourmeter")?.trim() || "",
+      operation_note: `Prioridad: ${form.get("priority") || "Media"}${form.get("notes")?.trim() ? " | Observaciones: " + form.get("notes").trim() : ""}`,
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
     };
@@ -1136,13 +1432,14 @@ el.immediateForm.requestSubmit();
     const form = new FormData(el.mechanicForm);
     await supabase.from("reports").insert({
       id: uid(),
-      equipment: form.get("equipment").trim(),
+      equipment: normalizeEquipment(form.get("equipment")),
       deviation: form.get("deviation").trim(),
       operation_note: form.get("notes").trim(),
-      status: "Pendiente",
+      status: "Observación técnica",
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
     });
+    await createNotification(`Nueva observación técnica en ${normalizeEquipment(form.get("equipment"))}`);
     await refreshAllData();
     el.mechanicForm.reset();
   });
