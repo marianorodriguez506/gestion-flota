@@ -190,6 +190,27 @@ module.exports = async function handler(req, res) {
     }
 
     const mechanicSession = await signInUser(supabaseUrl, anonKey, email, password);
+    const existingProfileResponse = await fetch(
+      `${supabaseUrl}/rest/v1/profiles?id=eq.${mechanicSession.user.id}&select=id,status`,
+      {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    if (existingProfileResponse.ok) {
+      const existingProfiles = await existingProfileResponse.json().catch(() => []);
+      if (existingProfiles[0]?.id) {
+        return json(res, 200, {
+          ok: true,
+          username: normalizedUsername
+        });
+      }
+    }
+
     const profilePayload = {
       id: mechanicSession.user.id || authUser.id,
       email,
