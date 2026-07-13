@@ -6,16 +6,20 @@
     { value: "mecanico-vehiculos-livianos", label: "Mecánico de vehículos livianos" }
   ];
 
+  const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
+
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
     home: { id: "homeScreen", title: "Gestión de Flota", label: "Inicio" },
     immediate: { id: "immediateScreen", title: "Reporte inmediato", label: "Tablero" },
-    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Asignaciones" },
+    myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
+    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
     mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
     orders: { id: "ordersScreen", title: "Pedidos", label: "Solicitudes" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
-    users: { id: "usersScreen", title: "Gestión de usuarios", label: "Usuarios" },
+    operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
+    users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
 
@@ -30,7 +34,9 @@
     reports: [],
     orders: [],
     fleet: [],
-    notifications: []
+    notifications: [],
+    availability: [],
+    planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   };
 
   let activeScreen = "auth";
@@ -38,7 +44,6 @@
 
   const el = {
     backBtn: document.getElementById("backBtn"),
-    notifyBtn: document.getElementById("notifyBtn"),
     screenTitle: document.getElementById("screenTitle"),
     screenLabel: document.getElementById("screenLabel"),
     loginForm: document.getElementById("loginForm"),
@@ -50,13 +55,17 @@
     loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
     welcomeText: document.getElementById("welcomeText"),
-    homeFeed: document.getElementById("homeFeed"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
     reportPaste: document.getElementById("reportPaste"),
     processReportBtn: document.getElementById("processReportBtn"),
     activeReportSearch: document.getElementById("activeReportSearch"),
+    planDate: document.getElementById("planDate"),
+    refreshPlanBtn: document.getElementById("refreshPlanBtn"),
+    copyPlanBtn: document.getElementById("copyPlanBtn"),
+    availabilityList: document.getElementById("availabilityList"),
     tomorrowList: document.getElementById("tomorrowList"),
+    myJobsList: document.getElementById("myJobsList"),
     mechanicForm: document.getElementById("mechanicForm"),
     mechanicList: document.getElementById("mechanicList"),
     orderForm: document.getElementById("orderForm"),
@@ -65,13 +74,19 @@
     historyList: document.getElementById("historyList"),
     fleetForm: document.getElementById("fleetForm"),
     fleetList: document.getElementById("fleetList"),
+    operativesList: document.getElementById("operativesList"),
     userForm: document.getElementById("userForm"),
     userFeedback: document.getElementById("userFeedback"),
     userFilter: document.getElementById("userFilter"),
     usersList: document.getElementById("usersList"),
     usersBtn: document.getElementById("usersBtn"),
     notificationsList: document.getElementById("notificationsList"),
-    clearNotifications: document.getElementById("clearNotifications")
+    clearNotifications: document.getElementById("clearNotifications"),
+    modalRoot: document.getElementById("modalRoot"),
+    modalTitle: document.getElementById("modalTitle"),
+    modalBody: document.getElementById("modalBody"),
+    modalActions: document.getElementById("modalActions"),
+    toast: document.getElementById("toast")
   };
 
   function uid() {
@@ -83,32 +98,50 @@
   }
 
   function normalizeUser(row) {
+    const storedStatus = row.status || "pendiente";
+    const appStatus = storedStatus === "pendiente" && row.role === "trabajador" && row.specialty ? "aprobado" : storedStatus;
     return {
       id: row.id,
       name: row.name || "",
       username: row.username || "",
       email: row.email || "",
       role: row.role || "trabajador",
-      status: row.status || "pendiente",
+      status: appStatus,
+      accountStatus: row.account_status || (appStatus === "rechazado" ? "inactivo" : "activo"),
       specialty: row.specialty || "",
       requestedAt: row.created_at || ""
     };
   }
 
+  function userToEmail(value) {
+    const username = String(value || "").trim().toLowerCase();
+    if (username.includes("@")) return username;
+    const normalized = username
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s._-]/g, "")
+      .replace(/[_-]+/g, " ")
+      .trim()
+      .replace(/\s+/g, ".")
+      .replace(/\.+/g, ".");
+    return `marianorodriguez506+${normalized}@gmail.com`;
+  }
+
   function normalizeEquipment(value) {
-  const text = String(value || "")
-  .trim()
-  .toUpperCase()
-  .replace(/^T0/, "TO")
-  .replace(/[_\s]+/g, "-")
-  .replace(/-+/g, "-");
+    const text = String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/^T0/, "TO")
+      .replace(/[_\s]+/g, "-")
+      .replace(/-+/g, "-");
 
-  const match = text.match(/^([A-Z]+)-?(\d+)$/);
+    const match = text.match(/^([A-Z]+)-?(\d{1,4})$/);
+    if (!match) return text;
 
-  if (!match) return text;
-
-  return `${match[1]}-${match[2]}`;
-}
+    const prefix = match[1] === "T0" ? "TO" : match[1];
+    if (!EQUIPMENT_PREFIXES.includes(prefix)) return text;
+    return `${prefix}-${match[2]}`;
+  }
 
   function normalizeReport(row) {
     return {
@@ -118,8 +151,16 @@
       deviation: row.deviation || "",
       status: row.status || "Pendiente",
       mechanicId: row.mechanic_id || null,
+      planDate: row.plan_date || "",
+      hourmeter: row.hourmeter || "",
+      previousStatus: row.previous_status || "",
+      repairNote: row.repair_note || row.operation_note || "",
+      repairedBy: row.repaired_by || row.operated_by || "",
+      repairedAt: row.repaired_at || "",
       createdAt: row.created_at || "",
+      createdBy: row.created_by || "",
       validatedBy: row.validated_by || "",
+      validatedAt: row.validated_at || "",
       operationNote: row.operation_note || "",
       operatedBy: row.operated_by || ""
     };
@@ -153,6 +194,73 @@
       at: row.created_at || "",
       read: Boolean(row.is_read)
     };
+  }
+
+  function normalizeAvailability(row) {
+    return {
+      id: row.id || `${row.worker_id}-${row.date}`,
+      workerId: row.worker_id,
+      date: row.date,
+      status: row.status || "disponible"
+    };
+  }
+
+  function activeReports() {
+    return state.reports.filter((report) => report.status !== "Operativo validado");
+  }
+
+  function displayStatus(status) {
+    if (isOperativeInformedStatus(status)) return "Operativo informado";
+    if (/^OBS$/i.test(status) || /observ/i.test(status)) return "OBS";
+    if (/^FS$/i.test(status) || /fuera/i.test(status)) return "FS";
+    if (/asignado/i.test(status)) return "FS";
+    return status || "FS";
+  }
+
+  function isOperativeInformedStatus(status) {
+    return /^PV$/i.test(status || "") || /pendiente de valid|operativo informado/i.test(status || "");
+  }
+
+  function workerAvailability(workerId, date = state.planDate) {
+    return state.availability.find((row) => row.workerId === workerId && row.date === date)?.status || "disponible";
+  }
+
+  function workerName(workerId) {
+    return state.users.find((user) => user.id === workerId)?.name || "Sin asignar";
+  }
+
+  function planReports() {
+    return activeReports().filter((report) => report.mechanicId && (!report.planDate || report.planDate === state.planDate));
+  }
+
+  function myReports() {
+    if (!state.currentUser) return [];
+    return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
+  }
+
+  function visibleActiveReports() {
+    return isAdmin() ? activeReports() : myReports();
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "";
+    return new Date(value).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function reportLine(report) {
+    const mechanic = workerName(report.mechanicId);
+    const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
+    const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
+    return `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
+  }
+
+  async function writeClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    showToast("No pude copiar automáticamente en este navegador.");
+    return false;
   }
 
   function card(title, tag, body, actions) {
@@ -206,6 +314,85 @@
     return node;
   }
 
+  function showToast(message) {
+    if (!el.toast) return;
+    el.toast.textContent = message;
+    el.toast.classList.remove("hidden");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+      el.toast.classList.add("hidden");
+      el.toast.textContent = "";
+    }, 2600);
+  }
+
+  function closeModal() {
+    if (!el.modalRoot) return;
+    el.modalRoot.classList.add("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "true");
+    el.modalTitle.textContent = "";
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+  }
+
+  function openChoiceModal(title, rows, renderRow, emptyText) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const list = document.createElement("div");
+      list.className = "modal-list";
+      if (!rows.length) {
+        list.appendChild(empty(emptyText || "No hay opciones disponibles."));
+      }
+      rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.innerHTML = renderRow(row);
+        btn.addEventListener("click", () => {
+          closeModal();
+          resolve(row);
+        });
+        list.appendChild(btn);
+      });
+      el.modalBody.appendChild(list);
+
+      const cancel = button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      });
+      el.modalActions.appendChild(cancel);
+    });
+  }
+
+  function openTextModal(title, placeholder) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const textarea = document.createElement("textarea");
+      textarea.placeholder = placeholder || "";
+      el.modalBody.appendChild(textarea);
+
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", () => {
+        const value = textarea.value.trim();
+        closeModal();
+        resolve(value);
+      }));
+      textarea.focus();
+    });
+  }
+
   function fillSelect(select, rows, options) {
     const previousValue = select.value;
     const includeAll = options && options.all;
@@ -228,7 +415,41 @@
   }
 
   function approvedWorkers() {
-    return state.users.filter((user) => user.status === "aprobado" && (user.role === "trabajador" || user.role === "mecanico"));
+    return state.users.filter((user) => user.status === "aprobado" && user.accountStatus !== "inactivo" && (user.role === "trabajador" || user.role === "mecanico"));
+  }
+
+  async function assignReportToWorker(report, worker) {
+    await updateReport(report.id, { mechanic_id: worker.id, plan_date: state.planDate });
+    await createNotification(`${report.equipment} asignado a ${worker.name}`);
+    showToast(`${report.equipment} asignado a ${worker.name}`);
+    await refreshAllData();
+  }
+
+  async function chooseMechanicForReport(report) {
+    const selected = await openChoiceModal(
+      "Asignar mecánico",
+      approvedWorkers(),
+      (worker) => `
+        <strong>${worker.name}</strong>
+        <span>${specialtyLabel(worker.specialty)} · ${workerAvailability(worker.id) === "franco" ? "Franco" : "Disponible"}</span>
+      `,
+      "No hay mecánicos activos."
+    );
+    if (selected) await assignReportToWorker(report, selected);
+  }
+
+  async function chooseReportForWorker(worker) {
+    const rows = activeReports().filter((report) => report.mechanicId !== worker.id);
+    const selected = await openChoiceModal(
+      `Agregar equipo a ${worker.name}`,
+      rows,
+      (report) => `
+        <strong>${report.equipment}</strong>
+        <span>${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · ${displayStatus(report.status)}${report.mechanicId ? ` · Asignado a ${workerName(report.mechanicId)}` : ""}</span>
+      `,
+      "No hay reportes activos para asignar."
+    );
+    if (selected) await assignReportToWorker(selected, worker);
   }
 
   function todayLabel() {
@@ -261,13 +482,11 @@
     if (!isLoggedIn()) {
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
-      el.notifyBtn.classList.add("hidden");
       return;
     }
 
     el.userInfoStrip.classList.remove("hidden");
     el.logoutBtn.classList.remove("hidden");
-    el.notifyBtn.classList.remove("hidden");
     el.userNameDisplay.textContent = state.currentUser.name;
     el.rolePill.textContent = isAdmin() ? "Administrador" : "Trabajador";
     el.welcomeText.textContent = `Hola, ${state.currentUser.name}`;
@@ -277,94 +496,16 @@
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
 
-    document
-  .getElementById("adminReportTools")
-  ?.classList.toggle("hidden", !isAdmin());
-
-    const unread = state.notifications.filter((item) => !item.read).length;
-    el.notifyBtn.textContent = String(unread);
   }
 
   function renderHome() {
-    el.homeFeed.innerHTML = "";
-    const rows = [];
-
-    state.reports
-      .filter((report) => report.status !== "Operativo validado")
-      .filter((report) => isAdmin() || report.mechanicId === state.currentUser.id)
-      .slice(0, 4)
-      .forEach((report) => {
-        rows.push(feedCard(`Equipo ${report.equipment}`, report.status, `${report.location} · ${report.deviation}`, "pending"));
-      });
-
-    state.orders.slice(0, 2).forEach((order) => {
-      rows.push(feedCard(`Pedido ${order.equipment}`, order.status, `${order.requesterName} pidió: ${order.need}`, "order"));
-    });
-
-    state.notifications.slice(0, 2).forEach((item) => {
-      rows.push(feedCard(item.at, item.read ? "Aviso" : "Nuevo", item.text, ""));
-    });
-
-    if (!rows.length) {
-      el.homeFeed.appendChild(empty("Sin novedades por ahora."));
-      return;
-    }
-
-    rows.forEach((row) => el.homeFeed.appendChild(row));
   }
-function openOperationModal() {
-  const modal = document.getElementById("operationModal");
-  const operationNote = document.getElementById("operationNote");
-  const cancelBtn = document.getElementById("cancelOperationBtn");
-  const confirmBtn = document.getElementById("confirmOperationBtn");
 
-  return new Promise((resolve) => {
-    operationNote.value = "";
-    modal.style.display = "flex";
-
-    setTimeout(() => operationNote.focus(), 50);
-
-    const closeModal = (result) => {
-      modal.style.display = "none";
-
-      cancelBtn.removeEventListener("click", cancelOperation);
-      confirmBtn.removeEventListener("click", confirmOperation);
-      document.removeEventListener("keydown", handleKeyboard);
-
-      resolve(result);
-    };
-
-    const cancelOperation = () => {
-      closeModal(null);
-    };
-
-    const confirmOperation = () => {
-      const trabajo = operationNote.value.trim();
-
-      if (!trabajo) {
-        operationNote.focus();
-        operationNote.placeholder = "Tenés que escribir el trabajo realizado";
-        return;
-      }
-
-      closeModal(trabajo);
-    };
-
-    const handleKeyboard = (event) => {
-      if (event.key === "Escape") {
-        cancelOperation();
-      }
-    };
-
-    cancelBtn.addEventListener("click", cancelOperation);
-    confirmBtn.addEventListener("click", confirmOperation);
-    document.addEventListener("keydown", handleKeyboard);
-  });
-}
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
     el.immediateList.innerHTML = "";
-    if (!state.reports.length) {
+    const reports = visibleActiveReports();
+    if (!reports.length) {
       el.immediateList.appendChild(empty("Todavía no hay reportes inmediatos."));
       return;
     }
@@ -373,7 +514,7 @@ function openOperationModal() {
   el.activeReportSearch?.value || ""
 ).toLowerCase();
 
-const filteredReports = state.reports.filter((report) => {
+const filteredReports = reports.filter((report) => {
   if (!search) return true;
 
   return (
@@ -387,86 +528,211 @@ filteredReports.forEach((report) => {
       const mechanic = state.users.find((user) => user.id === report.mechanicId);
       const actions = [];
       if (isAdmin()) {
-        actions.push(button("Asignar", "secondary", async () => {
-          const names = approvedWorkers().map((user, index) => `${index + 1}. ${user.name}`).join("\n");
-          const choice = prompt(`Elegir trabajador:\n${names}`);
-          if (choice === null) return;
-          const selected = approvedWorkers()[Number(choice) - 1];
-          if (!selected) return;
-          await updateReport(report.id, { mechanic_id: selected.id, status: "Asignado" });
-          await createNotification(`${report.equipment} asignado a ${selected.name}`);
-          await refreshAllData();
-        }));
-        actions.push(button("Validar operativo", "ok", async () => {
-          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
-          await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
+        actions.push(button("Asignar", "secondary", async () => chooseMechanicForReport(report)));
+        if (isOperativeInformedStatus(report.status)) {
+          actions.push(button("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
+          actions.push(button("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
+        } else {
+          actions.push(button("Validar operativo", "ok", async () => validateReport(report)));
+        }
+        actions.push(button("Quitar asignación", "secondary", async () => {
+          await updateReport(report.id, { mechanic_id: null, plan_date: null });
           await refreshAllData();
         }));
         actions.push(button("Eliminar", "danger", async () => {
+          const ok = await openChoiceModal("Eliminar reporte", [{ id: "delete", name: `Eliminar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Esta acción quita el reporte activo.</span>`, "Sin acciones.");
+          if (!ok) return;
           await supabase.from("reports").delete().eq("id", report.id);
           await refreshAllData();
         }));
+      } else {
+        actions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
       }
-      else {
-  if (report.status !== "Operativo informado") {
-    actions.push(button("Cambiar a operativo", "ok", async () => {
-      const trabajo = await openOperationModal();
-
-if (!trabajo) return;
-
-      await updateReport(report.id, {
-        status: "Operativo informado",
-        operation_note: trabajo,
-        operated_by: state.currentUser.name
-      });
-
-      await createNotification(
-        `${report.equipment} informado operativo por ${state.currentUser.name}: ${trabajo}`
-      );
-
-      await refreshAllData();
-    }));
-  }
-}
-      el.immediateList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
+      el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
   }
 
   function renderTomorrow() {
+    if (el.planDate && el.planDate.value !== state.planDate) el.planDate.value = state.planDate;
     el.tomorrowList.innerHTML = "";
-    const assignments = state.reports.filter((report) => {
-      if (report.status === "Operativo validado") return false;
-      return isAdmin() || report.mechanicId === state.currentUser.id;
-    });
+    renderAvailability();
 
-    if (!assignments.length) {
-      el.tomorrowList.appendChild(empty("No hay asignaciones para mostrar."));
+    const rows = planReports();
+    const workers = approvedWorkers();
+
+    if (!workers.length) {
+      el.tomorrowList.appendChild(empty("No hay mecánicos aprobados."));
       return;
     }
 
-    assignments.forEach((report) => {
-      const actions = [
-        button("Marcar operativo", "ok", async () => {
-          const description = prompt("Descripción del trabajo realizado:");
-          if (description === null) return;
-          await updateReport(report.id, {
-            status: "Operativo informado",
-            operation_note: description.trim(),
-            operated_by: state.currentUser.name
-          });
-          await createNotification(`${report.equipment} informado operativo por ${state.currentUser.name}`);
-          await refreshAllData();
-        })
-      ];
+    workers.forEach((worker) => {
+      const workerRows = rows.filter((report) => report.mechanicId === worker.id);
+      const available = workerAvailability(worker.id);
+      const actions = [];
       if (isAdmin()) {
-        actions.push(button("Validar", "primary", async () => {
-          await updateReport(report.id, { status: "Operativo validado", validated_by: state.currentUser.name });
-          await createNotification(`${report.equipment} validado operativo`);
-          await refreshAllData();
-        }));
+        actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
+        actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
-      el.tomorrowList.appendChild(card(report.equipment, report.status, `${report.location} · ${report.deviation}${report.operationNote ? " · " + report.operationNote : ""}`, actions));
+
+      const section = document.createElement("article");
+      section.className = "card plan-worker";
+      section.innerHTML = `
+        <div class="card-head">
+          <h2>${worker.name}</h2>
+          <span class="tag ${available === "franco" ? "danger" : "ok"}">${available === "franco" ? "Franco" : "Disponible"}</span>
+        </div>
+        <div class="worker-actions"></div>
+        <div class="plan-items"></div>
+      `;
+      const actionBox = section.querySelector(".worker-actions");
+      actions.forEach((action) => actionBox.appendChild(action));
+      const list = section.querySelector(".plan-items");
+      if (!workerRows.length) {
+        list.appendChild(empty("Sin equipos asignados."));
+      } else {
+        workerRows.forEach((report) => {
+          const reportActions = [button("Detalle", "secondary", () => showToast(reportLine(report)))];
+          if (isAdmin() || report.mechanicId === state.currentUser.id) {
+            reportActions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
+          }
+          if (isAdmin() && isOperativeInformedStatus(report.status)) {
+            reportActions.push(button("Validar", "primary", async () => validateReport(report)));
+            reportActions.push(button("Rechazar", "secondary", async () => rejectReport(report)));
+          }
+          list.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), reportActions));
+        });
+      }
+      el.tomorrowList.appendChild(section);
     });
+  }
+
+  function renderMyJobs() {
+    if (!el.myJobsList) return;
+    el.myJobsList.innerHTML = "";
+    const own = myReports();
+    if (!own.length) {
+      el.myJobsList.appendChild(empty("No tenés equipos asignados."));
+      return;
+    }
+    own.forEach((report) => {
+      el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), [
+        button("Detalle", "secondary", () => showToast(reportLine(report))),
+        button("Marcar reparación realizada", "ok", async () => markRepairDone(report))
+      ]));
+    });
+  }
+
+  function renderAvailability() {
+    if (!el.availabilityList) return;
+    el.availabilityList.innerHTML = "";
+    if (!isAdmin()) {
+      el.availabilityList.classList.add("hidden");
+      return;
+    }
+    el.availabilityList.classList.remove("hidden");
+    approvedWorkers().forEach((worker) => {
+      const row = document.createElement("div");
+      row.className = "availability-row";
+      row.innerHTML = `<strong>${worker.name}</strong><select aria-label="Disponibilidad"></select>`;
+      const select = row.querySelector("select");
+      select.appendChild(new Option("Disponible", "disponible"));
+      select.appendChild(new Option("Franco", "franco"));
+      select.value = workerAvailability(worker.id);
+      select.addEventListener("change", async () => {
+        await saveAvailability(worker.id, select.value);
+        await refreshAllData();
+      });
+      el.availabilityList.appendChild(row);
+    });
+  }
+
+  async function saveAvailability(workerId, status) {
+    if (!supabase || !isAdmin()) return;
+    const payload = {
+      worker_id: workerId,
+      date: state.planDate,
+      status
+    };
+    const { error } = await supabase.from("worker_availability").upsert(payload, { onConflict: "worker_id,date" });
+    if (error) showToast("Falta aplicar la migración de disponibilidad en Supabase.");
+  }
+
+  async function markRepairDone(report) {
+    const description = await openTextModal("Reparación realizada", "Escribí qué reparación realizaste");
+    if (description === null) return;
+    const note = description.trim();
+    if (!note) {
+      showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
+      return;
+    }
+    await updateReport(report.id, {
+      status: "PV",
+      previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
+      repair_note: note,
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString(),
+      operation_note: note,
+      operated_by: state.currentUser.name
+    });
+    await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
+    await refreshAllData();
+  }
+
+  async function validateReport(report) {
+    const ok = await openChoiceModal("Validar operativo", [{ id: "ok", name: `Validar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Pasarlo a Operativos.</span>`, "Sin acciones.");
+    if (!ok) return;
+    await updateReport(report.id, {
+      status: "Operativo validado",
+      mechanic_id: null,
+      plan_date: null,
+      validated_by: state.currentUser.name,
+      validated_at: new Date().toISOString()
+    });
+    await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
+    await refreshAllData();
+  }
+
+  async function rejectReport(report) {
+    const observation = await openTextModal("Rechazar revisión", "Observación para devolver el trabajo a revisión");
+    if (observation === null) return;
+    const nextStatus = report.previousStatus && report.previousStatus !== "PV" ? report.previousStatus : "FS";
+    await updateReport(report.id, {
+      status: nextStatus,
+      repair_note: report.repairNote ? `${report.repairNote} | Rechazado: ${observation.trim()}` : `Rechazado: ${observation.trim()}`
+    });
+    await createNotification(`${report.equipment} requiere revisión. ${observation.trim()}`);
+    await refreshAllData();
+  }
+
+  function buildPlanText(workerId) {
+    const workers = workerId ? approvedWorkers().filter((worker) => worker.id === workerId) : approvedWorkers();
+    const lines = [`PLAN MAÑANA - ${state.planDate}`, ""];
+    workers.forEach((worker) => {
+      const reports = planReports().filter((report) => report.mechanicId === worker.id);
+      lines.push(worker.name.toUpperCase());
+      if (workerAvailability(worker.id) === "franco") lines.push("FRANCO");
+      if (!reports.length) {
+        lines.push("Sin equipos asignados", "");
+        return;
+      }
+      reports.forEach((report) => {
+        lines.push(`${report.equipment} - ${report.location || "Sin ubicación"}`);
+        lines.push(report.deviation || "Sin detalle");
+        lines.push(`Estado: ${displayStatus(report.status)}`);
+        lines.push("");
+      });
+    });
+    return lines.join("\n").trim();
+  }
+
+  async function copyPlan(workerId) {
+    const text = buildPlanText(workerId);
+    const copied = await writeClipboard(text);
+    if (navigator.share && !workerId) {
+      await navigator.share({ text });
+    } else {
+      showToast(copied ? "Plan copiado." : "No pude copiar el plan.");
+    }
   }
 
   function renderMechanicReports() {
@@ -534,6 +800,28 @@ if (!trabajo) return;
     });
   }
 
+  function renderOperatives() {
+    if (!el.operativesList) return;
+    el.operativesList.innerHTML = "";
+    if (!isAdmin()) {
+      el.operativesList.appendChild(empty("Solo el administrador puede ver Operativos."));
+      return;
+    }
+    const rows = state.reports.filter((report) => report.status === "Operativo validado");
+    if (!rows.length) {
+      el.operativesList.appendChild(empty("Todavía no hay equipos validados como operativos."));
+      return;
+    }
+    rows.forEach((report) => {
+      el.operativesList.appendChild(card(
+        report.equipment,
+        "Operativo",
+        `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · Validó: ${report.validatedBy || "sin dato"}${report.validatedAt ? " · " + formatDateTime(report.validatedAt) : ""}`,
+        []
+      ));
+    });
+  }
+
   function renderUsers() {
     el.usersList.innerHTML = "";
     const selectedSpecialty = el.userFilter.value || "all";
@@ -549,27 +837,48 @@ if (!trabajo) return;
       if (isAdmin() && user.id !== state.currentUser.id) {
         if (user.status === "pendiente") {
           actions.push(button("Aprobar", "primary", async () => {
-            await supabase.from("profiles").update({ status: "aprobado" }).eq("id", user.id);
+            await supabase.from("profiles").update({ status: "aprobado", account_status: "activo" }).eq("id", user.id);
             await createNotification(`Cuenta aprobada para ${user.name}`);
             await refreshAllData();
           }));
           actions.push(button("Rechazar", "danger", async () => {
-            await supabase.from("profiles").update({ status: "rechazado" }).eq("id", user.id);
+            await supabase.from("profiles").update({ status: "rechazado", account_status: "inactivo" }).eq("id", user.id);
             await refreshAllData();
           }));
         }
-        if (user.status !== "pendiente") {
-          actions.push(button("Eliminar", "danger", async () => {
-            await supabase.from("profiles").delete().eq("id", user.id);
-            await refreshAllData();
-          }));
-        }
+        actions.push(button("Editar", "secondary", async () => editUser(user)));
+        actions.push(button(user.accountStatus === "inactivo" ? "Activar" : "Bloquear", "secondary", async () => {
+          await supabase.from("profiles").update({ account_status: user.accountStatus === "inactivo" ? "activo" : "inactivo" }).eq("id", user.id);
+          await refreshAllData();
+        }));
+        actions.push(button("Eliminar", "danger", async () => {
+          const ok = await openChoiceModal("Eliminar perfil", [{ id: "delete", name: `Eliminar ${user.name}` }], (item) => `<strong>${item.name}</strong><span>No borra la cuenta Auth de Supabase.</span>`, "Sin acciones.");
+          if (!ok) return;
+          await supabase.from("profiles").delete().eq("id", user.id);
+          await refreshAllData();
+        }));
       }
       const roleLabel = user.role === "admin" ? "Administrador" : "Trabajador";
       const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
-      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Estado: ${statusLabel}`;
+      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Aprobación: ${statusLabel} · Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
       el.usersList.appendChild(card(user.name, roleLabel, details, actions));
     });
+  }
+
+  async function editUser(user) {
+    const name = await openTextModal("Nombre completo", user.name);
+    if (name === null) return;
+    const username = await openTextModal("Usuario", user.username);
+    if (username === null) return;
+    const specialty = await openTextModal("Especialidad", user.specialty || "mecanico-maquinaria-pesada");
+    if (specialty === null) return;
+    await supabase.from("profiles").update({
+      name: name.trim(),
+      username: username.trim().toLowerCase(),
+      email: userToEmail(username),
+      specialty: specialty.trim()
+    }).eq("id", user.id);
+    await refreshAllData();
   }
 
   function renderNotifications() {
@@ -589,16 +898,17 @@ if (!trabajo) return;
       el.loginError.textContent = "";
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
-      el.notifyBtn.classList.add("hidden");
       return;
     }
     renderHome();
     renderImmediate();
+    renderMyJobs();
     renderTomorrow();
     renderMechanicReports();
     renderOrders();
     renderHistory();
     renderFleet();
+    renderOperatives();
     renderUsers();
     renderNotifications();
   }
@@ -610,12 +920,13 @@ if (!trabajo) return;
 
   async function refreshAllData() {
     if (!supabase) return;
-    const [profiles, reports, orders, fleet, notifications] = await Promise.all([
+    const [profiles, reports, orders, fleet, notifications, availability] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("reports").select("*").order("created_at", { ascending: false }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
-      supabase.from("notifications").select("*").order("created_at", { ascending: false })
+      supabase.from("notifications").select("*").order("created_at", { ascending: false }),
+      supabase.from("worker_availability").select("*").eq("date", state.planDate)
     ]);
 
     state.users = (profiles.data || []).map(normalizeUser);
@@ -623,6 +934,7 @@ if (!trabajo) return;
     state.orders = (orders.data || []).map(normalizeOrder);
     state.fleet = (fleet.data || []).map(normalizeFleet);
     state.notifications = (notifications.data || []).map(normalizeNotification);
+    state.availability = (availability.data || []).map(normalizeAvailability);
 
     if (state.currentUser) {
       const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
@@ -651,7 +963,11 @@ if (!trabajo) return;
 
   async function updateReport(id, updates) {
     if (!supabase) return;
-    await supabase.from("reports").update(updates).eq("id", id);
+    const { error } = await supabase.from("reports").update(updates).eq("id", id);
+    if (error) {
+      showToast(`No se pudo actualizar el reporte: ${error.message}`);
+      throw error;
+    }
   }
 
   async function initializeApp() {
@@ -681,6 +997,7 @@ if (!trabajo) return;
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
       .subscribe();
   }
 
@@ -689,8 +1006,15 @@ if (!trabajo) return;
   });
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
-  el.notifyBtn.addEventListener("click", () => setScreen("notifications"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
+
+  el.planDate?.addEventListener("change", async () => {
+    state.planDate = el.planDate.value || state.planDate;
+    await refreshAllData();
+  });
+
+  el.refreshPlanBtn?.addEventListener("click", () => refreshAllData());
+  el.copyPlanBtn?.addEventListener("click", () => copyPlan());
 
   el.immediateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -717,7 +1041,7 @@ if (!trabajo) return;
   const texto = el.reportPaste.value.trim();
 
   if (!texto) {
-    alert("Pegá primero un reporte.");
+    showToast("Pegá primero un reporte.");
     return;
   }
 
@@ -727,7 +1051,7 @@ if (!trabajo) return;
   );
 
   if (!internoEncontrado) {
-    alert("No pude encontrar el interno en el reporte.");
+    showToast("No pude encontrar el interno en el reporte.");
     return;
   }
 
@@ -798,10 +1122,7 @@ if (!falla) faltantes.push("falla");
 if (!estado) faltantes.push("estado");
 
 if (faltantes.length) {
-  alert(
-    `No pude identificar: ${faltantes.join(", ")}.\n` +
-    "Completá o corregí esos datos y tocá Guardar reporte."
-  );
+  showToast(`No pude identificar: ${faltantes.join(", ")}. Completá o corregí esos datos.`);
   return;
 }
 
@@ -870,49 +1191,42 @@ el.immediateForm.requestSubmit();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
     const specialty = form.get("specialty").trim();
+    const role = "mecanico";
+    const accountStatus = "activo";
 
     if (!name || !username || !password || !specialty) {
       el.userFeedback.textContent = "Completá todos los campos.";
       return;
     }
 
-    const email = username
-  .trim()
-  .toLowerCase()
-  .replace(/\s+/g, ".") + "@gmail.com";
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          username,
-          role: "trabajador",
-          specialty
-        }
-      }
-    });
-
-    if (error) {
-      el.userFeedback.textContent = error.message;
+    const sessionResult = await supabase.auth.getSession();
+    const token = sessionResult.data?.session?.access_token;
+    if (!token) {
+      el.userFeedback.textContent = "Volvé a iniciar sesión como administrador.";
       return;
     }
 
-    const userId = data?.user?.id || data?.session?.user?.id;
-    if (userId) {
-      await supabase.from("profiles").upsert({
-        id: userId,
-        email,
+    const response = await fetch("/api/create-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
         name,
         username,
-        role: "trabajador",
-        status: "pendiente",
-        specialty,
-        created_at: new Date().toISOString()
-      });
+        password,
+        specialty
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      el.userFeedback.textContent = result.error || "No se pudo crear el mecánico.";
+      return;
     }
 
-    el.userFeedback.textContent = "Solicitud enviada. El administrador podrá aprobarla o rechazarla.";
+    el.userFeedback.textContent = `Usuario creado: ${username}. Entra con usuario y contraseña, sin correo.`;
     el.userForm.reset();
     await refreshAllData();
   });
@@ -934,9 +1248,7 @@ el.immediateForm.requestSubmit();
     const form = new FormData(el.loginForm);
     const usuario = form.get("email").trim().toLowerCase();
 
-    const email = usuario.includes("@")
-  ? usuario
-  : "marianorodriguez506+" + usuario.replace(/\s+/g, ".") + "@gmail.com";
+    const email = userToEmail(usuario);
     const password = form.get("password").trim();
 
     if (!usuario || !password) {
@@ -957,6 +1269,13 @@ el.immediateForm.requestSubmit();
       return;
     }
 
+    if (state.currentUser.accountStatus === "inactivo") {
+      el.loginError.textContent = "Tu usuario está inactivo. Consultá al administrador.";
+      await supabase.auth.signOut();
+      state.currentUser = null;
+      return;
+    }
+
     await refreshAllData();
     el.loginError.textContent = "";
     setScreen("home");
@@ -964,57 +1283,7 @@ el.immediateForm.requestSubmit();
 
   el.registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const form = new FormData(el.registerForm);
-    const name = form.get("name").trim();
-    const username = form.get("username").trim();
-    const password = form.get("password").trim();
-    const specialty = form.get("specialty").trim();
-    const email = username
-  .trim()
-  .toLowerCase()
-  .replace(/\s+/g, ".") + "@gestion-flota.local";
-
-    if (!name || !username || !password || !specialty || !email) {
-      el.registerFeedback.textContent = "Completá todos los campos para solicitar la cuenta.";
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-          username,
-          role: "trabajador",
-          specialty
-        }
-      }
-    });
-
-    if (error) {
-      el.registerFeedback.textContent = error.message;
-      return;
-    }
-
-    const userId = data?.user?.id || data?.session?.user?.id;
-    if (userId) {
-      await supabase.from("profiles").upsert({
-        id: userId,
-        email,
-        name,
-        username,
-        role: "trabajador",
-        status: "pendiente",
-        specialty,
-        created_at: new Date().toISOString()
-      });
-      
-    }
-
-    el.registerFeedback.textContent = "Solicitud enviada. El administrador deberá aprobarla.";
-    el.registerForm.reset();
-    await refreshAllData();
+    el.registerFeedback.textContent = "Las cuentas las crea el administrador desde Gestión de mecánicos.";
   });
 
   el.activeReportSearch?.addEventListener("input", () => {
