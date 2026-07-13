@@ -239,7 +239,7 @@
   }
 
   function visibleActiveReports() {
-    return isAdmin() ? activeReports() : myReports();
+    return activeReports();
   }
 
   function formatDateTime(value) {
@@ -545,8 +545,8 @@ filteredReports.forEach((report) => {
           await supabase.from("reports").delete().eq("id", report.id);
           await refreshAllData();
         }));
-      } else {
-        actions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
+      } else if (report.mechanicId === state.currentUser.id) {
+        actions.push(button("Cambiar a operativo", "ok", async () => markRepairDone(report)));
       }
       el.immediateList.appendChild(card(report.equipment, displayStatus(report.status), `${reportLine(report)} · Trabajador: ${mechanic ? mechanic.name : "sin asignar"}`, actions));
     });
