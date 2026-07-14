@@ -73,9 +73,7 @@ module.exports = async function handler(req, res) {
     const report = reportResult.data?.[0];
     if (!report) return json(res, 404, { error: "Reporte no encontrado." });
 
-    if (!isAdmin && report.mechanic_id !== currentUser.id) {
-      return json(res, 403, { error: "No tenes permiso para modificar este reporte." });
-    }
+  
 
     const allowedForWorker = new Set(["status", "previous_status", "repair_note", "repaired_by", "repaired_at", "operation_note", "operated_by"]);
     const safeUpdates = Object.fromEntries(
