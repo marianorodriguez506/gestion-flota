@@ -268,12 +268,8 @@
     return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
   }
 
-  function visibleActiveReports() {
-    if (!state.currentUser || isAdmin()) return activeReports();
-    // Le agregamos el || !report.mechanicId para que también vean los no asignados
-    return activeReports().filter((report) => 
-      report.mechanicId === state.currentUser.id || !report.mechanicId
-    );
+ function visibleActiveReports() {
+    return activeReports();
   }
 
   function formatDateTime(value) {
