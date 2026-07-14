@@ -270,7 +270,10 @@
 
   function visibleActiveReports() {
     if (!state.currentUser || isAdmin()) return activeReports();
-    return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
+    // Le agregamos el || !report.mechanicId para que también vean los no asignados
+    return activeReports().filter((report) => 
+      report.mechanicId === state.currentUser.id || !report.mechanicId
+    );
   }
 
   function formatDateTime(value) {
@@ -746,11 +749,89 @@
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
     el.immediateList.innerHTML = "";
-    const reports = visibleActiveReports();
+    
+    // ACÁ EL PRIMER CAMBIO: Para que traiga TODOS los reportes activos
+    const reports = activeReports(); 
+    
     if (!reports.length) {
       el.immediateList.appendChild(empty("Todavía no hay reportes inmediatos."));
       return;
     }
+
+    const search = normalizeEquipment(el.activeReportSearch?.value || "").toLowerCase();
+    const filteredReports = reports.filter((report) => {
+      if (!search) return true;
+
+      return (
+        report.equipment?.toLowerCase().includes(search) ||
+        report.location?.toLowerCase().includes(search) ||
+        report.deviation?.toLowerCase().includes(search)
+      );
+    });
+
+    const groups = new Map();
+    filteredReports
+      .sort((a, b) => groupLocation(a).localeCompare(groupLocation(b)) || reportAgeDays(b) - reportAgeDays(a) || a.equipment.localeCompare(b.equipment))
+      .forEach((report) => {
+      const mechanic = state.users.find((user) => user.id === report.mechanicId);
+      const actions = [
+        menuAction("Ver detalles", "secondary", () => showReportDetails(report)),
+        menuAction("Ver historial", "secondary", () => showReportHistory(report))
+      ];
+      const quickActions = [];
+      
+      if (isAdmin()) {
+        quickActions.push(button("Asignar", "primary compact-assign", async () => chooseMechanicForReport(report)));
+        actions.push(menuAction("Asignar", "secondary", async () => chooseMechanicForReport(report)));
+        actions.push(menuAction("Editar", "secondary", async () => editReport(report)));
+        actions.push(menuAction("Enviar a Plan Mañana", "secondary", async () => {
+          await updateReport(report.id, { plan_date: state.planDate });
+          await createNotification(`${report.equipment} enviado al Plan Mañana`);
+          await refreshAllData();
+        }));
+        if (isOperativeInformedStatus(report.status)) {
+          actions.push(menuAction("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
+          actions.push(menuAction("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
+        } else {
+          actions.push(menuAction("Validar operativo", "ok", async () => validateReport(report)));
+        }
+        actions.push(menuAction("Quitar asignación", "secondary", async () => {
+          await updateReport(report.id, { mechanic_id: null, plan_date: null });
+          await refreshAllData();
+        }));
+        actions.push(menuAction("Eliminar", "danger", async () => {
+          const ok = await openChoiceModal("Eliminar reporte", [{ id: "delete", name: `Eliminar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Esta acción quita el reporte activo.</span>`, "Sin acciones.");
+          if (!ok) return;
+          await supabase.from("reports").delete().eq("id", report.id);
+          await refreshAllData();
+        }));
+      } else {
+        // ACÁ EL SEGUNDO CAMBIO: Lógica para los mecánicos
+        if (!report.mechanicId) {
+          // Si el reporte no tiene a nadie, le sale el botón "Tomar"
+          quickActions.push(button("Tomar", "primary compact-assign", async () => assignReportToWorker(report, state.currentUser)));
+          actions.push(menuAction("Tomar trabajo", "primary", async () => assignReportToWorker(report, state.currentUser)));
+        } else if (report.mechanicId === state.currentUser.id) {
+          // Si el reporte ya es de él, le sale el botón "Operativo"
+          quickActions.push(button("Operativo", "ok compact-assign", async () => markRepairDone(report)));
+          actions.push(menuAction("Cambiar a operativo", "ok", async () => markRepairDone(report)));
+        }
+      }
+      
+      const location = groupLocation(report);
+      if (!groups.has(location)) groups.set(location, []);
+      groups.get(location).push(compactReportRow(report, actions, quickActions));
+    });
+
+    if (!filteredReports.length) {
+      el.immediateList.appendChild(empty("No encontré reportes con ese filtro."));
+      return;
+    }
+
+    groups.forEach((rows, location) => {
+      el.immediateList.appendChild(reportGroup(location, rows));
+    });
+  }
 
     const search = normalizeEquipment(el.activeReportSearch?.value || "").toLowerCase();
     const filteredReports = reports.filter((report) => {
