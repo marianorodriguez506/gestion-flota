@@ -1501,122 +1501,118 @@
   el.immediateForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!state.currentUser) return;
-    
     const form = new FormData(el.immediateForm);
-    
-    const prioridad = form.get("priority") || "Media";
-    const notas = form.get("notes")?.trim() || "";
-    const fallaOriginal = form.get("deviation")?.trim() || "";
-    const valorHorometro = form.get("hourmeter")?.trim() || "";
-    
-    // Armamos un solo texto con todo para que la base de datos no se queje
-    let fallaCompleta = `${fallaOriginal} | Prioridad: ${prioridad}`;
-    if (notas) fallaCompleta += ` | Obs: ${notas}`;
-    if (valorHorometro) fallaCompleta += ` | Horómetro: ${valorHorometro}`;
-    
     const report = {
       id: uid(),
       equipment: normalizeEquipment(form.get("equipment")),
-      location: form.get("location")?.trim() || "Sin ubicación",
-      deviation: fallaCompleta,
+      location: form.get("location").trim(),
+      deviation: form.get("deviation").trim(),
       status: form.get("status") || "Pendiente",
       mechanic_id: form.get("mechanic") || null,
+      hourmeter: form.get("hourmeter")?.trim() || "",
+      operation_note: `Prioridad: ${form.get("priority") || "Media"}${form.get("notes")?.trim() ? " | Observaciones: " + form.get("notes").trim() : ""}`,
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
-      // Fijate que acá borramos por completo la línea de "hourmeter"
     };
-
-    try {
-      const { error } = await supabase.from("reports").insert(report);
-      
-      if (error) {
-        console.error("Error al guardar:", error);
-        showToast("Error en la base de datos: " + error.message);
-        return; 
-      }
-      
-      await createNotification(`Nuevo reporte: ${report.equipment}`);
-      await refreshAllData();
-      el.immediateForm.reset();
-      if (el.reportPaste) el.reportPaste.value = "";
-      
-      showToast("¡Reporte guardado con éxito!");
-      
-    } catch (error) {
-      console.error("Error inesperado:", error);
-      showToast("Error inesperado al guardar el reporte.");
-    }
+    await supabase.from("reports").insert(report);
+    await createNotification(`Nuevo reporte: ${report.equipment}`);
+    await refreshAllData();
+    el.immediateForm.reset();
+    el.reportPaste.value = "";
   });
 
-  // 2. BOTÓN DE WHATSAPP (Procesa el texto y dispara el formulario de arriba)
   el.processReportBtn?.addEventListener("click", () => {
-    const texto = el.reportPaste.value.trim();
+  const texto = el.reportPaste.value.trim();
 
-    if (!texto) {
-      showToast("Pegá primero un reporte.");
-      return;
-    }
+  if (!texto) {
+    showToast("Pegá primero un reporte.");
+    return;
+  }
 
-    // 1. DETECTAR INTERNO
-    const internoEncontrado = texto.match(
-      /\b(MN|TO|T0|CF|PR|RE|CT|CV|CR|CA|RN|RV|SB|ST|CC|CP|GE|CM|TP|CB|PL|CCH)[\s_-]*\d{1,3}\b/i
-    );
+  // 1. DETECTAR INTERNO
+  const internoEncontrado = texto.match(
+    /\b(MN|TO|T0|CF|PR|RE|CT|CV|CR|CA|RN|RV|SB|ST|CC|CP|GE|CM|TP|CB|PL|CCH)[\s_-]*\d{1,3}\b/i
+  );
 
-    if (!internoEncontrado) {
-      showToast("No pude encontrar el interno en el reporte.");
-      return;
-    }
+  if (!internoEncontrado) {
+    showToast("No pude encontrar el interno en el reporte.");
+    return;
+  }
 
-    // 2. DETECTAR UBICACIÓN (Súper flexible: acepta "Ubicacio", "Ubicació", "Ubi", "Ubic", etc.)
-    const regexUbicacion = /(?:ubicaci[oóu]n?|ubicasio?n?|ubcacio?n?|ubica|ub|ubi|lugar|sector|zona)[\s*:-]*([^\n\r]+)/i;
-    const ubicacionEncontrada = texto.match(regexUbicacion);
-    const ubicacionManual = el.immediateForm.elements.location?.value?.trim();
-    let ubicacion = "Sin ubicación";
+  const interno = normalizeEquipment(internoEncontrado[0]);
 
-    if (ubicacionEncontrada) {
-      ubicacion = ubicacionEncontrada[1].trim().replace(/[.,]+$/, "");
-    } else if (ubicacionManual) {
-      ubicacion = ubicacionManual;
-    }
+  // 2. DETECTAR UBICACIÓN
+  const ubicacionEncontrada = texto.match(
+    /ubicaci[oó]n\s*:?\s*([^\n\r]+)/i
+  );
 
-    // 3. DETECTAR FALLA
-    const fallaEncontrada = texto.match(
-      /(?:falla(?:\s+detectada)?|desv[ií]o|detalle|problema)[\s*:-]*([\s\S]*?)(?=\n\s*(?:estado|obs\.?|observaci[oó]n|adjuntar|ubicaci[oó]n|lugar)\s*:|$)/i
-    );
-    const fallaManual = el.immediateForm.elements.deviation?.value?.trim();
-    const falla = fallaEncontrada 
-      ? fallaEncontrada[1].trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean).join(" - ") 
-      : (fallaManual || "Falla no especificada");
+  const ubicacion = ubicacionEncontrada
+    ? ubicacionEncontrada[1].trim().replace(/[.,]+$/, "")
+    : "";
 
-    // 4. DETECTAR ESTADO
-    const textoMayuscula = texto.toUpperCase();
-    let estado = el.immediateForm.elements.status?.value || "FS";
+  // 3. DETECTAR FALLA O DESVÍO
+  const fallaEncontrada = texto.match(
+    /(?:falla(?:\s+detectada)?|desv[ií]o)\s*:?\s*([\s\S]*?)(?=\n\s*(?:estado|obs\.?|observaci[oó]n|adjuntar)\s*:|$)/i
+  );
 
-    if (
-      textoMayuscula.includes("FUERA DE SERVICIO") || 
-      textoMayuscula.includes("PARADO") || 
-      /\bFS\b/.test(textoMayuscula)
-    ) {
-      estado = "FS";
-    } else if (
-      textoMayuscula.includes("OPERATIVO") || 
-      textoMayuscula.includes("OBS") || 
-      textoMayuscula.includes("OBSERVACION")
-    ) {
-      estado = "OBS";
-    }
+  const falla = fallaEncontrada
+    ? fallaEncontrada[1]
+        .trim()
+        .split(/\r?\n/)
+        .map((linea) => linea.trim())
+        .filter(Boolean)
+        .join(" - ")
+    : "";
 
-    // 5. CARGAMOS LOS DATOS EN EL FORMULARIO
-    el.immediateForm.elements.equipment.value = normalizeEquipment(internoEncontrado[0]);
-    el.immediateForm.elements.location.value = ubicacion;
-    el.immediateForm.elements.deviation.value = falla;
-    if (estado) {
-      el.immediateForm.elements.status.value = estado;
-    }
+  // 4. DETECTAR ESTADO
+  const textoMayuscula = texto.toUpperCase();
 
-    // Dispara el guardado automáticamente
-    el.immediateForm.requestSubmit();
-  });
+  let estado = "";
+
+  if (
+    textoMayuscula.includes("FUERA DE SERVICIO") ||
+    textoMayuscula.includes("PARADO") ||
+    /\bFS\b/.test(textoMayuscula)
+  ) {
+    estado = "FS";
+  } else if (
+    textoMayuscula.includes("OPERATIVO CON OBS") ||
+    textoMayuscula.includes("OPERATIVA CON OBS") ||
+    textoMayuscula.includes("CON OBSERVACIONES") ||
+    textoMayuscula.includes("CON OBSERVACION") ||
+    textoMayuscula.includes("CON PRECAUCIONES") ||
+    textoMayuscula.includes("ANDANDO CON OBSERVACIONES") ||
+    textoMayuscula.includes("OPERATIVO") ||
+    textoMayuscula.includes("OPERATIVA") ||
+    /\bOBS\b/.test(textoMayuscula)
+  ) {
+    estado = "OBS";
+  }
+
+  // 5. COMPLETAR LA CARGA MANUAL
+  el.immediateForm.elements.equipment.value = interno;
+  el.immediateForm.elements.location.value = ubicacion;
+  el.immediateForm.elements.deviation.value = falla;
+
+  if (estado) {
+    el.immediateForm.elements.status.value = estado;
+  }
+
+  const faltantes = [];
+
+if (!interno) faltantes.push("interno");
+if (!ubicacion) faltantes.push("ubicación");
+if (!falla) faltantes.push("falla");
+if (!estado) faltantes.push("estado");
+
+if (faltantes.length) {
+  showToast(`No pude identificar: ${faltantes.join(", ")}. Completá o corregí esos datos.`);
+  return;
+}
+
+el.immediateForm.requestSubmit();
+
+});
 
   el.mechanicForm.addEventListener("submit", async (event) => {
     event.preventDefault();

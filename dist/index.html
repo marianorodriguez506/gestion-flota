@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <title>Gestion de Flota</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">←</button>
+      <div>
+        <p class="eyebrow" id="screenLabel">Inicio</p>
+        <h1 id="screenTitle">Gestion de Flota</h1>
+      </div>
+      <button id="logoutBtn" class="text-btn hidden" type="button" aria-label="Cerrar sesión">Salir</button>
+    </header>
+
+    <section id="userInfoStrip" class="user-strip hidden">
+      <div>
+        <p class="eyebrow">Usuario</p>
+        <strong id="userNameDisplay"></strong>
+      </div>
+      <span id="rolePill" class="status-pill">Admin</span>
+    </section>
+
+    <section id="authScreen" class="screen">
+      <form id="loginForm" class="panel form-grid">
+        <label>
+          Usuario
+          <input name="email" type="text" autocomplete="username" required>
+        </label>
+        <label>
+          Contraseña
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" name="remember" checked>
+          Recordarme en este dispositivo
+        </label>
+        <button class="primary" type="submit">Iniciar sesión</button>
+        <p id="loginError" class="hint danger-text"></p>
+      </form>
+      <form id="registerForm" class="panel form-grid hidden">
+        <p class="hint">Solicitá una cuenta de trabajador. La aprobación del administrador es requerida.</p>
+        <label>
+          Nombre completo
+          <input name="name" required>
+        </label>
+       
+        <label>
+          Usuario
+          <input name="username" required>
+        </label>
+        <label>
+          Contraseña
+          <input name="password" type="password" required>
+        </label>
+        <label>
+          Especialidad
+          <select name="specialty" required>
+            <option value="">Seleccioná una especialidad</option>
+            <option value="mecanico-maquinaria-pesada">Mecánico de maquinaria pesada</option>
+            <option value="electricista">Electricista</option>
+            <option value="soldador">Soldador</option>
+            <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
+          </select>
+        </label>
+        <button class="secondary" type="submit">Solicitar cuenta</button>
+        <p id="registerFeedback" class="hint"></p>
+      </form>
+    </section>
+
+    <section id="homeScreen" class="screen">
+      <section class="feed-hero">
+        <strong id="welcomeText">Hola</strong>
+        <p>Trabajos, pedidos y alertas del día en un solo lugar.</p>
+      </section>
+
+      <div class="quick-actions">
+        <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
+
+        <button class="quick-btn mechanic-only" data-screen="myJobs">Mis trabajos</button>
+
+        <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
+        <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
+      </div>
+
+      <div class="home-grid">
+        <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
+        <button class="module-btn" data-screen="history">Historial de pedidos</button>
+        <button class="module-btn" data-screen="fleet">Información de flota</button>
+        <button class="module-btn admin-only" data-screen="panel">Panel</button>
+        <button class="module-btn admin-only" data-screen="validations">Validaciones pendientes</button>
+        <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
+      </div>
+      <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
+    </section>
+    
+    <section id="immediateScreen" class="screen">
+      <h2>📋 Reportes Activos</h2>
+      <label class="admin-only">Pegar reporte de WhatsApp</label>
+
+      <textarea
+       id="reportPaste"
+       class="admin-only"
+        rows="6"
+       placeholder="Pegá aquí el reporte copiado desde WhatsApp">
+      </textarea>
+
+       <button
+        id="processReportBtn"
+        class="primary admin-only"
+        type="button">
+       Procesar reporte
+      </button>
+
+      <h3 class="admin-only">➕ Carga manual</h3>
+
+      <form id="immediateForm" class="panel form-grid admin-only">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <input name="location" placeholder="Ubicación" required>
+        <input name="deviation" placeholder="Desvío / falla" required>
+        <select name="priority">
+          <option value="Media">Prioridad media</option>
+          <option value="Alta">Prioridad alta</option>
+          <option value="Critica">Prioridad critica</option>
+          <option value="Baja">Prioridad baja</option>
+        </select>
+        <input name="hourmeter" placeholder="Horometro / kilometraje">
+        <textarea name="notes" placeholder="Observaciones"></textarea>
+        <select name="status">
+          <option value="FS">FS - Fuera de servicio</option>
+          <option value="OBS">OBS - Operativo con observaciones</option>
+        </select>
+        <select name="mechanic"></select>
+        <button class="primary" type="submit">Guardar reporte</button>
+      </form>
+      <div class="panel compact admin-only">
+        <label>
+          Buscar interno
+          <input
+            id="activeReportSearch"
+            type="text"
+            placeholder="Ej.: CF-38">
+        </label>
+      </div>
+
+    <h3>Reportes cargados</h3>
+
+    <section id="immediateList" class="list"></section>
+    </section>
+
+    <section id="tomorrowScreen" class="screen">
+      <section class="panel compact">
+        <h2>Plan Mañana</h2>
+        <label>
+          Fecha del plan
+          <input id="planDate" type="date">
+        </label>
+        <div class="card-actions">
+          <button id="refreshPlanBtn" class="secondary" type="button">Actualizar</button>
+          <button id="copyPlanBtn" class="primary" type="button">Copiar Plan Mañana</button>
+        </div>
+        <p class="hint">Cada mecánico ve sus trabajos y también el plan completo del equipo.</p>
+      </section>
+      <section id="availabilityList" class="panel compact admin-only"></section>
+      <section id="tomorrowList" class="list"></section>
+    </section>
+
+    <section id="myJobsScreen" class="screen">
+      <section class="panel compact">
+        <h2>Mis trabajos</h2>
+        <p class="hint">Equipos asignados al usuario actual.</p>
+      </section>
+      <section id="myJobsList" class="list"></section>
+    </section>
+
+    <section id="mechanicScreen" class="screen">
+      <form id="mechanicForm" class="panel form-grid">
+        <input name="equipment" placeholder="Interno" required>
+        <input name="deviation" placeholder="Desvio / observacion" required>
+        <textarea name="notes" placeholder="Detalle del mecanico"></textarea>
+        <button class="primary" type="submit">Guardar observacion</button>
+      </form>
+      <section id="mechanicList" class="list"></section>
+    </section>
+
+    <section id="ordersScreen" class="screen">
+      <form id="orderForm" class="panel form-grid">
+        <input name="equipment" placeholder="Interno" required>
+        <select name="requester"></select>
+        <input name="need" placeholder="Que se necesita" required>
+        <button class="primary" type="submit">Cargar pedido</button>
+      </form>
+      <label class="filter-row">
+        Filtrar por mecanico
+        <select id="orderFilter"></select>
+      </label>
+      <section id="ordersList" class="list"></section>
+    </section>
+
+    <section id="historyScreen" class="screen">
+      <p class="hint">Vista para todos: muestra que se pidio, sin detalles de piezas.</p>
+      <section id="historyList" class="list"></section>
+    </section>
+
+    <section id="fleetScreen" class="screen">
+      <form id="fleetForm" class="panel form-grid admin-only">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <input name="parts" placeholder="Piezas principales" required>
+        <input name="notes" placeholder="Notas">
+        <button class="primary" type="submit">Guardar equipo</button>
+      </form>
+      <section id="fleetList" class="list"></section>
+    </section>
+
+    <section id="operativesScreen" class="screen">
+      <p class="hint">Equipos validados por el administrador y quitados de Reportes Activos.</p>
+      <section id="operativesList" class="list"></section>
+    </section>
+
+    <section id="panelScreen" class="screen">
+      <section class="panel compact">
+        <h2>Panel</h2>
+        <p class="hint">Resumen conectado con reportes, pedidos, flota y validaciones.</p>
+      </section>
+      <section id="panelStats" class="dashboard-grid"></section>
+      <section id="panelActivity" class="list"></section>
+    </section>
+
+    <section id="validationsScreen" class="screen">
+      <section class="panel compact">
+        <h2>Validaciones pendientes</h2>
+        <p class="hint">Equipos informados como operativos por los mecánicos.</p>
+      </section>
+      <section id="validationsList" class="list"></section>
+    </section>
+
+    <section id="usersScreen" class="screen">
+      <section class="panel compact">
+        <h2>GESTIÓN DE MECÁNICOS</h2>
+        <p class="hint">Creá y administrá las cuentas de los mecánicos del taller.</p>
+      </section>
+      <form id="userForm" class="panel form-grid">
+        <input name="name" placeholder="Nombre completo" required>
+        <input name="username" placeholder="Usuario" required>
+        <input name="password" type="password" placeholder="Contraseña" required>
+        <select name="specialty" required>
+          <option value="">Seleccioná especialidad</option>
+          <option value="mecanico-maquinaria-pesada">Mecánico de maquinaria pesada</option>
+          <option value="electricista">Electricista</option>
+          <option value="soldador">Soldador</option>
+          <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
+        </select>
+        <button class="primary" type="submit">Crear usuario</button>
+        <p id="userFeedback" class="hint"></p>
+      </form>
+      <label class="filter-row">
+        Filtrar por especialidad
+        <select id="userFilter"></select>
+      </label>
+      <section id="usersList" class="list"></section>
+    </section>
+
+    <section id="notificationsScreen" class="screen">
+      <section id="notificationsList" class="list"></section>
+      <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
+    </section>
+  </main>
+  <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </section>
+  </div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260713-4"></script>
+  <script src="app.js?v=20260713-4"></script>
+</body>
+</html>
