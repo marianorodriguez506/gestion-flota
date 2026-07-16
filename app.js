@@ -1199,7 +1199,12 @@
         [
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
-          button("Reabrir reporte", "secondary", async () => reopenReport(report))
+          button("Reabrir reporte", "secondary", async () => reopenReport(report)),
+          button("Eliminar", "danger", async () => {
+            if (!confirm(`¿Estás seguro de eliminar el reporte de ${report.equipment}? Esta acción no se puede deshacer.`)) return;
+            await supabase.from("reports").delete().eq("id", report.id);
+            await refreshAllData();
+          })
         ]
       ));
     });
@@ -1780,4 +1785,6 @@
 
   populateUserFilter();
   initializeApp();
+
+  
 })();
