@@ -1200,10 +1200,21 @@
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
           button("Reabrir reporte", "secondary", async () => reopenReport(report)),
-          button("Eliminar", "danger", async () => {
-            if (!confirm(`¿Estás seguro de eliminar el reporte de ${report.equipment}? Esta acción no se puede deshacer.`)) return;
-            await supabase.from("reports").delete().eq("id", report.id);
-            await refreshAllData();
+          button("Reabrir reporte", "secondary", async () => reopenReport(report)),
+          button("Eliminar", "danger", () => {
+            const modal = document.getElementById('modal-eliminar-operativo');
+            document.getElementById('equipo-modal').innerText = report.equipment;
+            modal.showModal();
+
+            document.getElementById('btn-confirmar-operativo').onclick = async () => {
+              modal.close();
+              await supabase.from("reports").delete().eq("id", report.id);
+              await refreshAllData();
+            };
+
+            document.getElementById('btn-cancelar-operativo').onclick = () => {
+              modal.close();
+            };
           })
         ]
       ));
