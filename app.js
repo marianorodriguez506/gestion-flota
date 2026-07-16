@@ -1853,6 +1853,45 @@ supabase
   )
   .subscribe();
 
+  // CENTRO DE NOTIFICACIONES
+  window.showNotificationsHistory = async function() {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error || !data) return showToast("Error al cargar notificaciones");
+
+    const myNotis = data.filter(noti => {
+      if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return false;
+      if (noti.type === "validacion" && !isAdmin()) return false;
+      return true;
+    });
+
+    const options = myNotis.map(noti => {
+      const hora = new Date(noti.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      return { id: noti.id, name: `[${hora}] ${noti.text}` };
+    });
+
+    if (options.length === 0) {
+      options.push({ id: "nada", name: "No hay notificaciones recientes." });
+    }
+
+    await openChoiceModal(
+      "Historial de Avisos", 
+      options, 
+      (item) => `<strong>${item.name}</strong>`, 
+      "Cerrar historial"
+    );
+  };
+
+  function playNotificationSound() {
+    const audio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3");
+    // El .catch evita que el navegador tire el error rojo y frene la app
+    audio.play().catch(e => console.log("Sonido silenciado temporalmente por falta de clic en la pantalla."));
+  }
+
 // 2. Escuchar cambios en las Notificaciones (Para que suene la campanita)
 supabase
   .channel('cambios-notificaciones')
