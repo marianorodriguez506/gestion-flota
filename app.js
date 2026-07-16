@@ -41,6 +41,13 @@
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10)
   };
 
+  // PEDIR PERMISO PARA NOTIFICACIONES NATIVAS (BARRA DEL CELULAR)
+  if ("Notification" in window) {
+    Notification.requestPermission().then(permission => {
+      console.log("Permiso de notificaciones del sistema:", permission);
+    });
+  }
+
   let activeScreen = "auth";
   let realtimeChannel = null;
 
