@@ -1860,34 +1860,24 @@ supabase
     'postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'notifications' }, 
     (payload) => {
+      // ESTA LÍNEA ES NUESTRA TRAMPA:
+      console.log("🔥 SUPABASE MANDÓ ALGO:", payload.new);
+      
       const noti = payload.new;
       
-      // 1. Si yo mismo creé la notificación, no me la muestro
       if (noti.created_by === state.currentUser.id) return;
-
-      // 2. Si la notificación es para alguien específico y no soy yo, la ignoro
       if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
-
-      // 3. Si la notificación es "Para validar", solo la ven los Administradores
       if (noti.type === "validacion" && !isAdmin()) return;
 
-      // --- LÓGICA DE SONIDOS Y VISUALIZACIÓN ---
       let makeNoise = false;
-
       if (isAdmin()) {
-        // El Administrador escucha sonido para TODAS las notificaciones que le llegan
         makeNoise = true;
-      } else {
-        // El Mecánico SOLO escucha sonido si es una asignación directa para él
-        if (noti.type === "asignacion") {
-          makeNoise = true;
-        }
+      } else if (noti.type === "asignacion") {
+        makeNoise = true;
       }
 
-      // Mostramos el cartelito en pantalla
       showToast("🔔 " + noti.text);
       
-      // Hacemos ruido solo si pasamos la prueba
       if (makeNoise) {
         playNotificationSound();
       }
