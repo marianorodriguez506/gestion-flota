@@ -1796,5 +1796,19 @@
   populateUserFilter();
   initializeApp();
 
+  // ESCUCHAR EVENTOS EN TIEMPO REAL (OPERATIVOS)
+supabase
+  .channel('cambios-operativos')
+  .on(
+    'postgres_changes', 
+    { event: '*', schema: 'public', table: 'reports' }, 
+    (payload) => {
+      console.log('¡Actualización detectada en tiempo real!', payload);
+      
+      // Recarga la pantalla al instante para todos los conectados
+      refreshAllData(); 
+    }
+  )
+  .subscribe();
   
 })();
