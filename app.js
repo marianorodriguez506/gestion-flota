@@ -1885,6 +1885,13 @@ supabase
       options.push({ id: "nada", name: "No hay notificaciones recientes." });
     }
 
+// Apagar el globito rojo cuando el usuario lee los avisos
+    const badge = document.getElementById('badgeNotificaciones');
+    if (badge) {
+      badge.style.display = 'none';
+      badge.innerText = '0';
+    }
+    
     await openChoiceModal(
       "Historial de Avisos", 
       options, 
