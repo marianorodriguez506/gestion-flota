@@ -1906,7 +1906,6 @@ supabase
     'postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'notifications' }, 
     (payload) => {
-      // ESTA LÍNEA ES NUESTRA TRAMPA:
       console.log("🔥 SUPABASE MANDÓ ALGO:", payload.new);
       
       const noti = payload.new;
@@ -1926,6 +1925,23 @@ supabase
       
       if (makeNoise) {
         playNotificationSound();
+      }
+
+      // --- NUEVO: GLOBITO ROJO Y NOTIFICACIÓN DEL CELULAR ---
+
+      // 1. Sumar 1 al globito rojo estilo Facebook
+      const badge = document.getElementById('badgeNotificaciones');
+      if (badge) {
+        badge.style.display = 'block';
+        badge.innerText = parseInt(badge.innerText || 0) + 1;
+      }
+
+      // 2. Mandar notificación a la barra del sistema
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Gestión de Flota", {
+          body: noti.text,
+          icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png"
+        });
       }
     }
   )
