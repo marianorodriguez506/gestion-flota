@@ -1457,13 +1457,25 @@
     }
   }
 
-  async function createNotification(text) {
+  function playNotificationSound() {
+    try {
+      // Usamos un sonido de notificación corto y profesional
+      const audio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3");
+      audio.play();
+    } catch (e) {
+      console.log("El navegador bloqueó el sonido automático");
+    }
+  }
+
+  async function createNotification(text, type = "info", targetUserId = null) {
     if (!supabase || !state.currentUser) return;
     await supabase.from("notifications").insert({
       id: uid(),
       text,
       is_read: false,
-      created_by: state.currentUser.id
+      created_by: state.currentUser.id,
+      type: type,
+      target_user_id: targetUserId
     });
   }
 
@@ -1824,20 +1836,46 @@
   populateUserFilter();
   initializeApp();
 
- // ESCUCHAR EVENTOS EN TIEMPO REAL (OPERATIVOS)
-supabase
-  .channel('cambios-operativos')
-  .on(
-    'postgres_changes', 
-    { event: '*', schema: 'public', table: 'reports' }, 
-    (payload) => {
-      console.log('¡Actualización detectada en tiempo real!', payload);
-      refreshAllData(); 
-    }
-  )
-  .subscribe((status) => {
-    // Esto nos va a avisar si se conectó bien o si rebotó
-    console.log("Estado de conexión Realtime:", status);
-  });
+ // ESCUCHAR EVENTOS EN TIEMPO REAL (NOTIFICACIONES)
+  supabase
+    .channel('cambios-notificaciones')
+    .on(
+      'postgres_changes', 
+      { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+      (payload) => {
+        const noti = payload.new;
+        
+        // 1. Si yo mismo creé la notificación, no me la muestro
+        if (noti.created_by === state.currentUser.id) return;
+
+        // 2. Si la notificación es para alguien específico y no soy yo, la ignoro
+        if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
+
+        // 3. Si la notificación es "Para validar", solo la ven los Administradores
+        if (noti.type === "validacion" && !isAdmin()) return;
+
+        // --- LÓGICA DE SONIDOS Y VISUALIZACIÓN ---
+        let makeNoise = false;
+
+        if (isAdmin()) {
+          // El Administrador escucha sonido para TODAS las notificaciones que le llegan
+          makeNoise = true;
+        } else {
+          // El Mecánico SOLO escucha sonido si es una asignación directa para él
+          if (noti.type === "asignacion") {
+            makeNoise = true;
+          }
+        }
+
+        // Mostramos el cartelito en pantalla
+        showToast("🔔 " + noti.text);
+        
+        // Hacemos ruido solo si pasamos la prueba
+        if (makeNoise) {
+          playNotificationSound();
+        }
+      }
+    )
+    .subscribe();
   
 })();
