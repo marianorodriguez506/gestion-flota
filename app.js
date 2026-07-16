@@ -1836,46 +1836,63 @@
   populateUserFilter();
   initializeApp();
 
- // ESCUCHAR EVENTOS EN TIEMPO REAL (NOTIFICACIONES)
-  supabase
-    .channel('cambios-notificaciones')
-    .on(
-      'postgres_changes', 
-      { event: 'INSERT', schema: 'public', table: 'notifications' }, 
-      (payload) => {
-        const noti = payload.new;
-        
-        // 1. Si yo mismo creé la notificación, no me la muestro
-        if (noti.created_by === state.currentUser.id) return;
+ // ==========================================
+// CANALES DE TIEMPO REAL (REPORTE Y NOTIFICACIONES)
+// ==========================================
 
-        // 2. Si la notificación es para alguien específico y no soy yo, la ignoro
-        if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
+// 1. Escuchar cambios en los Reportes (Para que la pantalla se actualice sola)
+supabase
+  .channel('cambios-reportes')
+  .on(
+    'postgres_changes', 
+    { event: '*', schema: 'public', table: 'reports' }, 
+    (payload) => {
+      console.log('¡Cambio en reportes detectado en tiempo real!');
+      refreshAllData();
+    }
+  )
+  .subscribe();
 
-        // 3. Si la notificación es "Para validar", solo la ven los Administradores
-        if (noti.type === "validacion" && !isAdmin()) return;
+// 2. Escuchar cambios en las Notificaciones (Para que suene la campanita)
+supabase
+  .channel('cambios-notificaciones')
+  .on(
+    'postgres_changes', 
+    { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+    (payload) => {
+      const noti = payload.new;
+      
+      // 1. Si yo mismo creé la notificación, no me la muestro
+      if (noti.created_by === state.currentUser.id) return;
 
-        // --- LÓGICA DE SONIDOS Y VISUALIZACIÓN ---
-        let makeNoise = false;
+      // 2. Si la notificación es para alguien específico y no soy yo, la ignoro
+      if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
 
-        if (isAdmin()) {
-          // El Administrador escucha sonido para TODAS las notificaciones que le llegan
+      // 3. Si la notificación es "Para validar", solo la ven los Administradores
+      if (noti.type === "validacion" && !isAdmin()) return;
+
+      // --- LÓGICA DE SONIDOS Y VISUALIZACIÓN ---
+      let makeNoise = false;
+
+      if (isAdmin()) {
+        // El Administrador escucha sonido para TODAS las notificaciones que le llegan
+        makeNoise = true;
+      } else {
+        // El Mecánico SOLO escucha sonido si es una asignación directa para él
+        if (noti.type === "asignacion") {
           makeNoise = true;
-        } else {
-          // El Mecánico SOLO escucha sonido si es una asignación directa para él
-          if (noti.type === "asignacion") {
-            makeNoise = true;
-          }
-        }
-
-        // Mostramos el cartelito en pantalla
-        showToast("🔔 " + noti.text);
-        
-        // Hacemos ruido solo si pasamos la prueba
-        if (makeNoise) {
-          playNotificationSound();
         }
       }
-    )
-    .subscribe();
+
+      // Mostramos el cartelito en pantalla
+      showToast("🔔 " + noti.text);
+      
+      // Hacemos ruido solo si pasamos la prueba
+      if (makeNoise) {
+        playNotificationSound();
+      }
+    }
+  )
+  .subscribe();
   
 })();
