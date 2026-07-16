@@ -990,18 +990,46 @@
   }
 
   async function validateReport(report) {
-    const ok = await openChoiceModal("Validar operativo", [{ id: "ok", name: `Validar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Pasarlo a Operativos.</span>`, "Sin acciones.");
-    if (!ok) return;
-    await updateReport(report.id, {
-      status: "Operativo validado",
-      mechanic_id: null,
-      plan_date: null,
-      validated_by: state.currentUser.name,
-      validated_at: new Date().toISOString()
-    });
-    await createNotification(`${report.equipment} validado operativo por ${state.currentUser.name}`);
-    await refreshAllData();
+  // 1. Abrimos la misma ventanita de texto que usa el mecánico
+  const description = await openTextModal(
+    `Validar ${report.equipment} a Operativo`, 
+    "Qué reparación se realizó (Dejalo en blanco si el mecánico ya lo informó)"
+  );
+  
+  // Si apretás Cancelar, no hacemos nada
+  if (description === null) return; 
+  
+  const note = description.trim();
+  
+  // 2. Preparamos los datos básicos de la validación
+  const updates = {
+    status: "Operativo validado",
+    mechanic_id: null,
+    plan_date: null,
+    validated_by: state.currentUser.name,
+    validated_at: new Date().toISOString()
+  };
+
+  // 3. Si escribiste algo, guardamos tus tareas como reparación
+  if (note) {
+    updates.repair_note = note;
+    updates.repaired_by = state.currentUser.name;
+    updates.repaired_at = new Date().toISOString();
+    updates.operation_note = note;
+    updates.operated_by = state.currentUser.name;
   }
+
+  // 4. Mandamos todo a la base de datos
+  await updateReport(report.id, updates);
+  
+  // 5. Creamos la notificación (con o sin el texto según lo que escribiste)
+  const mensajeNoti = note 
+    ? `${report.equipment} validado por ${state.currentUser.name}: ${note}`
+    : `${report.equipment} validado operativo por ${state.currentUser.name}`;
+    
+  await createNotification(mensajeNoti);
+  await refreshAllData(); // Como tenemos Realtime, esto actualiza la pantalla de todos al instante
+}
 
   async function rejectReport(report) {
     const observation = await openTextModal("Rechazar revisión", "Observación para devolver el trabajo a revisión");
