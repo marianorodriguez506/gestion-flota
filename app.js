@@ -1200,7 +1200,6 @@
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
           button("Reabrir reporte", "secondary", async () => reopenReport(report)),
-          button("Reabrir reporte", "secondary", async () => reopenReport(report)),
           button("Eliminar", "danger", () => {
             const modal = document.getElementById('modal-eliminar-operativo');
             document.getElementById('equipo-modal').innerText = report.equipment;
