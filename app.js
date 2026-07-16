@@ -1943,12 +1943,31 @@ supabase
         badge.innerText = parseInt(badge.innerText || 0) + 1;
       }
 
-      // 2. Mandar notificación a la barra del sistema
+      // 2. Mandar notificación a la barra del sistema (Compu y Celu)
       if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Gestión de Flota", {
+        const titulo = "Gestión de Flota";
+        const opciones = {
           body: noti.text,
-          icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png"
-        });
+          icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png",
+          vibrate: [200, 100, 200] // Hace que el celu vibre
+        };
+
+        // Si el celular tiene un canal de fondo activo (Service Worker)
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(titulo, opciones);
+          }).catch(() => {
+            // Si falla, intentamos el método directo
+            try { new Notification(titulo, opciones); } catch(e) {}
+          });
+        } else {
+          // Método clásico para la computadora
+          try {
+            new Notification(titulo, opciones);
+          } catch (e) {
+            console.log("Fallo al crear notificación directa:", e);
+          }
+        }
       }
     }
   )
