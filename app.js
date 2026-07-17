@@ -1210,7 +1210,15 @@
       el.fleetList.appendChild(empty("No hay equipos cargados."));
       return;
     }
-    state.fleet.forEach((item) => {
+    
+    // Hacemos una copia de la flota y la ordenamos de la A a la Z (alfanuméricamente)
+    const sortedFleet = [...state.fleet].sort((a, b) => {
+      const eqA = a.equipment || "";
+      const eqB = b.equipment || "";
+      return eqA.localeCompare(eqB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    sortedFleet.forEach((item) => {
       const actions = [];
       if (isAdmin()) {
         actions.push(button("Eliminar", "danger", async () => {
@@ -1237,11 +1245,21 @@
       el.operativesList.appendChild(empty("Solo el administrador puede ver Operativos."));
       return;
     }
-    const rows = state.reports.filter((report) => report.status === "Operativo validado");
+    
+    // Filtramos los validados y los ORDENAMOS por fecha (el más nuevo arriba)
+    const rows = state.reports
+      .filter((report) => report.status === "Operativo validado")
+      .sort((a, b) => {
+        const dateA = new Date(a.validatedAt || a.created_at || 0).getTime();
+        const dateB = new Date(b.validatedAt || b.created_at || 0).getTime();
+        return dateB - dateA; // Orden descendente (más nuevo a más viejo)
+      });
+
     if (!rows.length) {
       el.operativesList.appendChild(empty("Todavía no hay equipos validados como operativos."));
       return;
     }
+    
     rows.forEach((report) => {
       el.operativesList.appendChild(card(
         report.equipment,
