@@ -1734,26 +1734,25 @@
     el.fleetForm.reset();
   });
 
-  el.userForm.addEventListener("submit", async (event) => {
+ el.userForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = new FormData(el.userForm);
     const name = form.get("name").trim();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
-    
-    // Capturamos lo que elegiste en el desplegable
-    const especialidadElegida = form.get("specialty").trim();
-    
-    // Asignamos rol y especialidad dependiendo si es admin2 o no
-    const role = (especialidadElegida === "admin2") ? "admin2" : "mecanico";
-    const specialty = (especialidadElegida === "admin2") ? null : especialidadElegida;
-    const accountStatus = "activo";
+    const specialtyInput = form.get("specialty").trim();
 
-    // Verificamos usando especialidadElegida para que no tire error si es admin2
-    if (!name || !username || !password || !especialidadElegida) {
-      el.userFeedback.textContent = "Completá todos los campos.";
+    // 1. Verificamos que TODOS los campos estén llenos
+    if (!name || !username || !password || !specialtyInput) {
+      el.userFeedback.textContent = "Completa nombre, usuario, contrasena y especialidad.";
       return;
     }
+
+    // 2. Si pasó, recién ahí definimos los roles
+    const role = (specialtyInput === "admin2") ? "admin2" : "mecanico";
+    const specialty = (specialtyInput === "admin2") ? "Administracion" : specialtyInput;
+    const accountStatus = "activo";
+
 
     const sessionResult = await supabase.auth.getSession();
     const token = sessionResult.data?.session?.access_token;
