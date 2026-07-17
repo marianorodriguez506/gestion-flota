@@ -1343,6 +1343,13 @@
           await supabase.from("orders").update({ status: order.status === "Cerrado" ? "Pedido" : "Cerrado" }).eq("id", order.id);
           await refreshAllData();
         }));
+        actions.push(button("Eliminar", "danger", async () => {
+          const ok = confirm(`Eliminar el pedido de ${order.equipment}? Esta accion no se puede deshacer.`);
+          if (!ok) return;
+          await supabase.from("orders").delete().eq("id", order.id);
+          await refreshAllData();
+          showToast("Pedido eliminado.");
+        }));
       }
 
       const article = card(order.equipment || "Sin interno", traffic.label, `${order.requesterName} · ${order.destination || "Sin destino"} · ${items.length} repuestos · ${formatDateTime(order.createdAt)}`, actions);
