@@ -61,7 +61,11 @@ module.exports = async function handler(req, res) {
     if (!profileResult.response.ok) return json(res, profileResult.response.status, { error: "No se pudo verificar usuario." });
     const profile = profileResult.data?.[0];
     const isApproved = profile?.status === "aprobado" && (profile.account_status || "activo") !== "inactivo";
-    const isAdmin = ["admin", "administrador"].includes(String(profile?.role || "").toLowerCase());
+    
+    // --- ACÁ ESTÁ LA CORRECCIÓN: Agregamos "admin2" a los permisos de jefe ---
+    const isAdmin = ["admin", "administrador", "admin2"].includes(String(profile?.role || "").toLowerCase());
+    // -------------------------------------------------------------------------
+
     if (!isApproved) return json(res, 403, { error: "Usuario no aprobado." });
 
     const reportResult = await supabaseFetch(
@@ -72,8 +76,6 @@ module.exports = async function handler(req, res) {
     if (!reportResult.response.ok) return json(res, reportResult.response.status, { error: "No se pudo buscar el reporte." });
     const report = reportResult.data?.[0];
     if (!report) return json(res, 404, { error: "Reporte no encontrado." });
-
-  
 
     const allowedForWorker = new Set(["status", "previous_status", "repair_note", "repaired_by", "repaired_at", "operation_note", "operated_by"]);
     const safeUpdates = Object.fromEntries(
