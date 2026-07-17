@@ -767,6 +767,20 @@
 
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
+
+    // 1. Inyectamos el buscador de días dinámicamente
+    let daysSearchContainer = document.getElementById("days-search-container");
+    if (!daysSearchContainer) {
+        daysSearchContainer = document.createElement("div");
+        daysSearchContainer.id = "days-search-container";
+        daysSearchContainer.innerHTML = `<input type="number" id="days-search-input" min="0" placeholder="⏳ Filtrar por antigüedad (ej: 0 para hoy, 1 para ayer...)" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; background-color: #1e1e1e; color: white; font-size: 16px;">`;
+        // Lo insertamos justo antes de la lista de reportes
+        el.immediateList.parentNode.insertBefore(daysSearchContainer, el.immediateList);
+        
+        // Cada vez que se escribe un número, redibujamos la lista
+        document.getElementById("days-search-input").addEventListener("input", renderImmediate);
+    }
+
     el.immediateList.innerHTML = "";
     const reports = visibleActiveReports();
     if (!reports.length) {
@@ -774,17 +788,32 @@
       return;
     }
 
+    // 2. Leemos el buscador de texto y nuestro nuevo buscador de días
     const search = normalizeEquipment(el.activeReportSearch?.value || "").toLowerCase();
-    const filteredReports = reports.filter((report) => {
-      if (!search) return true;
+    const daysInput = document.getElementById("days-search-input")?.value;
+    const maxDays = daysInput !== "" ? parseInt(daysInput, 10) : null;
 
-      return (
-        report.equipment?.toLowerCase().includes(search) ||
-        report.location?.toLowerCase().includes(search) ||
-        report.deviation?.toLowerCase().includes(search)
-      );
+    // 3. Filtramos los reportes aplicando AMBOS filtros
+    const filteredReports = reports.filter((report) => {
+      // Chequeo de texto (por equipo, zona o falla)
+      let matchText = true;
+      if (search) {
+        matchText = report.equipment?.toLowerCase().includes(search) ||
+                    report.location?.toLowerCase().includes(search) ||
+                    report.deviation?.toLowerCase().includes(search);
+      }
+
+      // Chequeo matemático (Días de antigüedad)
+      let matchDays = true;
+      if (maxDays !== null && !isNaN(maxDays)) {
+        // "Si la antigüedad del reporte es menor o igual a lo que puso el usuario, mostralo"
+        matchDays = reportAgeDays(report) <= maxDays;
+      }
+
+      return matchText && matchDays;
     });
 
+    // 4. Dibujamos las tarjetas agrupadas
     const groups = new Map();
     filteredReports
       .sort((a, b) => groupLocation(a).localeCompare(groupLocation(b)) || reportAgeDays(b) - reportAgeDays(a) || a.equipment.localeCompare(b.equipment))
@@ -837,7 +866,7 @@
     groups.forEach((rows, location) => {
       el.immediateList.appendChild(reportGroup(location, rows));
     });
-  }
+}
 
   function renderTomorrow() {
     if (el.planDate && el.planDate.value !== state.planDate) el.planDate.value = state.planDate;
