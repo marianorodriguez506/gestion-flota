@@ -75,22 +75,38 @@ module.exports = async function handler(req, res) {
     if (!workerResult.response.ok) return json(res, workerResult.response.status, { error: "No se pudo verificar mecanico." });
     if (!workerResult.data?.[0]) return json(res, 404, { error: "Mecanico no encontrado." });
 
-    const payload = {
-      worker_id: workerId,
-      date,
-      status
-    };
-
-    const availabilityResult = await supabaseFetch(
+    const existingResult = await supabaseFetch(
       supabaseUrl,
       serviceKey,
-      "/rest/v1/worker_availability?on_conflict=worker_id,date&select=*",
-      {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-        body: JSON.stringify(payload)
-      }
+      `/rest/v1/worker_availability?worker_id=eq.${workerId}&date=eq.${date}&select=id,worker_id,date,status,created_at&limit=1`
     );
+    if (!existingResult.response.ok) {
+      const message = existingResult.data?.message || existingResult.text || "No se pudo buscar disponibilidad.";
+      return json(res, existingResult.response.status, { error: message });
+    }
+
+    const existing = existingResult.data?.[0];
+    const availabilityResult = existing
+      ? await supabaseFetch(
+          supabaseUrl,
+          serviceKey,
+          `/rest/v1/worker_availability?id=eq.${existing.id}&select=*`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ status })
+          }
+        )
+      : await supabaseFetch(
+          supabaseUrl,
+          serviceKey,
+          "/rest/v1/worker_availability?select=*",
+          {
+            method: "POST",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ worker_id: workerId, date, status })
+          }
+        );
 
     if (!availabilityResult.response.ok) {
       const message = availabilityResult.data?.message || availabilityResult.text || "No se pudo guardar disponibilidad.";
