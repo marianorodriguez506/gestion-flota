@@ -1147,15 +1147,37 @@
 
   async function saveAvailability(workerId, status) {
     if (!supabase || !isAdmin()) return;
-    const payload = {
-      worker_id: workerId,
-      date: state.planDate,
-      status
-    };
-    const { error } = await supabase.from("worker_availability").upsert(payload, { onConflict: "worker_id,date" });
-    if (error) showToast("Falta aplicar la migración de disponibilidad en Supabase.");
-  }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      showToast("Volve a iniciar sesion.");
+      return;
+    }
 
+    const response = await fetch("/api/update-availability", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        worker_id: workerId,
+        date: state.planDate,
+        status
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast(result.error || "No se pudo guardar disponibilidad.");
+      return;
+    }
+    if (result.availability) {
+      const next = normalizeAvailability(result.availability);
+      state.availability = state.availability.filter((row) => !(row.workerId === next.workerId && row.date === next.date));
+      state.availability.push(next);
+    }
+    showToast("Disponibilidad guardada.");
+  }
   async function markRepairDone(report) {
     const description = await openTextModal("Informar equipo operativo", "Qué reparación se realizó, repuestos usados, observaciones y horómetro final");
     if (description === null) return;
