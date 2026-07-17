@@ -1369,7 +1369,7 @@
           await refreshAllData();
         }));
       }
-      const roleLabel = user.role === "admin" ? "Administrador" : "Trabajador";
+      let roleLabel = (user.role === "admin" || user.role === "administrador") ? "Administrador" : (user.role === "admin2") ? "Admi 2" : "Trabajador";
       const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
       const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Aprobación: ${statusLabel} · Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
       el.usersList.appendChild(card(user.name, roleLabel, details, actions));
