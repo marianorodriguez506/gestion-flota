@@ -1740,11 +1740,17 @@
     const name = form.get("name").trim();
     const username = form.get("username").trim();
     const password = form.get("password").trim();
-    const specialty = form.get("specialty").trim();
-    const role = "mecanico";
+    
+    // Capturamos lo que elegiste en el desplegable
+    const especialidadElegida = form.get("specialty").trim();
+    
+    // Asignamos rol y especialidad dependiendo si es admin2 o no
+    const role = (especialidadElegida === "admin2") ? "admin2" : "mecanico";
+    const specialty = (especialidadElegida === "admin2") ? null : especialidadElegida;
     const accountStatus = "activo";
 
-    if (!name || !username || !password || !specialty) {
+    // Verificamos usando especialidadElegida para que no tire error si es admin2
+    if (!name || !username || !password || !especialidadElegida) {
       el.userFeedback.textContent = "Completá todos los campos.";
       return;
     }
