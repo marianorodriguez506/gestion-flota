@@ -134,6 +134,11 @@ module.exports = async function handler(req, res) {
       return json(res, 400, { error: "Completa nombre, usuario, contrasena y especialidad." });
     }
 
+    // --- ACÁ ESTÁ LA MAGIA ---
+    // Leemos la especialidad para saber si es Admin 2 o trabajador
+    const finalRole = (specialty === "Administracion") ? "admin2" : "trabajador";
+    // -------------------------
+
     const email = `marianorodriguez506+${normalizedUsername}@gmail.com`;
     const createResponse = await supabaseFetch(supabaseUrl, serviceKey, "/auth/v1/admin/users", {
       method: "POST",
@@ -144,7 +149,7 @@ module.exports = async function handler(req, res) {
         user_metadata: {
           name,
           username: normalizedUsername,
-          role: "trabajador",
+          role: finalRole, // ACÁ SACAMOS LA PALABRA HARDCODEADA
           specialty
         }
       })
@@ -173,7 +178,7 @@ module.exports = async function handler(req, res) {
           user_metadata: {
             name,
             username: normalizedUsername,
-            role: "trabajador",
+            role: finalRole, // ACÁ TAMBIÉN
             specialty
           }
         })
@@ -216,7 +221,7 @@ module.exports = async function handler(req, res) {
       email,
       name,
       username: normalizedUsername,
-      role: "trabajador",
+      role: finalRole, // Y ACÁ LA ESTOCADA FINAL
       status: "pendiente",
       specialty,
       created_at: new Date().toISOString()
