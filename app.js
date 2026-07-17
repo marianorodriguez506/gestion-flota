@@ -632,9 +632,9 @@
     return Boolean(state.currentUser);
   }
 
-  function isAdmin() {
-    return state.currentUser?.role === "admin";
-  }
+ function isAdmin() {
+  return state.currentUser && (state.currentUser.role === "admin" || state.currentUser.role === "administrador" || state.currentUser.role === "admin2");
+}
 
   function approvedWorkers() {
     return state.users.filter((user) => user.status === "aprobado" && user.accountStatus !== "inactivo" && (user.role === "trabajador" || user.role === "mecanico"));
