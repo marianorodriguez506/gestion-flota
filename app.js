@@ -1921,13 +1921,14 @@ supabase
       if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
       if (noti.type === "validacion" && !isAdmin()) return;
 
-      let makeNoise = false;
-      if (isAdmin()) {
-        makeNoise = true;
-      } else if (noti.type === "asignacion") {
-        makeNoise = true;
-      }
+      llet makeNoise = false;
 
+// Si es Admin principal O Admin 2, activamos el ruido
+if (isAdmin() || state.currentUser.role === "admin2") {
+  makeNoise = true;
+} else if (noti.type === "asignacion") {
+  makeNoise = true;
+}
       showToast("🔔 " + noti.text);
       
       if (makeNoise) {
