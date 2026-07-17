@@ -1204,21 +1204,54 @@
     });
   }
 
-  function renderFleet() {
+ function renderFleet() {
+    // 1. Nos aseguramos de que exista el buscador antes de la lista
+    let searchContainer = document.getElementById("fleet-search-container");
+    if (!searchContainer) {
+        searchContainer = document.createElement("div");
+        searchContainer.id = "fleet-search-container";
+        // Le damos estilo oscuro para que combine con tu panel
+        searchContainer.innerHTML = `<input type="text" id="fleet-search-input" placeholder="🔍 Buscar por interno, pieza o nota..." style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; background-color: #1e1e1e; color: white; font-size: 16px;">`;
+        
+        // Lo insertamos justo arriba de la lista de flota
+        el.fleetList.parentNode.insertBefore(searchContainer, el.fleetList);
+
+        // Cada vez que el usuario teclea una letra, redibujamos la lista al instante
+        document.getElementById("fleet-search-input").addEventListener("input", renderFleet);
+    }
+
+    // 2. Limpiamos la lista de tarjetas (pero el buscador queda intacto)
     el.fleetList.innerHTML = "";
+    
     if (!state.fleet.length) {
       el.fleetList.appendChild(empty("No hay equipos cargados."));
       return;
     }
-    
-    // Hacemos una copia de la flota y la ordenamos de la A a la Z (alfanuméricamente)
-    const sortedFleet = [...state.fleet].sort((a, b) => {
-      const eqA = a.equipment || "";
-      const eqB = b.equipment || "";
-      return eqA.localeCompare(eqB, undefined, { numeric: true, sensitivity: 'base' });
-    });
 
-    sortedFleet.forEach((item) => {
+    // 3. Leemos qué escribió el usuario en el buscador
+    const query = document.getElementById("fleet-search-input").value.toLowerCase();
+
+    // 4. Filtramos la flota y la ordenamos alfanuméricamente
+    const filteredAndSortedFleet = [...state.fleet]
+      .filter((item) => {
+         // Buscamos coincidencia en el nombre, las partes o las notas
+         const searchString = `${item.equipment} ${item.parts} ${item.notes}`.toLowerCase();
+         return searchString.includes(query);
+      })
+      .sort((a, b) => {
+        const eqA = a.equipment || "";
+        const eqB = b.equipment || "";
+        return eqA.localeCompare(eqB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+    // 5. Si el filtro no encuentra nada, avisamos
+    if (!filteredAndSortedFleet.length) {
+      el.fleetList.appendChild(empty("No se encontraron equipos con esa búsqueda."));
+      return;
+    }
+
+    // 6. Dibujamos los equipos que pasaron el filtro y el orden
+    filteredAndSortedFleet.forEach((item) => {
       const actions = [];
       if (isAdmin()) {
         actions.push(button("Eliminar", "danger", async () => {
@@ -1236,7 +1269,7 @@
       ])));
       el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
     });
-  }
+}
 
   function renderOperatives() {
     if (!el.operativesList) return;
