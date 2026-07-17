@@ -145,21 +145,21 @@
   }
 
   function normalizeEquipment(value) {
-    const text = String(value || "")
+    const label = String(value || "")
       .trim()
       .toUpperCase()
       .replace(/^T0/, "TO")
-      .replace(/[_\s]+/g, "-")
-      .replace(/-+/g, "-");
+      .replace(/_/g, " ")
+      .replace(/\s+/g, " ");
+    const equipmentCode = label.replace(/\s+/g, "-").replace(/-+/g, "-");
 
-    const match = text.match(/^([A-Z]+)-?(\d{1,4})$/);
-    if (!match) return text;
+    const match = equipmentCode.match(/^([A-Z]+)-?(\d{1,4})$/);
+    if (!match) return label;
 
     const prefix = match[1] === "T0" ? "TO" : match[1];
-    if (!EQUIPMENT_PREFIXES.includes(prefix)) return text;
+    if (!EQUIPMENT_PREFIXES.includes(prefix)) return label;
     return `${prefix}-${match[2]}`;
   }
-
   function normalizeReport(row) {
     return {
       id: row.id,
@@ -827,13 +827,83 @@
       rows,
       (report) => `
         <strong>${report.equipment}</strong>
-        <span>${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · ${displayStatus(report.status)}${report.mechanicId ? ` · Asignado a ${workerName(report.mechanicId)}` : ""}</span>
+        <span>${report.location || "Sin ubicacion"} - ${report.deviation || "Sin falla"} - ${displayStatus(report.status)}${report.mechanicId ? ` - Asignado a ${workerName(report.mechanicId)}` : ""}</span>
       `,
       "No hay reportes activos para asignar."
     );
     if (selected) await assignReportToWorker(selected, worker);
   }
 
+  function openManualPlanModal(worker) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = `Carga manual para ${worker.name}`;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const titleLabel = document.createElement("label");
+      titleLabel.textContent = "Equipo o tarea";
+      const titleInput = document.createElement("input");
+      titleInput.placeholder = "Ej: Recorrido YPF";
+      titleLabel.appendChild(titleInput);
+
+      const detailLabel = document.createElement("label");
+      detailLabel.textContent = "Detalle";
+      const detailInput = document.createElement("textarea");
+      detailInput.placeholder = "Observaciones, lugar o trabajo a realizar";
+      detailLabel.appendChild(detailInput);
+
+      el.modalBody.appendChild(titleLabel);
+      el.modalBody.appendChild(detailLabel);
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Agregar", "primary", () => {
+        const title = titleInput.value.trim();
+        const detail = detailInput.value.trim();
+        closeModal();
+        resolve(title ? { title, detail } : null);
+      }));
+      titleInput.focus();
+    });
+  }
+
+  async function createManualPlanItem(worker) {
+    if (!isAdmin()) return;
+    if (workerAvailability(worker.id) === "franco") {
+      showToast(`${worker.name} esta de franco en este plan.`);
+      return;
+    }
+    const manual = await openManualPlanModal(worker);
+    if (!manual) {
+      showToast("Escribi el equipo o tarea para agregar.");
+      return;
+    }
+
+    const report = {
+      id: uid(),
+      equipment: manual.title,
+      location: "Plan Manana",
+      deviation: manual.detail || "Carga manual del Plan Manana",
+      status: "Pendiente",
+      mechanic_id: worker.id,
+      plan_date: state.planDate,
+      created_at: new Date().toISOString(),
+      created_by: state.currentUser.id
+    };
+
+    const { error } = await supabase.from("reports").insert(report);
+    if (error) {
+      showToast("No se pudo agregar la carga manual: " + error.message);
+      return;
+    }
+
+    await createNotification(`${normalizeEquipment(report.equipment)} agregado manualmente a ${worker.name}`);
+    await refreshAllData();
+    showToast("Carga manual agregada.");
+  }
   function todayLabel() {
     return new Date().toLocaleString("es-AR", {
       day: "2-digit",
@@ -1031,6 +1101,7 @@
       if (isAdmin()) {
         if (available !== "franco") {
           actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
+          actions.push(button("Carga manual", "secondary", async () => createManualPlanItem(worker)));
         }
         actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
