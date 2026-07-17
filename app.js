@@ -1749,7 +1749,7 @@
     }
 
     // 2. Si pasó, recién ahí definimos los roles
-    const role = (specialtyInput === "admin2") ? "admin2" : "mecanico";
+   const role = (specialtyInput === "admin2") ? "administrador" : "mecanico";
     const specialty = (specialtyInput === "admin2") ? "Administracion" : specialtyInput;
     const accountStatus = "activo";
 

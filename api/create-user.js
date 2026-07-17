@@ -136,7 +136,7 @@ module.exports = async function handler(req, res) {
 
     // --- ACÁ ESTÁ LA MAGIA ---
     // Leemos la especialidad para saber si es Admin 2 o trabajador
-    const finalRole = (specialty === "Administracion") ? "admin2" : "trabajador";
+  const finalRole = (specialty === "Administracion") ? "administrador" : "trabajador";
     // -------------------------
 
     const email = `marianorodriguez506+${normalizedUsername}@gmail.com`;
