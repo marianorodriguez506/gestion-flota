@@ -72,6 +72,7 @@
     activeReportSearch: document.getElementById("activeReportSearch"),
     planDate: document.getElementById("planDate"),
     refreshPlanBtn: document.getElementById("refreshPlanBtn"),
+    clearPlanBtn: document.getElementById("clearPlanBtn"),
     copyPlanBtn: document.getElementById("copyPlanBtn"),
     availabilityList: document.getElementById("availabilityList"),
     tomorrowList: document.getElementById("tomorrowList"),
@@ -774,7 +775,15 @@
     return state.users.filter((user) => user.status === "aprobado" && user.accountStatus !== "inactivo" && (user.role === "trabajador" || user.role === "mecanico"));
   }
 
+  function availableWorkers() {
+    return approvedWorkers().filter((worker) => workerAvailability(worker.id) !== "franco");
+  }
+
   async function assignReportToWorker(report, worker) {
+    if (workerAvailability(worker.id) === "franco") {
+      showToast(`${worker.name} esta de franco en este plan.`);
+      return;
+    }
     const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     let updated = null;
     try {
@@ -801,12 +810,12 @@
   async function chooseMechanicForReport(report) {
     const selected = await openChoiceModal(
       "Asignar mecánico",
-      approvedWorkers(),
+      availableWorkers(),
       (worker) => `
         <strong>${worker.name}</strong>
-        <span>${specialtyLabel(worker.specialty)} · ${workerAvailability(worker.id) === "franco" ? "Franco" : "Disponible"}</span>
+        <span>${specialtyLabel(worker.specialty)} - Disponible</span>
       `,
-      "No hay mecánicos activos."
+      "No hay mecanicos disponibles. Revisa los francos del plan."
     );
     if (selected) await assignReportToWorker(report, selected);
   }
@@ -1020,7 +1029,9 @@
       const available = workerAvailability(worker.id);
       const actions = [];
       if (isAdmin()) {
-        actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
+        if (available !== "franco") {
+          actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
+        }
         actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
 
@@ -1059,6 +1070,24 @@
     });
   }
 
+  async function clearPlanAssignments() {
+    if (!isAdmin()) return;
+    const rows = planReports();
+    if (!rows.length) {
+      showToast("No hay asignaciones para limpiar en este plan.");
+      return;
+    }
+    const ok = confirm(`Limpiar ${rows.length} asignaciones del Plan Mañana? Los reportes quedan activos pero sin mecánico.`);
+    if (!ok) return;
+
+    for (const report of rows) {
+      await updateReport(report.id, { mechanic_id: null, plan_date: null });
+    }
+
+    await createNotification(`Plan Mañana ${state.planDate} limpiado por ${state.currentUser.name}`);
+    await refreshAllData();
+    showToast("Asignaciones limpiadas.");
+  }
   function renderMyJobs() {
     if (!el.myJobsList) return;
     el.myJobsList.innerHTML = "";
@@ -1961,6 +1990,7 @@
   });
 
   el.refreshPlanBtn?.addEventListener("click", () => refreshAllData());
+  el.clearPlanBtn?.addEventListener("click", clearPlanAssignments);
   el.copyPlanBtn?.addEventListener("click", () => copyPlan());
 
   el.immediateForm.addEventListener("submit", async (event) => {
