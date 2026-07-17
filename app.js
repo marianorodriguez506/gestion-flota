@@ -704,16 +704,32 @@
     if (name !== "auth" && !isLoggedIn()) {
       name = "auth";
     }
-    if (isLoggedIn() && isAdmin() && name === "myJobs") {
+
+    // Leemos el rol del usuario que entró
+    const role = state.currentUser ? state.currentUser.role : null;
+    const isFullAdmin = role === "admin" || role === "administrador";
+    const isAdmin2 = role === "admin2";
+
+    // 1. Los administradores (Jefe y Admi 2) no entran a "Mis trabajos" de mecánicos
+    if (isLoggedIn() && (isFullAdmin || isAdmin2) && name === "myJobs") {
       name = "home";
     }
-    if (isLoggedIn() && !isAdmin() && ["panel", "validations", "operatives", "users"].includes(name)) {
+
+    // 2. Los mecánicos comunes NO pueden entrar a NADA del panel de control
+    if (isLoggedIn() && !isFullAdmin && !isAdmin2 && ["panel", "validations", "operatives", "users"].includes(name)) {
       name = "home";
     }
+
+    // 3. LA REGLA DE ORO: Si es Admi 2 y quiere entrar a Gestión de Mecánicos ("users"), lo pateamos a "home"
+    if (isLoggedIn() && isAdmin2 && name === "users") {
+      name = "home";
+    }
+
     activeScreen = name;
     Object.values(screens).forEach((screen) => {
       document.getElementById(screen.id).classList.remove("active");
     });
+    
     const screen = screens[name];
     document.getElementById(screen.id).classList.add("active");
     el.screenTitle.textContent = screen.title;
@@ -721,7 +737,7 @@
     el.backBtn.classList.toggle("hidden", name === "home" || name === "auth");
     el.logoutBtn.classList.toggle("hidden", name === "auth");
     render();
-  }
+}
 
   function renderUserControls() {
     if (!isLoggedIn()) {
