@@ -1128,7 +1128,10 @@
             button("Ver historial", "secondary", () => showReportHistory(report))
           ];
           if (isAdmin() || report.mechanicId === state.currentUser.id) {
-            reportActions.push(button("Marcar reparación realizada", "ok", async () => markRepairDone(report)));
+            reportActions.push(button("Marcar reparacion realizada", "ok", async () => markRepairDone(report)));
+            if (isAdmin()) {
+              reportActions.push(button("Eliminar asignacion", "danger", async () => removePlanAssignment(report)));
+            }
           }
           if (isAdmin() && isOperativeInformedStatus(report.status)) {
             reportActions.push(button("Validar", "primary", async () => validateReport(report)));
@@ -1141,6 +1144,17 @@
     });
   }
 
+  async function removePlanAssignment(report) {
+    if (!isAdmin()) return;
+    const ok = confirm(`Quitar ${report.equipment} del Plan Mañana? El reporte queda activo pero sin mecánico.`);
+    if (!ok) return;
+
+    const updated = await updateReport(report.id, { mechanic_id: null, plan_date: null });
+    mergeReportUpdate(report.id, updated, { mechanicId: null, planDate: "" });
+    await createNotification(`${report.equipment} quitado del Plan Mañana por ${state.currentUser.name}`);
+    await refreshAllData();
+    showToast("Asignación eliminada.");
+  }
   async function clearPlanAssignments() {
     if (!isAdmin()) return;
     const rows = planReports();
