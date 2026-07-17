@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f766e">
   <title>Gestion de Flota</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260717-repuestos">
 </head>
 <body>
   <main class="app">
@@ -16,6 +16,10 @@
         <p class="eyebrow" id="screenLabel">Inicio</p>
         <h1 id="screenTitle">Gestion de Flota</h1>
       </div>
+      <div style="position: relative; display: inline-block; margin-right: 10px;">
+  <button onclick="window.showNotificationsHistory()" style="cursor: pointer; background: transparent; border: 1px solid #0ea5e9; color: #0ea5e9; padding: 5px 15px; border-radius: 5px;">🔔 Avisos</button>
+  <span id="badgeNotificaciones" style="display: none; position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 11px; font-weight: bold; box-shadow: 0 0 5px rgba(0,0,0,0.5);">0</span>
+</div>
       <button id="logoutBtn" class="text-btn hidden" type="button" aria-label="Cerrar sesión">Salir</button>
     </header>
 
@@ -190,16 +194,31 @@
     </section>
 
     <section id="ordersScreen" class="screen">
-      <form id="orderForm" class="panel form-grid">
+      <section class="panel compact order-toolbar">
+        <button id="newOrderBtn" class="primary" type="button">Pedido nuevo</button>
+        <label>
+          Filtrar por mecanico
+          <select id="orderFilter"></select>
+        </label>
+        <label>
+          Filtrar por interno
+          <input id="orderEquipmentFilter" type="text" placeholder="Ej.: CF-38">
+        </label>
+        <label>
+          Destino
+          <select id="orderDestinationFilter">
+            <option value="all">Todos</option>
+            <option value="Añelo">Añelo</option>
+            <option value="Plottier">Plottier</option>
+          </select>
+        </label>
+      </section>
+      <form id="orderForm" class="panel form-grid legacy-order-form hidden">
         <input name="equipment" placeholder="Interno" required>
         <select name="requester"></select>
         <input name="need" placeholder="Que se necesita" required>
         <button class="primary" type="submit">Cargar pedido</button>
       </form>
-      <label class="filter-row">
-        Filtrar por mecanico
-        <select id="orderFilter"></select>
-      </label>
       <section id="ordersList" class="list"></section>
     </section>
 
@@ -255,6 +274,7 @@
           <option value="electricista">Electricista</option>
           <option value="soldador">Soldador</option>
           <option value="mecanico-vehiculos-livianos">Mecánico de vehículos livianos</option>
+          <option value="admin2">Admi 2</option>
         </select>
         <button class="primary" type="submit">Crear usuario</button>
         <p id="userFeedback" class="hint"></p>
@@ -282,6 +302,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260713-4"></script>
-  <script src="app.js?v=20260713-4"></script>
+  <script src="app.js?v=20260717-repuestos"></script>
+  <dialog id="modal-eliminar-operativo" style="background-color: #1a1e23; color: white; border: 1px solid #444; border-radius: 12px; padding: 25px; text-align: center; max-width: 320px; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
+  <h3 style="margin-top: 0; color: #ff4d4d; font-size: 22px;">⚠️ ¿Eliminar?</h3>
+  <p style="color: #ccc; font-size: 16px;">El reporte de <strong><span id="equipo-modal"></span></strong> se borrará para siempre.</p>
+  <div style="display: flex; gap: 12px; justify-content: center; margin-top: 25px;">
+    <button id="btn-cancelar-operativo" style="background-color: #3d444d; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancelar</button>
+    <button id="btn-confirmar-operativo" style="background-color: #ff4d4d; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold;">Eliminar</button>
+  </div>
+</dialog>
 </body>
 </html>

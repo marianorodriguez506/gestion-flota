@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const SPECIALTY_OPTIONS = [
     { value: "mecanico-maquinaria-pesada", label: "Mecánico de maquinaria pesada" },
     { value: "electricista", label: "Electricista" },
@@ -15,7 +15,7 @@
     myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
     tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
     mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
-    orders: { id: "ordersScreen", title: "Pedidos", label: "Solicitudes" },
+    orders: { id: "ordersScreen", title: "Repuestos", label: "Pedidos" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
     operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
@@ -38,7 +38,8 @@
     fleet: [],
     notifications: [],
     availability: [],
-    planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    orderDraft: null
   };
 
   // PEDIR PERMISO PARA NOTIFICACIONES NATIVAS (BARRA DEL CELULAR)
@@ -79,6 +80,9 @@
     mechanicList: document.getElementById("mechanicList"),
     orderForm: document.getElementById("orderForm"),
     orderFilter: document.getElementById("orderFilter"),
+    orderEquipmentFilter: document.getElementById("orderEquipmentFilter"),
+    orderDestinationFilter: document.getElementById("orderDestinationFilter"),
+    newOrderBtn: document.getElementById("newOrderBtn"),
     ordersList: document.getElementById("ordersList"),
     historyList: document.getElementById("historyList"),
     fleetForm: document.getElementById("fleetForm"),
@@ -191,7 +195,43 @@
     });
   }
 
+  function safeJson(value, fallback) {
+    if (Array.isArray(value) || (value && typeof value === "object")) return value;
+    if (!value) return fallback;
+    try {
+      return JSON.parse(value);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function orderRowsFromNeed(need) {
+    const text = String(need || "").trim();
+    if (!text) return [];
+    return text.split(/\s*\/\s*|\r?\n/).map((part) => ({
+      page: "",
+      reference: "",
+      code: "",
+      description: part.trim(),
+      urgentQty: "",
+      stockQty: ""
+    })).filter((row) => row.description);
+  }
+
+  function normalizeOrderRow(row = {}) {
+    return {
+      page: String(row.page || row.pag || ""),
+      reference: String(row.reference || row.referencia || ""),
+      code: String(row.code || row.codigo || ""),
+      description: String(row.description || row.descripcion || row.name || ""),
+      urgentQty: String(row.urgentQty ?? row.urgent_qty ?? ""),
+      stockQty: String(row.stockQty ?? row.stock_qty ?? "")
+    };
+  }
+
   function normalizeOrder(row) {
+    const rawItems = safeJson(row.items, null);
+    const items = (Array.isArray(rawItems) ? rawItems : orderRowsFromNeed(row.need)).map(normalizeOrderRow);
     return {
       id: row.id,
       equipment: normalizeEquipment(row.equipment),
@@ -199,10 +239,13 @@
       requesterName: row.requester_name || "",
       need: row.need || "",
       status: row.status || "Pedido",
-      createdAt: row.created_at || ""
+      destination: row.destination || "",
+      items,
+      whatsappText: row.whatsapp_text || "",
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || ""
     };
   }
-
   function normalizeFleet(row) {
     return {
       id: row.id,
@@ -348,6 +391,97 @@
 
   function fleetItem(equipment) {
     return state.fleet.find((item) => normalizeEquipment(item.equipment) === normalizeEquipment(equipment));
+  }
+
+
+  function orderEditable(order) {
+    return isAdmin() || order.requesterId === state.currentUser?.id;
+  }
+
+  function filledOrderItems(order) {
+    return (order.items || []).map(normalizeOrderRow).filter((item) =>
+      item.page || item.reference || item.code || item.description || item.urgentQty || item.stockQty
+    );
+  }
+
+  function isOrderComplete(order) {
+    if (!order.equipment || !order.destination) return false;
+    const items = filledOrderItems(order);
+    if (!items.length) return false;
+    return items.every((item) =>
+      item.page && item.reference && item.code && item.description && (Number(item.urgentQty) > 0 || Number(item.stockQty) > 0)
+    );
+  }
+
+  function orderTraffic(order) {
+    if (/pedido|recibido|cerrado/i.test(order.status || "")) return { label: order.status || "Pedido", className: "ok", status: "Pedido" };
+    if (isOrderComplete(order)) return { label: "Completo", className: "warn", status: "Completo" };
+    return { label: "Incompleto", className: "danger", status: "Incompleto" };
+  }
+
+  function orderNeedFromItems(items) {
+    const lines = items.map((item) => {
+      const qty = [item.urgentQty ? `Urg ${item.urgentQty}` : "", item.stockQty ? `Stock ${item.stockQty}` : ""].filter(Boolean).join(" / ");
+      return [item.code, item.description, qty].filter(Boolean).join(" - ");
+    }).filter(Boolean);
+    return lines.join(" / ") || "Pedido de repuestos";
+  }
+
+  function orderHistoryItems() {
+    const counts = new Map();
+    state.orders.forEach((order) => {
+      filledOrderItems(order).forEach((item) => {
+        const key = (item.code || item.description).trim().toLowerCase();
+        if (!key) return;
+        const current = counts.get(key) || { ...item, times: 0 };
+        current.times += 1;
+        if (!current.code && item.code) current.code = item.code;
+        if (!current.description && item.description) current.description = item.description;
+        counts.set(key, current);
+      });
+    });
+    return [...counts.values()].sort((a, b) => b.times - a.times || a.description.localeCompare(b.description));
+  }
+
+  function blankOrderItems(count = 30) {
+    return Array.from({ length: count }, () => normalizeOrderRow());
+  }
+
+  function orderDraftFromOrder(order = null) {
+    const items = blankOrderItems();
+    (order?.items || []).slice(0, 30).forEach((item, index) => {
+      items[index] = normalizeOrderRow(item);
+    });
+    return {
+      id: order?.id || null,
+      equipment: order?.equipment || "",
+      requesterId: order?.requesterId || state.currentUser?.id || null,
+      requesterName: order?.requesterName || state.currentUser?.name || "",
+      destination: order?.destination || "Añelo",
+      status: order?.status || "Incompleto",
+      createdAt: order?.createdAt || new Date().toISOString(),
+      items
+    };
+  }
+
+  function setOrderDraftItem(index, key, value) {
+    if (!state.orderDraft?.items[index]) return;
+    state.orderDraft.items[index] = { ...state.orderDraft.items[index], [key]: value };
+  }
+
+  function addHistoryItemToDraft(item) {
+    if (!state.orderDraft) return;
+    const slot = state.orderDraft.items.findIndex((row) => !row.page && !row.reference && !row.code && !row.description && !row.urgentQty && !row.stockQty);
+    const index = slot >= 0 ? slot : Math.min(state.orderDraft.items.length - 1, 29);
+    state.orderDraft.items[index] = normalizeOrderRow(item);
+    renderOrders();
+  }
+
+  function filteredOrderHistory(query) {
+    const text = String(query || "").trim().toLowerCase();
+    const rows = orderHistoryItems();
+    if (!text) return rows.slice(0, 20);
+    return rows.filter((item) => `${item.code} ${item.description} ${item.reference}`.toLowerCase().includes(text)).slice(0, 20);
   }
 
   function openInfoModal(title, rows) {
@@ -1160,31 +1294,47 @@
   }
 
   function renderOrders() {
-    fillSelect(el.orderForm.elements.requester, approvedWorkers());
+    if (el.orderForm?.elements?.requester) fillSelect(el.orderForm.elements.requester, approvedWorkers());
     fillSelect(el.orderFilter, approvedWorkers(), { all: true });
     const selected = el.orderFilter.value || "all";
+    const equipmentFilter = normalizeEquipment(el.orderEquipmentFilter?.value || "");
+    const destinationFilter = el.orderDestinationFilter?.value || "all";
     el.ordersList.innerHTML = "";
-    const rows = state.orders.filter((order) => selected === "all" || order.requesterId === selected);
+
+    const editor = renderOrderEditor();
+    if (editor) el.ordersList.appendChild(editor);
+
+    const rows = state.orders.filter((order) => {
+      const matchesUser = selected === "all" || order.requesterId === selected;
+      const matchesEquipment = !equipmentFilter || order.equipment.includes(equipmentFilter);
+      const matchesDestination = destinationFilter === "all" || order.destination === destinationFilter;
+      return matchesUser && matchesEquipment && matchesDestination;
+    });
+
     if (!rows.length) {
       el.ordersList.appendChild(empty("No hay pedidos cargados."));
       return;
     }
+
     rows.forEach((order) => {
+      const traffic = orderTraffic(order);
+      const items = filledOrderItems(order);
       const actions = [
-        button("Ver detalles", "secondary", () => openInfoModal(`Pedido ${order.equipment}`, [
-          { label: "Interno", value: order.equipment },
-          { label: "Solicitante", value: order.requesterName },
-          { label: "Repuesto / necesidad", value: order.need },
-          { label: "Estado", value: order.status },
-          { label: "Fecha", value: formatDateTime(order.createdAt) }
-        ])),
+        button(orderEditable(order) ? "Ver / editar hoja" : "Ver hoja", "secondary", () => {
+          state.orderDraft = orderDraftFromOrder(order);
+          renderOrders();
+        }),
         button("Copiar WhatsApp", "secondary", async () => copyOrder(order))
       ];
-      if (isAdmin()) {
-        actions.push(button("Marcar pedido", "secondary", async () => {
+
+      if (orderEditable(order)) {
+        actions.push(button("Marcar pedido", "ok", async () => {
           await supabase.from("orders").update({ status: "Pedido" }).eq("id", order.id);
           await refreshAllData();
         }));
+      }
+
+      if (isAdmin()) {
         actions.push(button("Marcar recibido", "ok", async () => {
           await supabase.from("orders").update({ status: "Recibido" }).eq("id", order.id);
           await refreshAllData();
@@ -1194,27 +1344,178 @@
           await refreshAllData();
         }));
       }
-      el.ordersList.appendChild(card(order.equipment, order.status, `${order.requesterName} pidió: ${order.need}`, actions));
+
+      const article = card(order.equipment || "Sin interno", traffic.label, `${order.requesterName} · ${order.destination || "Sin destino"} · ${items.length} repuestos · ${formatDateTime(order.createdAt)}`, actions);
+      article.classList.add("order-card", `order-card-${traffic.className}`);
+      el.ordersList.appendChild(article);
     });
   }
 
-  async function copyOrder(order) {
-    const text = [
+  function renderOrderEditor() {
+    const draft = state.orderDraft;
+    if (!draft) return null;
+    const canEdit = !draft.id || orderEditable(draft);
+    const section = document.createElement("section");
+    section.className = "panel order-editor";
+    section.innerHTML = `
+      <div class="order-editor-head">
+        <div>
+          <p class="eyebrow">Hoja de repuestos</p>
+          <h2>${draft.id ? "Editar pedido" : "Pedido nuevo"}</h2>
+        </div>
+        <button type="button" class="secondary" data-order-cancel>Cerrar</button>
+      </div>
+      <div class="order-info-grid">
+        <label>Interno<input data-order-field="equipment" value="${draft.equipment}" placeholder="Ej.: CF-38"></label>
+        <label>Solicitante<input value="${draft.requesterName}" disabled></label>
+        <label>Fecha<input value="${formatDateTime(draft.createdAt)}" disabled></label>
+        <label>Destino<select data-order-field="destination"><option>Añelo</option><option>Plottier</option></select></label>
+      </div>
+      <div class="sheet-wrap">
+        <table class="order-sheet">
+          <thead><tr><th>Pag.</th><th>Referencia</th><th>Código</th><th>Descripción</th><th>Cant. urgente</th><th>Cant. stock</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <section class="order-history-block">
+        <div class="order-history-head">
+          <h3>Historial</h3>
+          <input data-history-filter type="text" placeholder="Filtrar por palabra clave o código">
+        </div>
+        <div class="order-history-results"></div>
+      </section>
+      <div class="card-actions">
+        ${canEdit ? `<button type="button" class="primary" data-order-save>Guardar hoja</button>` : ``}
+        <button type="button" class="ok" data-order-copy>Copiar WhatsApp</button>
+      </div>
+    `;
+
+    const destination = section.querySelector('[data-order-field="destination"]');
+    destination.value = draft.destination || "Añelo";
+    destination.disabled = !canEdit;
+    destination.addEventListener("change", (event) => { draft.destination = event.target.value; });
+    const equipmentInput = section.querySelector('[data-order-field="equipment"]');
+    equipmentInput.disabled = !canEdit;
+    equipmentInput.addEventListener("input", (event) => { draft.equipment = normalizeEquipment(event.target.value); });
+    section.querySelector("[data-order-cancel]").addEventListener("click", () => { state.orderDraft = null; renderOrders(); });
+    section.querySelector("[data-order-save]")?.addEventListener("click", saveOrderDraft);
+    section.querySelector("[data-order-copy]").addEventListener("click", async () => copyOrder(draft));
+
+    const tbody = section.querySelector("tbody");
+    draft.items.forEach((item, index) => {
+      const tr = document.createElement("tr");
+      [["page", "Pag."], ["reference", "Referencia"], ["code", "Código"], ["description", "Descripción"], ["urgentQty", "Urg."], ["stockQty", "Stock"]].forEach(([key, label]) => {
+        const td = document.createElement("td");
+        const input = document.createElement("input");
+        input.value = item[key] || "";
+        input.placeholder = label;
+        input.disabled = !canEdit;
+        input.addEventListener("input", (event) => setOrderDraftItem(index, key, event.target.value));
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+
+    const filter = section.querySelector("[data-history-filter]");
+    const results = section.querySelector(".order-history-results");
+    const drawHistory = () => {
+      results.innerHTML = "";
+      const rows = filteredOrderHistory(filter.value);
+      if (!rows.length) {
+        results.appendChild(empty("No hay repuestos previos para ese filtro."));
+        return;
+      }
+      rows.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "history-row";
+        row.innerHTML = `<div><strong></strong><span></span></div><small></small><button type="button" class="secondary">Agregar</button>`;
+        row.querySelector("strong").textContent = item.code || "Sin código";
+        row.querySelector("span").textContent = item.description || "Sin descripción";
+        row.querySelector("small").textContent = `${item.times} veces`;
+        const addButton = row.querySelector("button");
+        addButton.disabled = !canEdit;
+        addButton.addEventListener("click", () => addHistoryItemToDraft(item));
+        results.appendChild(row);
+      });
+    };
+    filter.addEventListener("input", drawHistory);
+    drawHistory();
+
+    return section;
+  }
+
+  async function saveOrderDraft() {
+    const draft = state.orderDraft;
+    if (!draft || !state.currentUser) return;
+    if (draft.id && !orderEditable(draft)) {
+      showToast("Solo el solicitante o admin puede editar este pedido.");
+      return;
+    }
+    const items = draft.items.map(normalizeOrderRow);
+    const filledItems = items.filter((item) => item.page || item.reference || item.code || item.description || item.urgentQty || item.stockQty);
+    const orderLike = { ...draft, items: filledItems };
+    const traffic = orderTraffic(orderLike);
+    const payload = {
+      equipment: normalizeEquipment(draft.equipment),
+      requester_id: draft.requesterId || state.currentUser.id,
+      requester_name: draft.requesterName || state.currentUser.name,
+      need: orderNeedFromItems(filledItems),
+      status: traffic.status,
+      destination: draft.destination || "Añelo",
+      items: filledItems,
+      whatsapp_text: generateOrderWhatsAppText({ ...draft, items: filledItems, status: traffic.status }),
+      updated_at: new Date().toISOString()
+    };
+
+    if (!payload.equipment) {
+      showToast("Cargá el interno antes de guardar.");
+      return;
+    }
+
+    if (draft.id) {
+      await supabase.from("orders").update(payload).eq("id", draft.id);
+    } else {
+      await supabase.from("orders").insert({ id: uid(), ...payload, created_at: new Date().toISOString() });
+    }
+    await createNotification(`Pedido de repuestos guardado para ${payload.equipment}`);
+    state.orderDraft = null;
+    await refreshAllData();
+  }
+
+  function generateOrderWhatsAppText(order) {
+    const items = filledOrderItems(order);
+    const urgent = items.filter((item) => Number(item.urgentQty) > 0);
+    const stock = items.filter((item) => Number(item.stockQty) > 0);
+    const lines = [
       "PEDIDO DE REPUESTOS",
       "",
       `Solicita: ${order.requesterName}`,
       `Equipo: ${order.equipment}`,
-      `Estado: ${order.status}`,
-      "",
-      "REPUESTO / NECESIDAD",
-      order.need,
-      "",
-      `Fecha: ${formatDateTime(order.createdAt)}`
-    ].join("\n");
+      `Destino: ${order.destination || "Sin destino"}`,
+      `Estado: ${order.status || orderTraffic(order).label}`,
+      `Fecha: ${formatDateTime(order.createdAt || new Date().toISOString())}`,
+      ""
+    ];
+    const addBlock = (title, rows, qtyKey) => {
+      if (!rows.length) return;
+      lines.push(title);
+      rows.forEach((item) => {
+        lines.push(`- Pag ${item.page || "s/d"} | Ref ${item.reference || "s/d"} | ${item.code || "s/c"} | ${item.description || "Sin descripción"} | Cant: ${item[qtyKey]}`);
+      });
+      lines.push("");
+    };
+    addBlock("URGENTE", urgent, "urgentQty");
+    addBlock("STOCK", stock, "stockQty");
+    if (!urgent.length && !stock.length) lines.push(order.need || "Sin repuestos cargados");
+    return lines.join("\n");
+  }
+
+  async function copyOrder(order) {
+    const text = order.whatsappText || generateOrderWhatsAppText(order);
     const copied = await writeClipboard(text);
     showToast(copied ? "Pedido copiado para WhatsApp." : "No pude copiar el pedido.");
   }
-
   function renderHistory() {
     el.historyList.innerHTML = "";
     if (!state.orders.length) {
@@ -1812,7 +2113,10 @@
     el.orderForm.reset();
   });
 
+  el.newOrderBtn?.addEventListener("click", () => { state.orderDraft = orderDraftFromOrder(); renderOrders(); });
   el.orderFilter.addEventListener("change", renderOrders);
+  el.orderEquipmentFilter?.addEventListener("input", renderOrders);
+  el.orderDestinationFilter?.addEventListener("change", renderOrders);
   el.userFilter.addEventListener("change", renderUsers);
 
   el.fleetForm.addEventListener("submit", async (event) => {
