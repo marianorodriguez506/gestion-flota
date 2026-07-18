@@ -102,7 +102,7 @@
         <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
       </div>
       <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
-      <button id="locationsBtn" class="wide-btn admin-only" type="button">Base de ubicaciones</button>
+      <button id="locationsBtn" class="wide-btn" type="button">Base de ubicaciones</button>
     </section>
     
     <section id="immediateScreen" class="screen">
@@ -293,6 +293,11 @@
       <section class="panel compact">
         <h2>Base de ubicaciones</h2>
         <p class="hint">Ubicaciones GPS guardadas por nombre de lugar.</p>
+        <input id="locationSearch" type="search" placeholder="Buscar ubicacion">
+        <div class="card-actions admin-only">
+          <button id="addLocationGpsBtn" class="primary" type="button">Guardar mi ubicacion</button>
+          <button id="addLocationLinkBtn" class="secondary" type="button">Cargar por link</button>
+        </div>
       </section>
       <section id="locationsList" class="list"></section>
     </section>

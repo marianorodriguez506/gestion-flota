@@ -100,6 +100,9 @@
     usersList: document.getElementById("usersList"),
     usersBtn: document.getElementById("usersBtn"),
     locationsBtn: document.getElementById("locationsBtn"),
+    locationSearch: document.getElementById("locationSearch"),
+    addLocationGpsBtn: document.getElementById("addLocationGpsBtn"),
+    addLocationLinkBtn: document.getElementById("addLocationLinkBtn"),
     locationsList: document.getElementById("locationsList"),
     notificationsList: document.getElementById("notificationsList"),
     clearNotifications: document.getElementById("clearNotifications"),
@@ -465,11 +468,43 @@
       return false;
     }
 
+    const saved = await saveLocationRecord({
+      name: confirmedName,
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy,
+      report_id: report.id,
+      equipment: report.equipment
+    });
+    return Boolean(saved);
+  }
+
+  function parseCoordinatesFromText(value) {
+    const text = String(value || "");
+    const patterns = [
+      /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/i,
+      /@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i,
+      /[?&](?:q|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i,
+      /(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (!match) continue;
+      const latitude = Number(match[1]);
+      const longitude = Number(match[2]);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180) {
+        return { latitude, longitude };
+      }
+    }
+    return null;
+  }
+
+  async function saveLocationRecord(payload) {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
     if (!token) {
       showToast("Volve a iniciar sesion.");
-      return false;
+      return null;
     }
 
     const response = await fetch("/api/save-location", {
@@ -478,28 +513,126 @@
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({
-        name: confirmedName,
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-        report_id: report.id,
-        equipment: report.equipment
-      })
+      body: JSON.stringify(payload)
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       showToast(result.error || "No se pudo guardar ubicacion GPS.");
-      return false;
+      return null;
     }
-
     if (result.location) {
       const next = normalizeSavedLocation(result.location);
       state.savedLocations = state.savedLocations.filter((item) => item.normalizedName !== next.normalizedName);
       state.savedLocations.push(next);
     }
     showToast(result.created ? "Ubicacion GPS guardada." : "Ubicacion GPS ya existia.");
-    return true;
+    return result.location || null;
+  }
+
+  function openLocationLinkModal(title, initial = {}) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const nameLabel = document.createElement("label");
+      nameLabel.textContent = "Nombre de la ubicacion";
+      const nameInput = document.createElement("input");
+      nameInput.value = initial.name || "";
+      nameInput.placeholder = "Ej: Vista";
+      nameLabel.appendChild(nameInput);
+
+      const linkLabel = document.createElement("label");
+      linkLabel.textContent = "Link de Google Maps o coordenadas";
+      const linkInput = document.createElement("textarea");
+      linkInput.value = initial.link || "";
+      linkInput.placeholder = "Ej: https://maps.google.com/?q=-38.123,-68.456";
+      linkLabel.appendChild(linkInput);
+
+      el.modalBody.appendChild(nameLabel);
+      el.modalBody.appendChild(linkLabel);
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", () => {
+        const name = nameInput.value.trim();
+        const coords = parseCoordinatesFromText(linkInput.value);
+        closeModal();
+        resolve(name && coords ? { name, ...coords } : null);
+      }));
+      nameInput.focus();
+    });
+  }
+
+  async function addCurrentLocationManually() {
+    if (!isAdmin()) return;
+    const name = await openLocationConfirmModal("");
+    if (!name) return;
+    let position;
+    try {
+      position = await getBrowserPosition();
+    } catch (error) {
+      showToast(error.message || "No pude obtener la ubicacion del telefono.");
+      return;
+    }
+    await saveLocationRecord({
+      name,
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy
+    });
+    await refreshAllData();
+  }
+
+  async function addLocationFromLink() {
+    if (!isAdmin()) return;
+    const payload = await openLocationLinkModal("Cargar ubicacion por link");
+    if (!payload) {
+      showToast("Pegá un link o coordenadas válidas y un nombre.");
+      return;
+    }
+    await saveLocationRecord(payload);
+    await refreshAllData();
+  }
+
+  async function editSavedLocation(item) {
+    if (!isAdmin()) return;
+    const payload = await openLocationLinkModal("Editar ubicacion", {
+      name: item.name,
+      link: `${item.latitude}, ${item.longitude}`
+    });
+    if (!payload) {
+      showToast("Pegá coordenadas válidas para guardar el cambio.");
+      return;
+    }
+    const { error } = await supabase.from("saved_locations").update({
+      name: payload.name,
+      normalized_name: normalizeLocationText(payload.name),
+      latitude: payload.latitude,
+      longitude: payload.longitude
+    }).eq("id", item.id);
+    if (error) {
+      showToast("No se pudo editar ubicacion: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Ubicacion editada.");
+  }
+
+  async function deleteSavedLocation(item) {
+    if (!isAdmin()) return;
+    const ok = confirm(`Eliminar ubicacion ${item.name}?`);
+    if (!ok) return;
+    const { error } = await supabase.from("saved_locations").delete().eq("id", item.id);
+    if (error) {
+      showToast("No se pudo eliminar ubicacion: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Ubicacion eliminada.");
   }
   function reportLine(report) {
     const mechanic = workerName(report.mechanicId);
@@ -1114,7 +1247,7 @@
       node.classList.toggle("admin-disabled", isAdmin());
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
-    if (el.locationsBtn) el.locationsBtn.style.display = isAdmin() ? "block" : "none";
+    if (el.locationsBtn) el.locationsBtn.style.display = isLoggedIn() ? "block" : "none";
 
   }
 
@@ -2082,21 +2215,31 @@
   function renderLocations() {
     if (!el.locationsList) return;
     el.locationsList.innerHTML = "";
-    if (!isAdmin()) {
-      el.locationsList.appendChild(empty("Solo el administrador puede ver ubicaciones."));
-      return;
-    }
-    const rows = [...state.savedLocations].sort((a, b) => a.name.localeCompare(b.name));
+    const search = normalizeLocationText(el.locationSearch?.value || "");
+    const rows = [...state.savedLocations]
+      .filter((item) => {
+        if (!search) return true;
+        return normalizeLocationText(`${item.name} ${item.sourceEquipment || ""}`).includes(search);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" }));
+
     if (!rows.length) {
-      el.locationsList.appendChild(empty("Todavia no hay ubicaciones guardadas."));
+      el.locationsList.appendChild(empty(search ? "No encontre ubicaciones con ese filtro." : "Todavia no hay ubicaciones guardadas."));
       return;
     }
+
     rows.forEach((item) => {
+      if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)) return;
       const coords = `${item.latitude.toFixed(6)}, ${item.longitude.toFixed(6)}`;
       const details = `${coords}${item.sourceEquipment ? " - Origen: " + item.sourceEquipment : ""}${item.createdAt ? " - " + formatDateTime(item.createdAt) : ""}`;
-      el.locationsList.appendChild(card(item.name, "GPS", details, [
+      const actions = [
         button("Abrir Maps", "primary", () => window.open(`https://www.google.com/maps?q=${item.latitude},${item.longitude}`, "_blank", "noopener"))
-      ]));
+      ];
+      if (isAdmin()) {
+        actions.push(button("Editar", "secondary", () => editSavedLocation(item)));
+        actions.push(button("Eliminar", "danger", () => deleteSavedLocation(item)));
+      }
+      el.locationsList.appendChild(card(item.name, "GPS", details, actions));
     });
   }
   function renderNotifications() {
@@ -2262,6 +2405,9 @@
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
   el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
+  el.locationSearch?.addEventListener("input", renderLocations);
+  el.addLocationGpsBtn?.addEventListener("click", addCurrentLocationManually);
+  el.addLocationLinkBtn?.addEventListener("click", addLocationFromLink);
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
