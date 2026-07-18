@@ -1191,7 +1191,7 @@
     });
   }
 
-  function setScreen(name) {
+  function setScreen(name, options = {}) {
     if (name !== "auth" && !isLoggedIn()) {
       name = "auth";
     }
@@ -1227,6 +1227,15 @@
     el.screenLabel.textContent = screen.label;
     el.backBtn.classList.toggle("hidden", name === "home" || name === "auth");
     el.logoutBtn.classList.toggle("hidden", name === "auth");
+
+    if (options.history !== false && window.history?.pushState) {
+      const nextState = { screen: name };
+      if (options.replaceHistory || !history.state?.screen) {
+        history.replaceState(nextState, "", `#${name}`);
+      } else if (history.state.screen !== name) {
+        history.pushState(nextState, "", `#${name}`);
+      }
+    }
     render();
 }
 
@@ -2372,13 +2381,13 @@
   async function initializeApp() {
     if (!supabase) {
       el.loginError.textContent = "Falta cargar Supabase. Revisá supabase-config.js.";
-      setScreen("auth");
+      setScreen("auth", { replaceHistory: true });
       return;
     }
 
     if (!config.url || !config.anonKey || config.url.includes("your-project") || config.anonKey.includes("your-anon")) {
       el.loginError.textContent = "Configurá los valores de Supabase en supabase-config.js antes de usar la app.";
-      setScreen("auth");
+      setScreen("auth", { replaceHistory: true });
       return;
     }
 
@@ -2387,7 +2396,7 @@
       await loadCurrentUser(session.user.id);
     }
     await refreshAllData();
-    setScreen(state.currentUser ? "home" : "auth");
+    setScreen(state.currentUser ? "home" : "auth", { replaceHistory: true });
 
     realtimeChannel = supabase.channel("fleet-realtime");
     realtimeChannel
@@ -2401,6 +2410,14 @@
       .subscribe();
   }
 
+  el.modalRoot?.addEventListener("click", (event) => {
+    if (event.target === el.modalRoot) closeModal();
+  });
+
+  window.addEventListener("popstate", (event) => {
+    const screen = event.state?.screen || "home";
+    setScreen(screen, { history: false });
+  });
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
