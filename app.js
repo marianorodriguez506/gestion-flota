@@ -22,6 +22,7 @@
     panel: { id: "panelScreen", title: "Panel", label: "Control" },
     validations: { id: "validationsScreen", title: "Validaciones pendientes", label: "Revisión" },
     users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
+    locations: { id: "locationsScreen", title: "Base de ubicaciones", label: "GPS" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
 
@@ -98,6 +99,8 @@
     userFilter: document.getElementById("userFilter"),
     usersList: document.getElementById("usersList"),
     usersBtn: document.getElementById("usersBtn"),
+    locationsBtn: document.getElementById("locationsBtn"),
+    locationsList: document.getElementById("locationsList"),
     notificationsList: document.getElementById("notificationsList"),
     clearNotifications: document.getElementById("clearNotifications"),
     modalRoot: document.getElementById("modalRoot"),
@@ -1111,6 +1114,7 @@
       node.classList.toggle("admin-disabled", isAdmin());
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
+    if (el.locationsBtn) el.locationsBtn.style.display = isAdmin() ? "block" : "none";
 
   }
 
@@ -2074,6 +2078,27 @@
     await refreshAllData();
   }
 
+
+  function renderLocations() {
+    if (!el.locationsList) return;
+    el.locationsList.innerHTML = "";
+    if (!isAdmin()) {
+      el.locationsList.appendChild(empty("Solo el administrador puede ver ubicaciones."));
+      return;
+    }
+    const rows = [...state.savedLocations].sort((a, b) => a.name.localeCompare(b.name));
+    if (!rows.length) {
+      el.locationsList.appendChild(empty("Todavia no hay ubicaciones guardadas."));
+      return;
+    }
+    rows.forEach((item) => {
+      const coords = `${item.latitude.toFixed(6)}, ${item.longitude.toFixed(6)}`;
+      const details = `${coords}${item.sourceEquipment ? " - Origen: " + item.sourceEquipment : ""}${item.createdAt ? " - " + formatDateTime(item.createdAt) : ""}`;
+      el.locationsList.appendChild(card(item.name, "GPS", details, [
+        button("Abrir Maps", "primary", () => window.open(`https://www.google.com/maps?q=${item.latitude},${item.longitude}`, "_blank", "noopener"))
+      ]));
+    });
+  }
   function renderNotifications() {
     el.notificationsList.innerHTML = "";
     if (!state.notifications.length) {
@@ -2105,6 +2130,7 @@
     renderPanel();
     renderValidations();
     renderUsers();
+    renderLocations();
     renderNotifications();
   }
 
@@ -2235,6 +2261,7 @@
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
+  el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
