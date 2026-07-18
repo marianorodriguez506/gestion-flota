@@ -863,7 +863,10 @@
       { label: "Falla", value: report.deviation },
       { label: "Mecánico", value: mechanic ? mechanic.name : "Sin asignar" },
       { label: "Fecha", value: formatDateTime(report.createdAt) },
-      { label: "Días", value: `${days}` }
+      { label: "Días", value: `${days}` },
+      { label: "Trabajo informado", value: report.repairNote },
+      { label: "Informado por", value: report.repairedBy || report.operatedBy },
+      { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) }
     ]);
     el.modalActions.innerHTML = "";
     actions.forEach((action) => {
@@ -1549,6 +1552,9 @@
           ];
           if (isAdmin() || report.mechanicId === state.currentUser.id) {
             reportActions.push(button("Marcar reparacion realizada", "ok", async () => markRepairDone(report)));
+            if (!isOperativeInformedStatus(report.status)) {
+              reportActions.push(button("Informar reparacion parcial", "secondary", async () => reportWorkAndKeepActive(report)));
+            }
             if (isAdmin()) {
               reportActions.push(button("Eliminar asignacion", "danger", async () => removePlanAssignment(report)));
             }
@@ -1621,6 +1627,7 @@
         ];
         if (!isOperativeInformedStatus(report.status)) {
           actions.push(button("Informar equipo operativo", "ok", async () => markRepairDone(report)));
+          actions.push(button("Informar reparacion parcial", "secondary", async () => reportWorkAndKeepActive(report)));
         }
         el.myJobsList.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), actions));
       });
@@ -1704,6 +1711,44 @@
     });
     await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
     await refreshAllData();
+  }
+
+  function reportActiveStatusAfterWork(report) {
+    const current = displayStatus(report.status);
+    if (isOperativeInformedStatus(report.status)) {
+      return report.previousStatus && report.previousStatus !== "PV" ? report.previousStatus : "FS";
+    }
+    if (/^OBS$/i.test(current) || /^FS$/i.test(current)) return current;
+    return "FS";
+  }
+
+  function appendRepairNote(report, note) {
+    const entry = `${state.currentUser.name} realizo: ${note}. Sigue activo / queda probar.`;
+    return report.repairNote ? `${report.repairNote} | ${entry}` : entry;
+  }
+
+  async function reportWorkAndKeepActive(report) {
+    const description = await openTextModal("Informar reparacion parcial", "Que hizo el mecanico y por que sigue activo: queda probar, no quedo OP, falta repuesto, etc.");
+    if (description === null) return;
+    const note = description.trim();
+    if (!note) {
+      showToast("Escribi que trabajo se hizo antes de devolverlo a reportes activos.");
+      return;
+    }
+    const nextStatus = reportActiveStatusAfterWork(report);
+    await saveCurrentLocationForReport(report);
+    await updateReport(report.id, {
+      status: nextStatus,
+      previous_status: nextStatus,
+      mechanic_id: null,
+      plan_date: null,
+      repair_note: appendRepairNote(report, note),
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString()
+    });
+    await createNotification(`${report.equipment} vuelve a reportes activos. ${state.currentUser.name} informo: ${note}`);
+    await refreshAllData();
+    showToast("Trabajo informado y equipo devuelto a reportes activos.");
   }
 
   function showReportHistory(report) {
