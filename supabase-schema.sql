@@ -76,6 +76,18 @@ create table if not exists public.notifications (
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+create table if not exists public.saved_locations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  normalized_name text not null,
+  latitude double precision not null,
+  longitude double precision not null,
+  accuracy double precision,
+  created_by uuid references public.profiles(id) on delete set null,
+  source_report_id uuid references public.reports(id) on delete set null,
+  source_equipment text,
+  created_at timestamptz not null default now()
+);
 
 create index if not exists profiles_username_idx on public.profiles(username);
 create index if not exists reports_mechanic_idx on public.reports(mechanic_id);
@@ -89,6 +101,7 @@ alter table public.orders add column if not exists updated_at timestamptz;
 create index if not exists orders_equipment_idx on public.orders(equipment);
 create index if not exists orders_destination_idx on public.orders(destination);
 create index if not exists notifications_created_by_idx on public.notifications(created_by);
+create index if not exists saved_locations_normalized_name_idx on public.saved_locations(normalized_name);
 create index if not exists worker_availability_worker_date_idx on public.worker_availability(worker_id, date);
 
 alter table public.profiles enable row level security;
@@ -96,6 +109,7 @@ alter table public.reports enable row level security;
 alter table public.orders enable row level security;
 alter table public.fleet_items enable row level security;
 alter table public.notifications enable row level security;
+alter table public.saved_locations enable row level security;
 alter table public.worker_availability enable row level security;
 
 create or replace function private.is_admin()
@@ -404,6 +418,28 @@ create policy notifications_delete_admin_or_self
     )
   );
 
+
+drop policy if exists saved_locations_select_approved on public.saved_locations;
+drop policy if exists saved_locations_insert_approved on public.saved_locations;
+drop policy if exists saved_locations_update_admin on public.saved_locations;
+drop policy if exists saved_locations_delete_admin on public.saved_locations;
+
+create policy saved_locations_select_approved
+  on public.saved_locations for select to authenticated
+  using (private.is_approved_user());
+
+create policy saved_locations_insert_approved
+  on public.saved_locations for insert to authenticated
+  with check (private.is_approved_user() and created_by = auth.uid());
+
+create policy saved_locations_update_admin
+  on public.saved_locations for update to authenticated
+  using (private.is_admin())
+  with check (private.is_admin());
+
+create policy saved_locations_delete_admin
+  on public.saved_locations for delete to authenticated
+  using (private.is_admin());
 drop policy if exists worker_availability_select_approved on public.worker_availability;
 drop policy if exists worker_availability_insert_admin on public.worker_availability;
 drop policy if exists worker_availability_update_admin on public.worker_availability;

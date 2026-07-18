@@ -38,6 +38,7 @@
     fleet: [],
     notifications: [],
     availability: [],
+    savedLocations: [],
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
     orderDraft: null
   };
@@ -274,6 +275,21 @@
     };
   }
 
+
+  function normalizeSavedLocation(row) {
+    return {
+      id: row.id,
+      name: row.name || "",
+      normalizedName: row.normalized_name || normalizeLocationText(row.name),
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      accuracy: row.accuracy == null ? null : Number(row.accuracy),
+      createdBy: row.created_by || "",
+      sourceReportId: row.source_report_id || "",
+      sourceEquipment: row.source_equipment || "",
+      createdAt: row.created_at || ""
+    };
+  }
   function activeReports() {
     return state.reports.filter((report) => report.status !== "Operativo validado" && !isTechnicalObservation(report));
   }
@@ -368,6 +384,120 @@
     return location;
   }
 
+
+  function savedLocationForName(name) {
+    const key = normalizeLocationText(name);
+    if (!key) return null;
+    return state.savedLocations.find((item) => item.normalizedName === key) || null;
+  }
+
+  function mapsButton(report) {
+    return button("Mapa", "secondary", () => openReportMap(report));
+  }
+
+  function openReportMap(report) {
+    const saved = savedLocationForName(report.location);
+    if (!saved || !Number.isFinite(saved.latitude) || !Number.isFinite(saved.longitude)) {
+      showToast(`Todavia no hay ubicacion GPS guardada para ${report.location || "este lugar"}.`);
+      return;
+    }
+    const url = `https://www.google.com/maps?q=${saved.latitude},${saved.longitude}`;
+    window.open(url, "_blank", "noopener");
+  }
+
+  function getBrowserPosition() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Este navegador no permite obtener GPS."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 30000
+      });
+    });
+  }
+
+  function openLocationConfirmModal(defaultName) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = `Seguro estas en ${defaultName || "esta ubicacion"}?`;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const label = document.createElement("label");
+      label.textContent = "Nombre de la ubicacion";
+      const input = document.createElement("input");
+      input.value = defaultName || "";
+      input.placeholder = "Ej: Vista";
+      label.appendChild(input);
+      el.modalBody.appendChild(label);
+
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Aceptar", "primary", () => {
+        const name = input.value.trim();
+        closeModal();
+        resolve(name || null);
+      }));
+      input.focus();
+      input.select();
+    });
+  }
+
+  async function saveCurrentLocationForReport(report) {
+    const defaultName = report.location || "";
+    const confirmedName = await openLocationConfirmModal(defaultName);
+    if (!confirmedName) return false;
+
+    let position;
+    try {
+      position = await getBrowserPosition();
+    } catch (error) {
+      showToast(error.message || "No pude obtener la ubicacion del telefono.");
+      return false;
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      showToast("Volve a iniciar sesion.");
+      return false;
+    }
+
+    const response = await fetch("/api/save-location", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        name: confirmedName,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        report_id: report.id,
+        equipment: report.equipment
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast(result.error || "No se pudo guardar ubicacion GPS.");
+      return false;
+    }
+
+    if (result.location) {
+      const next = normalizeSavedLocation(result.location);
+      state.savedLocations = state.savedLocations.filter((item) => item.normalizedName !== next.normalizedName);
+      state.savedLocations.push(next);
+    }
+    showToast(result.created ? "Ubicacion GPS guardada." : "Ubicacion GPS ya existia.");
+    return true;
+  }
   function reportLine(report) {
     const mechanic = workerName(report.mechanicId);
     const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
@@ -848,6 +978,12 @@
       titleInput.placeholder = "Ej: Recorrido YPF";
       titleLabel.appendChild(titleInput);
 
+      const locationLabel = document.createElement("label");
+      locationLabel.textContent = "Ubicacion";
+      const locationInput = document.createElement("input");
+      locationInput.placeholder = "Ej: Vista";
+      locationLabel.appendChild(locationInput);
+
       const detailLabel = document.createElement("label");
       detailLabel.textContent = "Detalle";
       const detailInput = document.createElement("textarea");
@@ -855,6 +991,7 @@
       detailLabel.appendChild(detailInput);
 
       el.modalBody.appendChild(titleLabel);
+      el.modalBody.appendChild(locationLabel);
       el.modalBody.appendChild(detailLabel);
       el.modalActions.appendChild(button("Cancelar", "secondary", () => {
         closeModal();
@@ -862,9 +999,10 @@
       }));
       el.modalActions.appendChild(button("Agregar", "primary", () => {
         const title = titleInput.value.trim();
+        const location = locationInput.value.trim();
         const detail = detailInput.value.trim();
         closeModal();
-        resolve(title ? { title, detail } : null);
+        resolve(title ? { title, location, detail } : null);
       }));
       titleInput.focus();
     });
@@ -885,7 +1023,7 @@
     const report = {
       id: uid(),
       equipment: manual.title,
-      location: "Plan Manana",
+      location: manual.location || "Plan Manana",
       deviation: manual.detail || "Carga manual del Plan Manana",
       status: "Pendiente",
       mechanic_id: worker.id,
@@ -900,6 +1038,7 @@
       return;
     }
 
+    await saveCurrentLocationForReport(report);
     await createNotification(`${normalizeEquipment(report.equipment)} agregado manualmente a ${worker.name}`);
     await refreshAllData();
     showToast("Carga manual agregada.");
@@ -1124,6 +1263,7 @@
       } else {
         workerRows.forEach((report) => {
           const reportActions = [
+            mapsButton(report),
             button("Ver detalles", "secondary", () => showReportDetails(report)),
             button("Ver historial", "secondary", () => showReportHistory(report))
           ];
@@ -1191,6 +1331,7 @@
       el.myJobsList.appendChild(heading);
       rows.forEach((report) => {
         const actions = [
+          mapsButton(report),
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
           button("Solicitar repuesto", "secondary", () => {
@@ -1271,6 +1412,7 @@
       showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
       return;
     }
+    await saveCurrentLocationForReport(report);
     await updateReport(report.id, {
       status: "PV",
       previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
@@ -1973,13 +2115,14 @@
 
   async function refreshAllData() {
     if (!supabase) return;
-    const [profiles, reports, orders, fleet, notifications, availability] = await Promise.all([
+    const [profiles, reports, orders, fleet, notifications, availability, savedLocations] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("reports").select("*").order("created_at", { ascending: false }),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
       supabase.from("notifications").select("*").order("created_at", { ascending: false }),
-      supabase.from("worker_availability").select("*").eq("date", state.planDate)
+      supabase.from("worker_availability").select("*").eq("date", state.planDate),
+      supabase.from("saved_locations").select("*").order("created_at", { ascending: false })
     ]);
 
     state.users = (profiles.data || []).map(normalizeUser);
@@ -1988,6 +2131,7 @@
     state.fleet = (fleet.data || []).map(normalizeFleet);
     state.notifications = (notifications.data || []).map(normalizeNotification);
     state.availability = (availability.data || []).map(normalizeAvailability);
+    state.savedLocations = (savedLocations.data || []).map(normalizeSavedLocation);
 
     if (state.currentUser) {
       const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
@@ -2081,6 +2225,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "saved_locations" }, () => refreshAllData())
       .subscribe();
   }
 
