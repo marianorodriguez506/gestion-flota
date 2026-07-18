@@ -187,11 +187,17 @@
 
     <section id="mechanicScreen" class="screen">
       <form id="mechanicForm" class="panel form-grid">
+        <h3>Crear reporte del equipo</h3>
         <input name="equipment" placeholder="Interno" required>
-        <input name="deviation" placeholder="Desvio / observacion" required>
+        <textarea name="deviation" placeholder="Desvios / observaciones, uno por linea" required></textarea>
         <textarea name="notes" placeholder="Detalle del mecanico"></textarea>
-        <button class="primary" type="submit">Guardar observacion</button>
+        <button class="primary" type="submit">Guardar reporte del equipo</button>
       </form>
+      <section class="panel compact">
+        <h3>Historial del equipo</h3>
+        <div id="mechanicEquipmentHistory" class="list compact-list"></div>
+      </section>
+      <h3>Monitor de movimientos</h3>
       <section id="mechanicList" class="list"></section>
     </section>
 

@@ -84,6 +84,7 @@
     tomorrowList: document.getElementById("tomorrowList"),
     myJobsList: document.getElementById("myJobsList"),
     mechanicForm: document.getElementById("mechanicForm"),
+    mechanicEquipmentHistory: document.getElementById("mechanicEquipmentHistory"),
     mechanicList: document.getElementById("mechanicList"),
     orderForm: document.getElementById("orderForm"),
     orderFilter: document.getElementById("orderFilter"),
@@ -1897,11 +1898,41 @@
     }
   }
 
-  function renderMechanicReports() {
-    el.mechanicList.innerHTML = "";
+  function mechanicReportRows() {
     const rows = state.reports.filter((row) => isTechnicalObservation(row) || row.operationNote);
+    return rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+
+  function renderMechanicEquipmentHistory() {
+    if (!el.mechanicEquipmentHistory || !el.mechanicForm) return;
+    el.mechanicEquipmentHistory.innerHTML = "";
+    const equipment = normalizeEquipment(el.mechanicForm.elements.equipment?.value || "");
+    if (!equipment) {
+      el.mechanicEquipmentHistory.appendChild(empty("Escribi un interno para ver su historial."));
+      return;
+    }
+    const rows = relatedReports(equipment).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     if (!rows.length) {
-      el.mechanicList.appendChild(empty("No hay observaciones cargadas."));
+      el.mechanicEquipmentHistory.appendChild(empty("Ese equipo no tiene movimientos cargados."));
+      return;
+    }
+    rows.slice(0, 12).forEach((row) => {
+      el.mechanicEquipmentHistory.appendChild(card(
+        row.equipment,
+        displayStatus(row.status),
+        `${formatDateTime(row.createdAt)} - ${row.location || "Sin ubicacion"} - ${row.deviation || "Sin falla"}${row.repairNote ? " - Reparacion: " + row.repairNote : ""}`,
+        [button("Ver detalles", "secondary", () => showReportDetails(row))]
+      ));
+    });
+  }
+
+  function renderMechanicReports() {
+    if (!el.mechanicList) return;
+    el.mechanicList.innerHTML = "";
+    renderMechanicEquipmentHistory();
+    const rows = mechanicReportRows();
+    if (!rows.length) {
+      el.mechanicList.appendChild(empty("No hay movimientos cargados."));
       return;
     }
     rows.forEach((row) => {
@@ -1912,7 +1943,7 @@
           await createNotification(`${row.equipment} convertido a reporte activo por ${state.currentUser.name}`);
           await refreshAllData();
         }));
-        actions.push(button("Marcar solucionado", "ok", async () => {
+        actions.push(button("Realizado", "ok", async () => {
           const note = await openTextModal("Solucionar observación", "Qué se hizo");
           if (note === null) return;
           await updateReport(row.id, {
@@ -2668,6 +2699,7 @@
   el.locationSearch?.addEventListener("input", renderLocations);
   el.addLocationGpsBtn?.addEventListener("click", addCurrentLocationManually);
   el.addLocationLinkBtn?.addEventListener("click", addLocationFromLink);
+  el.mechanicForm?.elements?.equipment?.addEventListener("input", renderMechanicEquipmentHistory);
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
@@ -2802,18 +2834,36 @@
     event.preventDefault();
     if (!state.currentUser) return;
     const form = new FormData(el.mechanicForm);
-    await supabase.from("reports").insert({
+    const equipment = normalizeEquipment(form.get("equipment"));
+    const deviations = String(form.get("deviation") || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const note = String(form.get("notes") || "").trim();
+    if (!equipment || !deviations.length) {
+      showToast("Carga el interno y al menos un desvio.");
+      return;
+    }
+
+    const createdAt = new Date().toISOString();
+    const payload = deviations.map((deviation) => ({
       id: uid(),
-      equipment: normalizeEquipment(form.get("equipment")),
-      deviation: form.get("deviation").trim(),
-      operation_note: form.get("notes").trim(),
-      status: "Observación técnica",
-      created_at: new Date().toISOString(),
+      equipment,
+      deviation,
+      operation_note: note,
+      status: "Observacion tecnica",
+      created_at: createdAt,
       created_by: state.currentUser.id
-    });
-    await createNotification(`Nueva observación técnica en ${normalizeEquipment(form.get("equipment"))}`);
+    }));
+    const { error } = await supabase.from("reports").insert(payload);
+    if (error) {
+      showToast("No se pudo guardar el reporte: " + error.message);
+      return;
+    }
+    await createNotification(`${deviations.length} movimiento${deviations.length === 1 ? "" : "s"} tecnico${deviations.length === 1 ? "" : "s"} en ${equipment}`);
     await refreshAllData();
     el.mechanicForm.reset();
+    renderMechanicEquipmentHistory();
   });
 
   el.orderForm.addEventListener("submit", async (event) => {
