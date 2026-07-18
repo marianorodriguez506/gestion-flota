@@ -697,11 +697,15 @@
     return lines.join(" / ") || "Pedido de repuestos";
   }
 
+  function orderHistoryKey(item) {
+    return String(item?.code || item?.description || "").trim().toLowerCase();
+  }
+
   function orderHistoryItems() {
     const counts = new Map();
     state.orders.forEach((order) => {
       filledOrderItems(order).forEach((item) => {
-        const key = (item.code || item.description).trim().toLowerCase();
+        const key = orderHistoryKey(item);
         if (!key) return;
         const current = counts.get(key) || { ...item, times: 0 };
         current.times += 1;
@@ -754,6 +758,37 @@
     return rows.filter((item) => `${item.code} ${item.description} ${item.reference}`.toLowerCase().includes(text)).slice(0, 20);
   }
 
+  async function deleteOrderHistoryItem(item) {
+    if (!isAdmin()) return;
+    const key = orderHistoryKey(item);
+    if (!key) return;
+    const label = item.code || item.description || "este repuesto";
+    const ok = confirm(`Eliminar ${label} del historial? Se quitara de todos los pedidos donde figure.`);
+    if (!ok) return;
+
+    let touched = 0;
+    for (const order of state.orders) {
+      const originalItems = filledOrderItems(order);
+      const nextItems = originalItems.filter((row) => orderHistoryKey(row) !== key);
+      if (nextItems.length === originalItems.length) continue;
+      const need = orderNeedFromItems(nextItems);
+      const payload = {
+        items: nextItems,
+        need,
+        whatsapp_text: need,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await supabase.from("orders").update(payload).eq("id", order.id);
+      if (error) {
+        showToast("No se pudo eliminar del historial: " + error.message);
+        return;
+      }
+      touched += 1;
+    }
+
+    await refreshAllData();
+    showToast(touched ? "Repuesto eliminado del historial." : "No encontre ese repuesto en el historial.");
+  }
   function openInfoModal(title, rows) {
     el.modalTitle.textContent = title;
     el.modalBody.innerHTML = "";
@@ -1870,6 +1905,35 @@
         const addButton = row.querySelector("button");
         addButton.disabled = !canEdit;
         addButton.addEventListener("click", () => addHistoryItemToDraft(item));
+        if (isAdmin()) {
+          row.title = "Mantener presionado para eliminar del historial";
+          let longPressTimer = null;
+          let longPressHandled = false;
+          const clearLongPress = () => {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = null;
+            row.classList.remove("pressing");
+          };
+          row.addEventListener("pointerdown", (event) => {
+            if (event.target.closest("button")) return;
+            longPressHandled = false;
+            row.classList.add("pressing");
+            longPressTimer = setTimeout(async () => {
+              longPressHandled = true;
+              clearLongPress();
+              await deleteOrderHistoryItem(item);
+            }, 700);
+          });
+          row.addEventListener("pointerup", clearLongPress);
+          row.addEventListener("pointerleave", clearLongPress);
+          row.addEventListener("pointercancel", clearLongPress);
+          row.addEventListener("contextmenu", async (event) => {
+            event.preventDefault();
+            clearLongPress();
+            if (longPressHandled) return;
+            await deleteOrderHistoryItem(item);
+          });
+        }
         results.appendChild(row);
       });
     };

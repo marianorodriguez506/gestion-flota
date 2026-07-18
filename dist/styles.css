@@ -860,6 +860,11 @@ label {
   min-height: 36px;
 }
 
+.history-row.pressing {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+
 @media (min-width: 680px) {
   .order-toolbar {
     grid-template-columns: 1fr 1fr 1fr 1fr;
