@@ -902,9 +902,9 @@
         <span class="report-mechanic"></span>
       </div>
       <div class="report-row-actions">
-        <button type="button" class="secondary compact-more">Más</button>
       </div>
     `;
+    row.title = "Mantener presionado para ver opciones";
     row.querySelector("strong").textContent = report.equipment;
     row.querySelector(".report-status").textContent = displayStatus(report.status);
     const age = row.querySelector(".age-pill");
@@ -913,8 +913,34 @@
     row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
     row.querySelector(".report-mechanic").textContent = mechanic ? mechanic.name : "Sin asignar";
     const actionBox = row.querySelector(".report-row-actions");
-    (quickActions || []).forEach((action) => actionBox.insertBefore(action, actionBox.firstChild));
-    row.querySelector(".compact-more").addEventListener("click", () => showReportMenu(report, actions));
+    (quickActions || []).forEach((action) => actionBox.appendChild(action));
+    let longPressTimer = null;
+    let longPressHandled = false;
+    const clearLongPress = () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
+      longPressTimer = null;
+      row.classList.remove("pressing");
+    };
+    const openMenu = () => showReportMenu(report, actions);
+    row.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button")) return;
+      longPressHandled = false;
+      row.classList.add("pressing");
+      longPressTimer = setTimeout(() => {
+        longPressHandled = true;
+        clearLongPress();
+        openMenu();
+      }, 650);
+    });
+    row.addEventListener("pointerup", clearLongPress);
+    row.addEventListener("pointerleave", clearLongPress);
+    row.addEventListener("pointercancel", clearLongPress);
+    row.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      clearLongPress();
+      if (longPressHandled) return;
+      openMenu();
+    });
     return row;
   }
 
@@ -1133,7 +1159,7 @@
     });
   }
 
-  function openTextModal(title, placeholder) {
+  function openTextModal(title, placeholder, initialValue = "") {
     return new Promise((resolve) => {
       el.modalTitle.textContent = title;
       el.modalBody.innerHTML = "";
@@ -1143,6 +1169,7 @@
 
       const textarea = document.createElement("textarea");
       textarea.placeholder = placeholder || "";
+      textarea.value = initialValue || "";
       el.modalBody.appendChild(textarea);
 
       el.modalActions.appendChild(button("Cancelar", "secondary", () => {
@@ -1763,11 +1790,11 @@
 
   async function editReport(report) {
     if (!isAdmin()) return;
-    const location = await openTextModal("Editar ubicación", report.location || "");
+    const location = await openTextModal("Editar ubicación", "Ubicación", report.location || "");
     if (location === null) return;
-    const deviation = await openTextModal("Editar falla / desvío", report.deviation || "");
+    const deviation = await openTextModal("Editar falla / desvío", "Falla / desvío", report.deviation || "");
     if (deviation === null) return;
-    const status = await openTextModal("Editar estado", displayStatus(report.status));
+    const status = await openTextModal("Editar estado", "Estado", displayStatus(report.status));
     if (status === null) return;
     await updateReport(report.id, {
       location: location.trim(),

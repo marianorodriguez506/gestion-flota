@@ -463,6 +463,11 @@ label {
   border-bottom: 0;
 }
 
+.report-row.pressing {
+  background: rgba(59, 130, 246, .08);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
 .report-main,
 .report-summary {
   min-width: 0;
