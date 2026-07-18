@@ -53,6 +53,9 @@
 
   let activeScreen = "auth";
   let realtimeChannel = null;
+  let modalCancelHandler = null;
+  let notificationsModalOpen = false;
+  let notificationsModalResolve = null;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
@@ -627,7 +630,7 @@
 
   async function deleteSavedLocation(item) {
     if (!isAdmin()) return;
-    const ok = confirm(`Eliminar ubicacion ${item.name}?`);
+    const ok = await openConfirmModal("Eliminar ubicaci\u00f3n", `Eliminar ubicaci\u00f3n ${item.name}?`, "Eliminar");
     if (!ok) return;
     const { error } = await supabase.from("saved_locations").delete().eq("id", item.id);
     if (error) {
@@ -763,7 +766,7 @@
     const key = orderHistoryKey(item);
     if (!key) return;
     const label = item.code || item.description || "este repuesto";
-    const ok = confirm(`Eliminar ${label} del historial? Se quitara de todos los pedidos donde figure.`);
+    const ok = await openConfirmModal("Eliminar repuesto", `Eliminar ${label} del historial? Se quitar\u00e1 de todos los pedidos donde figure.`, "Eliminar");
     if (!ok) return;
 
     let touched = 0;
@@ -988,11 +991,95 @@
 
   function closeModal() {
     if (!el.modalRoot) return;
+    modalCancelHandler = null;
     el.modalRoot.classList.add("hidden");
     el.modalRoot.setAttribute("aria-hidden", "true");
     el.modalTitle.textContent = "";
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
+  }
+
+  function cancelModal() {
+    const handler = modalCancelHandler;
+    closeModal();
+    if (handler) handler();
+  }
+
+  function openConfirmModal(title, message, confirmLabel = "Eliminar") {
+    return new Promise((resolve) => {
+      modalCancelHandler = () => resolve(false);
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const box = document.createElement("div");
+      box.className = "confirm-box";
+      const text = document.createElement("p");
+      text.textContent = message;
+      box.appendChild(text);
+      el.modalBody.appendChild(box);
+
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(false);
+      }));
+      el.modalActions.appendChild(button(confirmLabel, "danger", () => {
+        closeModal();
+        resolve(true);
+      }));
+    });
+  }
+
+  function closeNotificationsModal(value = null) {
+    if (!notificationsModalOpen) return;
+    notificationsModalOpen = false;
+    const resolve = notificationsModalResolve;
+    notificationsModalResolve = null;
+    closeModal();
+    if (resolve) resolve(value);
+  }
+
+  function closeNotificationsModalFromUi(value = null) {
+    const hasNotificationHistory = window.history?.state?.modal === "notifications";
+    closeNotificationsModal(value);
+    if (hasNotificationHistory) {
+      history.back();
+    }
+  }
+
+  function openNotificationsModal(title, rows, renderRow, emptyText) {
+    return new Promise((resolve) => {
+      notificationsModalOpen = true;
+      notificationsModalResolve = resolve;
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const list = document.createElement("div");
+      list.className = "modal-list";
+      if (!rows.length) {
+        list.appendChild(empty(emptyText || "No hay notificaciones."));
+      }
+      rows.forEach((row) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice-btn";
+        btn.innerHTML = renderRow(row);
+        btn.addEventListener("click", () => closeNotificationsModalFromUi(row));
+        list.appendChild(btn);
+      });
+      el.modalBody.appendChild(list);
+
+      el.modalActions.appendChild(button("Cerrar", "secondary", () => closeNotificationsModalFromUi(null)));
+
+      if (window.history?.pushState) {
+        history.pushState({ screen: activeScreen, modal: "notifications" }, "", location.hash || `#${activeScreen}`);
+      }
+    });
   }
 
   function openChoiceModal(title, rows, renderRow, emptyText) {
@@ -1470,7 +1557,7 @@
 
   async function removePlanAssignment(report) {
     if (!isAdmin()) return;
-    const ok = confirm(`Quitar ${report.equipment} del Plan Mañana? El reporte queda activo pero sin mecánico.`);
+    const ok = await openConfirmModal("Quitar asignaci\u00f3n", `Quitar ${report.equipment} del Plan Ma\u00f1ana? El reporte queda activo pero sin mec\u00e1nico.`, "Quitar");
     if (!ok) return;
 
     const updated = await updateReport(report.id, { mechanic_id: null, plan_date: null });
@@ -1486,7 +1573,7 @@
       showToast("No hay asignaciones para limpiar en este plan.");
       return;
     }
-    const ok = confirm(`Limpiar ${rows.length} asignaciones del Plan Mañana? Los reportes quedan activos pero sin mecánico.`);
+    const ok = await openConfirmModal("Limpiar asignaciones", `Limpiar ${rows.length} asignaciones del Plan Ma\u00f1ana? Los reportes quedan activos pero sin mec\u00e1nico.`, "Limpiar");
     if (!ok) return;
 
     for (const report of rows) {
@@ -1806,7 +1893,7 @@
           await refreshAllData();
         }));
         actions.push(button("Eliminar", "danger", async () => {
-          const ok = confirm(`Eliminar el pedido de ${order.equipment}? Esta accion no se puede deshacer.`);
+          const ok = await openConfirmModal("Eliminar pedido", `Eliminar el pedido de ${order.equipment}? Esta acci\u00f3n no se puede deshacer.`, "Eliminar");
           if (!ok) return;
           await supabase.from("orders").delete().eq("id", order.id);
           await refreshAllData();
@@ -2475,10 +2562,23 @@
   }
 
   el.modalRoot?.addEventListener("click", (event) => {
-    if (event.target === el.modalRoot) closeModal();
+    if (event.target !== el.modalRoot) return;
+    if (notificationsModalOpen) {
+      closeNotificationsModalFromUi(null);
+      return;
+    }
+    if (modalCancelHandler) {
+      cancelModal();
+      return;
+    }
+    closeModal();
   });
 
   window.addEventListener("popstate", (event) => {
+    if (notificationsModalOpen) {
+      closeNotificationsModal(null);
+      return;
+    }
     const screen = event.state?.screen || "home";
     setScreen(screen, { history: false });
   });
@@ -2844,7 +2944,7 @@ supabase
       badge.innerText = '0';
     }
     
-    await openChoiceModal(
+    await openNotificationsModal(
       "Historial de Notificaciones",
       options, 
       (item) => `<strong>${item.name}</strong>`, 
