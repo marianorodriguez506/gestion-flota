@@ -214,6 +214,20 @@
         <h2>Tareas realizadas</h2>
         <p class="hint">Historial libre de trabajos hechos por mecanicos, aunque no vengan de un reporte.</p>
       </section>
+      <section class="panel compact order-toolbar">
+        <label>
+          Fecha
+          <input id="doneTaskDateFilter" type="date">
+        </label>
+        <label>
+          Mecanico
+          <select id="doneTaskMechanicFilter"></select>
+        </label>
+        <label>
+          Buscar
+          <input id="doneTaskSearchFilter" type="text" placeholder="Interno, grupo o tarea">
+        </label>
+      </section>
       <section id="doneTasksList" class="list"></section>
     </section>
 

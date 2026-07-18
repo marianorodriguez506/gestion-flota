@@ -89,6 +89,9 @@
     mechanicEquipmentHistory: document.getElementById("mechanicEquipmentHistory"),
     mechanicList: document.getElementById("mechanicList"),
     doneTaskForm: document.getElementById("doneTaskForm"),
+    doneTaskDateFilter: document.getElementById("doneTaskDateFilter"),
+    doneTaskMechanicFilter: document.getElementById("doneTaskMechanicFilter"),
+    doneTaskSearchFilter: document.getElementById("doneTaskSearchFilter"),
     doneTasksList: document.getElementById("doneTasksList"),
     baseEquipmentForm: document.getElementById("baseEquipmentForm"),
     baseEquipmentList: document.getElementById("baseEquipmentList"),
@@ -1976,8 +1979,17 @@
   }
 
   function doneTaskRows() {
+    const selectedDate = el.doneTaskDateFilter?.value || "";
+    const selectedMechanic = el.doneTaskMechanicFilter?.value || "all";
+    const query = String(el.doneTaskSearchFilter?.value || "").trim().toLowerCase();
     return state.reports
       .filter((report) => report.status === "Tarea realizada")
+      .filter((report) => !selectedDate || String(report.createdAt || "").slice(0, 10) === selectedDate)
+      .filter((report) => selectedMechanic === "all" || report.createdBy === selectedMechanic)
+      .filter((report) => {
+        if (!query) return true;
+        return `${report.equipment} ${report.location} ${report.deviation} ${report.operationNote} ${userName(report.createdBy)}`.toLowerCase().includes(query);
+      })
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
@@ -2019,17 +2031,34 @@
 
   function renderDoneTasks() {
     if (!el.doneTasksList) return;
+    if (el.doneTaskMechanicFilter) {
+      const workers = state.users
+        .filter((user) => user.role === "trabajador" || user.role === "mecanico" || user.id === state.currentUser?.id)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      fillSelect(el.doneTaskMechanicFilter, workers, { all: true });
+    }
     el.doneTasksList.innerHTML = "";
     const rows = doneTaskRows();
     if (!rows.length) {
       el.doneTasksList.appendChild(empty("No hay tareas realizadas todavia."));
       return;
     }
+    const groups = new Map();
     rows.forEach((report) => {
-      el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, [
-        button("Ver detalles", "secondary", () => showReportDetails(report)),
-        button("Ver historial", "secondary", () => showReportHistory(report))
-      ]));
+      const day = String(report.createdAt || "").slice(0, 10) || "Sin fecha";
+      if (!groups.has(day)) groups.set(day, []);
+      groups.get(day).push(report);
+    });
+    groups.forEach((items, day) => {
+      const heading = document.createElement("h3");
+      heading.textContent = day === "Sin fecha" ? day : new Date(`${day}T00:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
+      el.doneTasksList.appendChild(heading);
+      items.forEach((report) => {
+        el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, [
+          button("Ver detalles", "secondary", () => showReportDetails(report)),
+          button("Ver historial", "secondary", () => showReportHistory(report))
+        ]));
+      });
     });
   }
 
@@ -2804,6 +2833,9 @@
   el.addLocationGpsBtn?.addEventListener("click", addCurrentLocationManually);
   el.addLocationLinkBtn?.addEventListener("click", addLocationFromLink);
   el.mechanicForm?.elements?.equipment?.addEventListener("input", renderMechanicEquipmentHistory);
+  el.doneTaskDateFilter?.addEventListener("change", renderDoneTasks);
+  el.doneTaskMechanicFilter?.addEventListener("change", renderDoneTasks);
+  el.doneTaskSearchFilter?.addEventListener("input", renderDoneTasks);
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
