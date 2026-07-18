@@ -204,9 +204,15 @@
     </section>
 
     <section id="doneTasksScreen" class="screen">
+      <form id="doneTaskForm" class="panel form-grid">
+        <h3>Cargar tarea realizada</h3>
+        <input name="target" placeholder="Interno, grupo o lugar" required>
+        <textarea name="task" placeholder="Que hizo el mecanico" required></textarea>
+        <button class="primary" type="submit">Guardar tarea realizada</button>
+      </form>
       <section class="panel compact">
         <h2>Tareas realizadas</h2>
-        <p class="hint">Trabajos cerrados y realizados, separados por equipo y desvio.</p>
+        <p class="hint">Historial libre de trabajos hechos por mecanicos, aunque no vengan de un reporte.</p>
       </section>
       <section id="doneTasksList" class="list"></section>
     </section>

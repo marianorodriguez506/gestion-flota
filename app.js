@@ -88,6 +88,7 @@
     mechanicForm: document.getElementById("mechanicForm"),
     mechanicEquipmentHistory: document.getElementById("mechanicEquipmentHistory"),
     mechanicList: document.getElementById("mechanicList"),
+    doneTaskForm: document.getElementById("doneTaskForm"),
     doneTasksList: document.getElementById("doneTasksList"),
     baseEquipmentForm: document.getElementById("baseEquipmentForm"),
     baseEquipmentList: document.getElementById("baseEquipmentList"),
@@ -332,6 +333,10 @@
 
   function workerName(workerId) {
     return state.users.find((user) => user.id === workerId)?.name || "Sin asignar";
+  }
+
+  function userName(userId) {
+    return state.users.find((user) => user.id === userId)?.name || "Sin dato";
   }
 
   function planReports() {
@@ -1972,8 +1977,8 @@
 
   function doneTaskRows() {
     return state.reports
-      .filter((report) => report.status === "Operativo validado")
-      .sort((a, b) => new Date(b.validatedAt || b.repairedAt || b.createdAt || 0) - new Date(a.validatedAt || a.repairedAt || a.createdAt || 0));
+      .filter((report) => report.status === "Tarea realizada")
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
   async function markReportDone(report, defaultNote = "") {
@@ -2021,7 +2026,7 @@
       return;
     }
     rows.forEach((report) => {
-      el.doneTasksList.appendChild(card(report.equipment, "Realizado", `${report.deviation || "Sin desvio"} - Hizo: ${report.repairedBy || report.validatedBy || "sin dato"} - ${report.repairNote || "Sin detalle"}`, [
+      el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, [
         button("Ver detalles", "secondary", () => showReportDetails(report)),
         button("Ver historial", "secondary", () => showReportHistory(report))
       ]));
@@ -2963,6 +2968,38 @@
     await refreshAllData();
     el.mechanicForm.reset();
     renderMechanicEquipmentHistory();
+  });
+
+  el.doneTaskForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.currentUser) return;
+    const form = new FormData(el.doneTaskForm);
+    const target = String(form.get("target") || "").trim();
+    const task = String(form.get("task") || "").trim();
+    if (!target || !task) {
+      showToast("Carga a que se hizo y que hizo el mecanico.");
+      return;
+    }
+    const equipment = normalizeEquipment(target) || target;
+    const { error } = await supabase.from("reports").insert({
+      id: uid(),
+      equipment,
+      location: target,
+      deviation: task,
+      operation_note: `Tarea realizada por ${state.currentUser.name}`,
+      status: "Tarea realizada",
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      created_by: state.currentUser.id
+    });
+    if (error) {
+      showToast("No se pudo guardar la tarea: " + error.message);
+      return;
+    }
+    await createNotification(`${state.currentUser.name} cargo tarea realizada en ${target}: ${task}`);
+    await refreshAllData();
+    el.doneTaskForm.reset();
   });
 
   el.baseEquipmentForm?.addEventListener("submit", async (event) => {
