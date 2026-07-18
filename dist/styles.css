@@ -417,6 +417,10 @@ label {
   gap: 10px;
 }
 
+.base-equipment-card .card-actions {
+  grid-template-columns: 1fr;
+}
+
 .base-deviation-list {
   display: grid;
   overflow: hidden;

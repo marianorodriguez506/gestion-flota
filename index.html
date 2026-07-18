@@ -235,13 +235,13 @@
       <form id="baseEquipmentForm" class="panel form-grid">
         <h3>Equipo que llega a base</h3>
         <input name="equipment" placeholder="Interno" required>
-        <textarea name="deviation" placeholder="Desvios / tareas, uno por linea" required></textarea>
+        <textarea name="deviation" placeholder="Checklist de base, uno por linea. La falla activa se suma sola si existe."></textarea>
         <textarea name="notes" placeholder="Detalle general"></textarea>
         <button class="primary" type="submit">Guardar equipo en base</button>
       </form>
       <section class="panel compact">
         <h3>Equipos en base</h3>
-        <p class="hint">Cada desvio se puede marcar realizado por separado, o cerrar todo el equipo.</p>
+        <p class="hint">Checklist de llegada a base. Cada renglon se puede marcar realizado por separado, o cerrar todo el equipo.</p>
       </section>
       <section id="baseEquipmentList" class="list"></section>
     </section>

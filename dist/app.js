@@ -1978,6 +1978,36 @@
     return /base/i.test(report.location || "") && report.status !== "Operativo validado";
   }
 
+  function activeEquipmentFailures(equipment) {
+    const normalized = normalizeEquipment(equipment);
+    return activeReports()
+      .filter((report) => normalizeEquipment(report.equipment) === normalized)
+      .filter((report) => !isBaseEquipmentReport(report))
+      .filter((report) => report.status !== "Tarea realizada")
+      .filter((report) => report.deviation);
+  }
+
+  function uniqueChecklistLines(lines) {
+    const seen = new Set();
+    return lines
+      .map((line) => String(line || "").trim())
+      .filter(Boolean)
+      .filter((line) => {
+        const key = normalizeLocationText(line);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function existingBaseChecklistKeys(equipment) {
+    const normalized = normalizeEquipment(equipment);
+    return new Set(state.reports
+      .filter((report) => isBaseEquipmentReport(report) && normalizeEquipment(report.equipment) === normalized)
+      .map((report) => normalizeLocationText(report.deviation))
+      .filter(Boolean));
+  }
+
   function doneTaskRows() {
     const selectedDate = el.doneTaskDateFilter?.value || "";
     const selectedMechanic = el.doneTaskMechanicFilter?.value || "all";
@@ -2103,7 +2133,6 @@
 
     const actions = article.querySelector(".card-actions");
     actions.appendChild(button("Todo realizado", "ok", async () => markBaseEquipmentDone(equipment)));
-    actions.appendChild(button("Ver historial", "secondary", () => showReportHistory(items[0])));
     return article;
   }
 
@@ -3108,13 +3137,17 @@
     if (!state.currentUser) return;
     const form = new FormData(el.baseEquipmentForm);
     const equipment = normalizeEquipment(form.get("equipment"));
-    const deviations = String(form.get("deviation") || "")
+    const manualDeviations = String(form.get("deviation") || "")
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
+    const activeFailures = activeEquipmentFailures(equipment).map((report) => report.deviation);
+    const existingBaseKeys = existingBaseChecklistKeys(equipment);
+    const deviations = uniqueChecklistLines([...activeFailures, ...manualDeviations])
+      .filter((line) => !existingBaseKeys.has(normalizeLocationText(line)));
     const note = String(form.get("notes") || "").trim();
     if (!equipment || !deviations.length) {
-      showToast("Carga el interno y al menos un desvio.");
+      showToast("Carga el interno y al menos un renglon nuevo del checklist.");
       return;
     }
     const createdAt = new Date().toISOString();
