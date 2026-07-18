@@ -717,6 +717,28 @@ label {
   margin-top: 12px;
 }
 
+.menu-hint {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17, 24, 39, .72);
+  color: var(--muted);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.modal-actions.action-menu {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.modal-actions.action-menu button {
+  width: 100%;
+  justify-content: center;
+}
+
 .toast {
   position: fixed;
   right: 16px;

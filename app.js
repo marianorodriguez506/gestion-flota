@@ -828,48 +828,56 @@
   }
 
   function showReportDetails(report) {
-    const meta = reportMeta(report);
     const fleet = fleetItem(report.equipment);
-    const orders = relatedOrders(report.equipment);
-    const history = relatedReports(report.equipment);
     openInfoModal(`Detalle ${report.equipment}`, [
       { label: "Interno", value: report.equipment },
-      { label: "Tipo / piezas", value: fleet?.parts },
-      { label: "Ubicación", value: report.location },
-      { label: "Falla / desvío", value: report.deviation },
-      { label: "Estado", value: displayStatus(report.status) },
-      { label: "Prioridad", value: meta.priority },
-      { label: "Horómetro / km", value: report.hourmeter },
-      { label: "Mecánico asignado", value: workerName(report.mechanicId) },
-      { label: "Fecha del reporte", value: formatDateTime(report.createdAt) },
-      { label: "Observaciones", value: meta.notes || report.operationNote },
-      { label: "Reparación informada", value: report.repairNote },
-      { label: "Reparó", value: report.repairedBy || report.operatedBy },
-      { label: "Fecha reparación", value: formatDateTime(report.repairedAt) },
-      { label: "Validó", value: report.validatedBy },
-      { label: "Fecha validación", value: formatDateTime(report.validatedAt) },
-      { label: "Pedidos relacionados", value: orders.length ? orders.map((order) => `${order.status}: ${order.need}`).join(" / ") : "" },
-      { label: "Historial del equipo", value: history.length ? `${history.length} movimientos registrados` : "" },
-      { label: "Ficha de flota", value: fleet ? `${fleet.parts}${fleet.notes ? " · " + fleet.notes : ""}` : "" }
-    ]);
-  }
-
-  function showReportMenu(report, actions) {
-    const mechanic = state.users.find((user) => user.id === report.mechanicId);
-    const days = reportAgeDays(report);
-    openInfoModal(report.equipment, [
-      { label: "Estado", value: displayStatus(report.status) },
-      { label: "Ubicación", value: report.location },
+      { label: "Tipo", value: fleet?.parts },
+      { label: "Ubicacion", value: report.location },
       { label: "Falla", value: report.deviation },
-      { label: "Mecánico", value: mechanic ? mechanic.name : "Sin asignar" },
-      { label: "Fecha", value: formatDateTime(report.createdAt) },
-      { label: "Días", value: `${days}` },
-      { label: "Trabajo informado", value: report.repairNote },
+      { label: "Horometro / km", value: report.hourmeter },
+      { label: "Lo hace", value: workerName(report.mechanicId) },
+      { label: "Reparaciones parciales", value: report.repairNote },
       { label: "Informado por", value: report.repairedBy || report.operatedBy },
       { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) }
     ]);
+  }
+
+  function orderedReportActions(actions) {
+    const priority = [
+      "Ver detalles",
+      "Ver historial",
+      "Editar",
+      "Asignar",
+      "Enviar a Plan Mañana",
+      "Quitar asignación",
+      "Validar operativo",
+      "Validar y pasar a Operativos",
+      "Rechazar / requiere revisión",
+      "Eliminar"
+    ];
+    return [...actions].sort((a, b) => {
+      const ai = priority.indexOf(a.label);
+      const bi = priority.indexOf(b.label);
+      const av = ai === -1 ? priority.length : ai;
+      const bv = bi === -1 ? priority.length : bi;
+      return av - bv;
+    });
+  }
+
+  function showReportMenu(report, actions) {
+    el.modalTitle.textContent = `Opciones ${report.equipment}`;
+    el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
-    actions.forEach((action) => {
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+    el.modalActions.classList.add("action-menu");
+
+    const hint = document.createElement("div");
+    hint.className = "menu-hint";
+    hint.textContent = "Selecciona una accion para este reporte.";
+    el.modalBody.appendChild(hint);
+
+    orderedReportActions(actions).forEach((action) => {
       if (action instanceof HTMLElement) {
         el.modalActions.appendChild(action);
         return;
@@ -881,7 +889,6 @@
     });
     el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
   }
-
   function menuAction(label, className, onClick) {
     return { label, className, onClick };
   }
@@ -1040,6 +1047,7 @@
     el.modalTitle.textContent = "";
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
+    el.modalActions.classList.remove("action-menu");
   }
 
   function cancelModal() {
@@ -1492,8 +1500,7 @@
       ];
       const quickActions = [];
       if (isAdmin()) {
-        quickActions.push(button("Asignar", "primary compact-assign", async () => chooseMechanicForReport(report)));
-        actions.push(menuAction("Asignar", "secondary", async () => chooseMechanicForReport(report)));
+        actions.push(menuAction("Asignar", "primary", async () => chooseMechanicForReport(report)));
         actions.push(menuAction("Editar", "secondary", async () => editReport(report)));
         actions.push(menuAction("Enviar a Plan Mañana", "secondary", async () => {
           await updateReport(report.id, { plan_date: state.planDate });
