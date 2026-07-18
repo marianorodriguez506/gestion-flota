@@ -38,9 +38,16 @@ body {
   margin: 6px 0 12px;
 }
 
-.topbar > div {
+.topbar-title {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.topbar-actions {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .eyebrow {
@@ -137,6 +144,28 @@ label {
   color: var(--accent-dark);
   font-size: 13px;
   white-space: nowrap;
+}
+
+.notification-btn {
+  color: var(--text);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
 .status-pill {

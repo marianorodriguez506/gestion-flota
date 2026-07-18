@@ -62,6 +62,7 @@
     registerForm: document.getElementById("registerForm"),
     registerFeedback: document.getElementById("registerFeedback"),
     logoutBtn: document.getElementById("logoutBtn"),
+    notificationsBtn: document.getElementById("notificationsBtn"),
     userInfoStrip: document.getElementById("userInfoStrip"),
     userNameDisplay: document.getElementById("userNameDisplay"),
     loginError: document.getElementById("loginError"),
@@ -2406,6 +2407,7 @@
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));
+  el.notificationsBtn?.addEventListener("click", () => window.showNotificationsHistory?.());
   el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
   el.locationSearch?.addEventListener("input", renderLocations);
   el.addLocationGpsBtn?.addEventListener("click", addCurrentLocationManually);
@@ -2757,12 +2759,12 @@ supabase
 // Apagar el globito rojo cuando el usuario lee los avisos
     const badge = document.getElementById('badgeNotificaciones');
     if (badge) {
-      badge.style.display = 'none';
+      badge.classList.add('hidden');
       badge.innerText = '0';
     }
     
     await openChoiceModal(
-      "Historial de Avisos", 
+      "Historial de Notificaciones",
       options, 
       (item) => `<strong>${item.name}</strong>`, 
       "Cerrar historial"
@@ -2808,7 +2810,7 @@ supabase
       // 1. Sumar 1 al globito rojo estilo Facebook
       const badge = document.getElementById('badgeNotificaciones');
       if (badge) {
-        badge.style.display = 'block';
+        badge.classList.remove('hidden');
         badge.innerText = parseInt(badge.innerText || 0) + 1;
       }
 
