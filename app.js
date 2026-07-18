@@ -792,6 +792,20 @@
     await refreshAllData();
     showToast(touched ? "Repuesto eliminado del historial." : "No encontre ese repuesto en el historial.");
   }
+
+  async function deleteReport(report, message = "Esta accion elimina el reporte del equipo.") {
+    if (!isAdmin() || !report?.id) return;
+    const ok = await openConfirmModal("Eliminar equipo", `Eliminar ${report.equipment}? ${message}`, "Eliminar");
+    if (!ok) return;
+    const { error } = await supabase.from("reports").delete().eq("id", report.id);
+    if (error) {
+      showToast("No se pudo eliminar el equipo: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Equipo eliminado.");
+  }
+
   function openInfoModal(title, rows) {
     el.modalTitle.textContent = title;
     el.modalBody.innerHTML = "";
@@ -1466,12 +1480,7 @@
           await updateReport(report.id, { mechanic_id: null, plan_date: null });
           await refreshAllData();
         }));
-        actions.push(menuAction("Eliminar", "danger", async () => {
-          const ok = await openChoiceModal("Eliminar reporte", [{ id: "delete", name: `Eliminar ${report.equipment}` }], (item) => `<strong>${item.name}</strong><span>Esta acción quita el reporte activo.</span>`, "Sin acciones.");
-          if (!ok) return;
-          await supabase.from("reports").delete().eq("id", report.id);
-          await refreshAllData();
-        }));
+        actions.push(menuAction("Eliminar", "danger", async () => deleteReport(report, "Esta accion quita el reporte activo.")));
       } else {
         quickActions.push(button("Operativo", "ok compact-assign", async () => markRepairDone(report)));
         actions.push(menuAction("Cambiar a operativo", "ok", async () => markRepairDone(report)));
@@ -2217,21 +2226,7 @@
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
           button("Reabrir reporte", "secondary", async () => reopenReport(report)),
-          button("Eliminar", "danger", () => {
-            const modal = document.getElementById('modal-eliminar-operativo');
-            document.getElementById('equipo-modal').innerText = report.equipment;
-            modal.showModal();
-
-            document.getElementById('btn-confirmar-operativo').onclick = async () => {
-              modal.close();
-              await supabase.from("reports").delete().eq("id", report.id);
-              await refreshAllData();
-            };
-
-            document.getElementById('btn-cancelar-operativo').onclick = () => {
-              modal.close();
-            };
-          })
+          button("Eliminar", "danger", async () => deleteReport(report, "Esta accion quita el operativo validado."))
         ]
       ));
     });
@@ -2253,7 +2248,8 @@
       el.validationsList.appendChild(card(report.equipment, "Operativo informado", `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · ${report.repairNote || "Sin detalle de reparación"}`, [
         button("Ver detalles", "secondary", () => showReportDetails(report)),
         button("Validar operativo", "ok", async () => validateReport(report)),
-        button("Devolver a Reportes activos", "secondary", async () => rejectReport(report))
+        button("Devolver a Reportes activos", "secondary", async () => rejectReport(report)),
+        button("Eliminar", "danger", async () => deleteReport(report, "Esta accion quita el equipo de validaciones pendientes."))
       ]));
     });
   }
