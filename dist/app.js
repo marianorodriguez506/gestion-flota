@@ -15,6 +15,8 @@
     myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
     tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
     mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
+    doneTasks: { id: "doneTasksScreen", title: "Tareas realizadas", label: "Realizado" },
+    baseEquipment: { id: "baseEquipmentScreen", title: "Equipos en base", label: "Base" },
     orders: { id: "ordersScreen", title: "Repuestos", label: "Pedidos" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
@@ -86,6 +88,9 @@
     mechanicForm: document.getElementById("mechanicForm"),
     mechanicEquipmentHistory: document.getElementById("mechanicEquipmentHistory"),
     mechanicList: document.getElementById("mechanicList"),
+    doneTasksList: document.getElementById("doneTasksList"),
+    baseEquipmentForm: document.getElementById("baseEquipmentForm"),
+    baseEquipmentList: document.getElementById("baseEquipmentList"),
     orderForm: document.getElementById("orderForm"),
     orderFilter: document.getElementById("orderFilter"),
     orderEquipmentFilter: document.getElementById("orderEquipmentFilter"),
@@ -1961,6 +1966,98 @@
     });
   }
 
+  function isBaseEquipmentReport(report) {
+    return /base/i.test(report.location || "") && report.status !== "Operativo validado";
+  }
+
+  function doneTaskRows() {
+    return state.reports
+      .filter((report) => report.status === "Operativo validado")
+      .sort((a, b) => new Date(b.validatedAt || b.repairedAt || b.createdAt || 0) - new Date(a.validatedAt || a.repairedAt || a.createdAt || 0));
+  }
+
+  async function markReportDone(report, defaultNote = "") {
+    const note = await openTextModal("Marcar realizado", "Que se hizo", defaultNote || report.repairNote || "");
+    if (note === null) return;
+    const text = note.trim() || "Realizado";
+    await updateReport(report.id, {
+      status: "Operativo validado",
+      repair_note: text,
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString(),
+      validated_by: state.currentUser.name,
+      validated_at: new Date().toISOString()
+    });
+    await createNotification(`${report.equipment} realizado por ${state.currentUser.name}: ${text}`);
+    await refreshAllData();
+  }
+
+  async function markBaseEquipmentDone(equipment) {
+    const rows = state.reports.filter((report) => isBaseEquipmentReport(report) && normalizeEquipment(report.equipment) === normalizeEquipment(equipment));
+    if (!rows.length) return;
+    const note = await openTextModal("Todo realizado", `Que se hizo en ${equipment}`);
+    if (note === null) return;
+    const text = note.trim() || "Todo realizado";
+    for (const report of rows) {
+      await updateReport(report.id, {
+        status: "Operativo validado",
+        repair_note: text,
+        repaired_by: state.currentUser.name,
+        repaired_at: new Date().toISOString(),
+        validated_by: state.currentUser.name,
+        validated_at: new Date().toISOString()
+      });
+    }
+    await createNotification(`${equipment} realizado completo por ${state.currentUser.name}: ${text}`);
+    await refreshAllData();
+  }
+
+  function renderDoneTasks() {
+    if (!el.doneTasksList) return;
+    el.doneTasksList.innerHTML = "";
+    const rows = doneTaskRows();
+    if (!rows.length) {
+      el.doneTasksList.appendChild(empty("No hay tareas realizadas todavia."));
+      return;
+    }
+    rows.forEach((report) => {
+      el.doneTasksList.appendChild(card(report.equipment, "Realizado", `${report.deviation || "Sin desvio"} - Hizo: ${report.repairedBy || report.validatedBy || "sin dato"} - ${report.repairNote || "Sin detalle"}`, [
+        button("Ver detalles", "secondary", () => showReportDetails(report)),
+        button("Ver historial", "secondary", () => showReportHistory(report))
+      ]));
+    });
+  }
+
+  function renderBaseEquipment() {
+    if (!el.baseEquipmentList) return;
+    el.baseEquipmentList.innerHTML = "";
+    const rows = state.reports
+      .filter(isBaseEquipmentReport)
+      .sort((a, b) => normalizeEquipment(a.equipment).localeCompare(normalizeEquipment(b.equipment)) || new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    if (!rows.length) {
+      el.baseEquipmentList.appendChild(empty("No hay equipos en base."));
+      return;
+    }
+    const grouped = new Map();
+    rows.forEach((report) => {
+      const key = normalizeEquipment(report.equipment);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(report);
+    });
+    grouped.forEach((items, equipment) => {
+      el.baseEquipmentList.appendChild(card(equipment, `${items.length} pendiente${items.length === 1 ? "" : "s"}`, items.map((item) => item.deviation || "Sin desvio").join(" / "), [
+        button("Todo realizado", "ok", async () => markBaseEquipmentDone(equipment)),
+        button("Ver historial", "secondary", () => showReportHistory(items[0]))
+      ]));
+      items.forEach((report) => {
+        el.baseEquipmentList.appendChild(card(report.equipment, "Desvio en base", `${report.deviation || "Sin desvio"}${report.operationNote ? " - " + report.operationNote : ""}`, [
+          button("Realizado", "ok", async () => markReportDone(report)),
+          button("Ver detalles", "secondary", () => showReportDetails(report))
+        ]));
+      });
+    });
+  }
+
   function renderOrders() {
     if (el.orderForm?.elements?.requester) fillSelect(el.orderForm.elements.requester, approvedWorkers());
     fillSelect(el.orderFilter, approvedWorkers(), { all: true });
@@ -2535,6 +2632,8 @@
     renderMyJobs();
     renderTomorrow();
     renderMechanicReports();
+    renderDoneTasks();
+    renderBaseEquipment();
     renderOrders();
     renderHistory();
     renderFleet();
@@ -2864,6 +2963,41 @@
     await refreshAllData();
     el.mechanicForm.reset();
     renderMechanicEquipmentHistory();
+  });
+
+  el.baseEquipmentForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.currentUser) return;
+    const form = new FormData(el.baseEquipmentForm);
+    const equipment = normalizeEquipment(form.get("equipment"));
+    const deviations = String(form.get("deviation") || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const note = String(form.get("notes") || "").trim();
+    if (!equipment || !deviations.length) {
+      showToast("Carga el interno y al menos un desvio.");
+      return;
+    }
+    const createdAt = new Date().toISOString();
+    const payload = deviations.map((deviation) => ({
+      id: uid(),
+      equipment,
+      location: "Base",
+      deviation,
+      operation_note: note,
+      status: "Equipo en base",
+      created_at: createdAt,
+      created_by: state.currentUser.id
+    }));
+    const { error } = await supabase.from("reports").insert(payload);
+    if (error) {
+      showToast("No se pudo guardar equipo en base: " + error.message);
+      return;
+    }
+    await createNotification(`${equipment} cargado en base con ${deviations.length} tarea${deviations.length === 1 ? "" : "s"}`);
+    await refreshAllData();
+    el.baseEquipmentForm.reset();
   });
 
   el.orderForm.addEventListener("submit", async (event) => {

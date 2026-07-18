@@ -94,6 +94,8 @@
       </div>
 
       <div class="home-grid">
+        <button class="module-btn" data-screen="doneTasks">Tareas realizadas</button>
+        <button class="module-btn" data-screen="baseEquipment">Equipos en base</button>
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
@@ -199,6 +201,29 @@
       </section>
       <h3>Monitor de movimientos</h3>
       <section id="mechanicList" class="list"></section>
+    </section>
+
+    <section id="doneTasksScreen" class="screen">
+      <section class="panel compact">
+        <h2>Tareas realizadas</h2>
+        <p class="hint">Trabajos cerrados y realizados, separados por equipo y desvio.</p>
+      </section>
+      <section id="doneTasksList" class="list"></section>
+    </section>
+
+    <section id="baseEquipmentScreen" class="screen">
+      <form id="baseEquipmentForm" class="panel form-grid">
+        <h3>Equipo que llega a base</h3>
+        <input name="equipment" placeholder="Interno" required>
+        <textarea name="deviation" placeholder="Desvios / tareas, uno por linea" required></textarea>
+        <textarea name="notes" placeholder="Detalle general"></textarea>
+        <button class="primary" type="submit">Guardar equipo en base</button>
+      </form>
+      <section class="panel compact">
+        <h3>Equipos en base</h3>
+        <p class="hint">Cada desvio se puede marcar realizado por separado, o cerrar todo el equipo.</p>
+      </section>
+      <section id="baseEquipmentList" class="list"></section>
     </section>
 
     <section id="ordersScreen" class="screen">
