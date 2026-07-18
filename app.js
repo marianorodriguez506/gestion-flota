@@ -457,6 +457,8 @@
 
   async function saveCurrentLocationForReport(report) {
     const defaultName = report.location || "";
+    if (savedLocationForName(defaultName)) return true;
+
     const confirmedName = await openLocationConfirmModal(defaultName);
     if (!confirmedName) return false;
 
