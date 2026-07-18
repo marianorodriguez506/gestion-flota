@@ -412,6 +412,45 @@ label {
   margin-top: 10px;
 }
 
+.base-equipment-card {
+  display: grid;
+  gap: 10px;
+}
+
+.base-deviation-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.base-deviation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(17, 24, 39, .45);
+}
+
+.base-deviation-row:last-child {
+  border-bottom: 0;
+}
+
+.base-deviation-text {
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.base-deviation-row button {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .report-group {
   border: 1px solid var(--line);
   border-radius: 8px;

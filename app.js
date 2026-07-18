@@ -1993,40 +1993,118 @@
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
+  function openBaseDoneModal(title, notePlaceholder, initialNote = "") {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const noteLabel = document.createElement("label");
+      noteLabel.textContent = "Que se hizo";
+      const noteInput = document.createElement("textarea");
+      noteInput.placeholder = notePlaceholder;
+      noteInput.value = initialNote || "";
+      noteLabel.appendChild(noteInput);
+
+      const workerLabel = document.createElement("label");
+      workerLabel.textContent = "Quien lo realizo";
+      const workerInput = document.createElement("input");
+      workerInput.placeholder = "Nombre del mecanico, o dejalo en blanco";
+      workerInput.value = state.currentUser?.name || "";
+      workerLabel.appendChild(workerInput);
+
+      el.modalBody.appendChild(noteLabel);
+      el.modalBody.appendChild(workerLabel);
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", () => {
+        const note = noteInput.value.trim();
+        const worker = workerInput.value.trim() || state.currentUser?.name || "";
+        closeModal();
+        resolve({ note, worker });
+      }));
+      noteInput.focus();
+    });
+  }
+
   async function markReportDone(report, defaultNote = "") {
-    const note = await openTextModal("Marcar realizado", "Que se hizo", defaultNote || report.repairNote || "");
-    if (note === null) return;
-    const text = note.trim() || "Realizado";
+    const result = await openBaseDoneModal("Marcar realizado", "Que se hizo", defaultNote || report.repairNote || "");
+    if (result === null) return;
+    const text = result.note || "Realizado";
+    const worker = result.worker || state.currentUser.name;
     await updateReport(report.id, {
       status: "Operativo validado",
       repair_note: text,
-      repaired_by: state.currentUser.name,
+      repaired_by: worker,
       repaired_at: new Date().toISOString(),
       validated_by: state.currentUser.name,
       validated_at: new Date().toISOString()
     });
-    await createNotification(`${report.equipment} realizado por ${state.currentUser.name}: ${text}`);
+    await createNotification(`${report.equipment} realizado por ${worker}: ${text}`);
     await refreshAllData();
   }
 
   async function markBaseEquipmentDone(equipment) {
     const rows = state.reports.filter((report) => isBaseEquipmentReport(report) && normalizeEquipment(report.equipment) === normalizeEquipment(equipment));
     if (!rows.length) return;
-    const note = await openTextModal("Todo realizado", `Que se hizo en ${equipment}`);
-    if (note === null) return;
-    const text = note.trim() || "Todo realizado";
+    const result = await openBaseDoneModal("Todo realizado", `Que se hizo en ${equipment}`);
+    if (result === null) return;
+    const text = result.note || "Todo realizado";
+    const worker = result.worker || state.currentUser.name;
     for (const report of rows) {
       await updateReport(report.id, {
         status: "Operativo validado",
         repair_note: text,
-        repaired_by: state.currentUser.name,
+        repaired_by: worker,
         repaired_at: new Date().toISOString(),
         validated_by: state.currentUser.name,
         validated_at: new Date().toISOString()
       });
     }
-    await createNotification(`${equipment} realizado completo por ${state.currentUser.name}: ${text}`);
+    await createNotification(`${equipment} realizado completo por ${worker}: ${text}`);
     await refreshAllData();
+  }
+
+  function baseEquipmentCard(equipment, items) {
+    const createdBy = [...new Set(items.map((item) => userName(item.createdBy)).filter(Boolean))].join(" / ") || "Sin dato";
+    const createdAt = formatDateTime(items[0]?.createdAt);
+    const notes = [...new Set(items.map((item) => item.operationNote).filter(Boolean))].join(" / ");
+    const article = document.createElement("article");
+    article.className = "card base-equipment-card";
+    article.innerHTML = `
+      <div class="card-head">
+        <h2></h2>
+        <span class="tag warn"></span>
+      </div>
+      <p class="meta"></p>
+      <div class="base-deviation-list"></div>
+      <div class="card-actions"></div>
+    `;
+    article.querySelector("h2").textContent = equipment;
+    article.querySelector(".tag").textContent = `${items.length} pendiente${items.length === 1 ? "" : "s"}`;
+    article.querySelector(".meta").textContent = `Cargo: ${createdBy}${createdAt ? " - " + createdAt : ""}${notes ? " - " + notes : ""}`;
+
+    const list = article.querySelector(".base-deviation-list");
+    items.forEach((report) => {
+      const row = document.createElement("div");
+      row.className = "base-deviation-row";
+      row.innerHTML = `
+        <span class="base-deviation-text"></span>
+        <button class="ok" type="button">Realizado</button>
+      `;
+      row.querySelector(".base-deviation-text").textContent = report.deviation || "Sin desvio";
+      row.querySelector("button").addEventListener("click", async () => markReportDone(report));
+      list.appendChild(row);
+    });
+
+    const actions = article.querySelector(".card-actions");
+    actions.appendChild(button("Todo realizado", "ok", async () => markBaseEquipmentDone(equipment)));
+    actions.appendChild(button("Ver historial", "secondary", () => showReportHistory(items[0])));
+    return article;
   }
 
   function renderDoneTasks() {
@@ -2079,16 +2157,7 @@
       grouped.get(key).push(report);
     });
     grouped.forEach((items, equipment) => {
-      el.baseEquipmentList.appendChild(card(equipment, `${items.length} pendiente${items.length === 1 ? "" : "s"}`, items.map((item) => item.deviation || "Sin desvio").join(" / "), [
-        button("Todo realizado", "ok", async () => markBaseEquipmentDone(equipment)),
-        button("Ver historial", "secondary", () => showReportHistory(items[0]))
-      ]));
-      items.forEach((report) => {
-        el.baseEquipmentList.appendChild(card(report.equipment, "Desvio en base", `${report.deviation || "Sin desvio"}${report.operationNote ? " - " + report.operationNote : ""}`, [
-          button("Realizado", "ok", async () => markReportDone(report)),
-          button("Ver detalles", "secondary", () => showReportDetails(report))
-        ]));
-      });
+      el.baseEquipmentList.appendChild(baseEquipmentCard(equipment, items));
     });
   }
 
