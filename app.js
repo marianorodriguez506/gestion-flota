@@ -338,7 +338,7 @@
 
   function myReports() {
     if (!state.currentUser) return [];
-    return activeReports().filter((report) => report.mechanicId === state.currentUser.id);
+    return activeReports().filter((report) => report.mechanicId === state.currentUser.id && !isOperativeInformedStatus(report.status));
   }
 
   function visibleActiveReports() {
