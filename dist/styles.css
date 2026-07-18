@@ -457,6 +457,11 @@ label {
   align-items: center;
   padding: 9px 10px;
   border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .report-row:last-child {
@@ -734,6 +739,17 @@ label {
 @media (max-width: 520px) {
   .app {
     padding: 12px;
+  }
+
+  .modal-root {
+    align-items: start;
+    place-items: start center;
+    padding-top: max(18px, env(safe-area-inset-top));
+    padding-bottom: max(120px, env(safe-area-inset-bottom));
+  }
+
+  .modal-panel {
+    max-height: min(68dvh, 620px);
   }
 
   .home-grid,
