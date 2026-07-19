@@ -56,6 +56,7 @@
   let activeScreen = "auth";
   let realtimeChannel = null;
   let modalCancelHandler = null;
+  let reportMenuModalOpen = false;
   let notificationsModalOpen = false;
   let notificationsModalResolve = null;
 
@@ -886,9 +887,11 @@
   }
 
   function showReportMenu(report, actions) {
+    reportMenuModalOpen = true;
     el.modalTitle.textContent = `Opciones ${report.equipment}`;
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
+    el.modalRoot.classList.add("report-menu-modal");
     el.modalRoot.classList.remove("hidden");
     el.modalRoot.setAttribute("aria-hidden", "false");
     el.modalActions.classList.add("action-menu");
@@ -904,11 +907,23 @@
         return;
       }
       el.modalActions.appendChild(button(action.label, action.className, async () => {
-        closeModal();
+        closeReportMenuModalFromUi();
         await action.onClick();
       }));
     });
-    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+    el.modalActions.appendChild(button("Cerrar", "secondary", closeReportMenuModalFromUi));
+
+    if (window.history?.pushState) {
+      history.pushState({ screen: activeScreen, modal: "report-menu" }, "", location.hash || `#${activeScreen}`);
+    }
+  }
+
+  function closeReportMenuModalFromUi() {
+    const hasReportMenuHistory = window.history?.state?.modal === "report-menu";
+    closeModal();
+    if (hasReportMenuHistory) {
+      history.back();
+    }
   }
   function menuAction(label, className, onClick) {
     return { label, className, onClick };
@@ -1063,12 +1078,14 @@
   function closeModal() {
     if (!el.modalRoot) return;
     modalCancelHandler = null;
+    reportMenuModalOpen = false;
     el.modalRoot.classList.add("hidden");
     el.modalRoot.setAttribute("aria-hidden", "true");
     el.modalTitle.textContent = "";
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
     el.modalActions.classList.remove("action-menu");
+    el.modalRoot.classList.remove("report-menu-modal", "notifications-modal");
   }
 
   function cancelModal() {
@@ -1128,18 +1145,19 @@
       el.modalTitle.textContent = title;
       el.modalBody.innerHTML = "";
       el.modalActions.innerHTML = "";
+      el.modalRoot.classList.add("notifications-modal");
       el.modalRoot.classList.remove("hidden");
       el.modalRoot.setAttribute("aria-hidden", "false");
 
       const list = document.createElement("div");
-      list.className = "modal-list";
+      list.className = "modal-list notification-list";
       if (!rows.length) {
         list.appendChild(empty(emptyText || "No hay notificaciones."));
       }
       rows.forEach((row) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "choice-btn";
+        btn.className = "choice-btn notification-item";
         btn.innerHTML = renderRow(row);
         btn.addEventListener("click", () => closeNotificationsModalFromUi(row));
         list.appendChild(btn);
@@ -3102,6 +3120,10 @@
       closeNotificationsModalFromUi(null);
       return;
     }
+    if (reportMenuModalOpen) {
+      closeReportMenuModalFromUi();
+      return;
+    }
     if (modalCancelHandler) {
       cancelModal();
       return;
@@ -3112,6 +3134,10 @@
   window.addEventListener("popstate", (event) => {
     if (notificationsModalOpen) {
       closeNotificationsModal(null);
+      return;
+    }
+    if (reportMenuModalOpen) {
+      closeModal();
       return;
     }
     const screen = event.state?.screen || "home";

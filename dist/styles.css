@@ -802,6 +802,120 @@ label {
   justify-content: center;
 }
 
+.report-menu-modal {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(250, 204, 21, .12), transparent 34%),
+    rgba(2, 8, 16, .72);
+  backdrop-filter: blur(5px);
+}
+
+.report-menu-modal .modal-panel,
+.notifications-modal .modal-panel {
+  width: min(100%, 480px);
+  border-color: rgba(148, 163, 184, .25);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(10, 25, 41, .98), rgba(4, 13, 24, .98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .38);
+}
+
+.report-menu-modal .modal-panel h2,
+.notifications-modal .modal-panel h2 {
+  margin-bottom: 10px;
+  color: #f8fafc;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.report-menu-modal .menu-hint {
+  border-color: rgba(250, 204, 21, .28);
+  background: rgba(250, 204, 21, .08);
+  color: #cbd5e1;
+}
+
+.report-menu-modal .modal-actions.action-menu {
+  margin-top: 10px;
+}
+
+.report-menu-modal .modal-actions.action-menu button {
+  min-height: 48px;
+  justify-content: flex-start;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  background: rgba(15, 23, 42, .78);
+  color: #e5e7eb;
+  padding: 0 14px;
+  font-weight: 850;
+  text-align: left;
+}
+
+.report-menu-modal .modal-actions.action-menu button::after {
+  content: ">";
+  margin-left: auto;
+  color: rgba(203, 213, 225, .7);
+  font-weight: 900;
+}
+
+.report-menu-modal .modal-actions.action-menu button.primary {
+  border-color: rgba(59, 130, 246, .5);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #fff;
+}
+
+.report-menu-modal .modal-actions.action-menu button.ok {
+  border-color: rgba(34, 197, 94, .42);
+  background: linear-gradient(135deg, rgba(22, 101, 52, .95), rgba(34, 197, 94, .78));
+  color: #fff;
+}
+
+.report-menu-modal .modal-actions.action-menu button.danger {
+  border-color: rgba(239, 68, 68, .42);
+  background: rgba(127, 29, 29, .42);
+  color: #fecaca;
+}
+
+.report-menu-modal .modal-actions.action-menu button.secondary:last-child {
+  justify-content: center;
+  background: rgba(15, 23, 42, .48);
+  color: #cbd5e1;
+}
+
+.report-menu-modal .modal-actions.action-menu button.secondary:last-child::after {
+  content: "";
+  margin-left: 0;
+}
+
+.notifications-modal {
+  background: rgba(2, 8, 16, .68);
+  backdrop-filter: blur(5px);
+}
+
+.notifications-modal .notification-list {
+  gap: 10px;
+}
+
+.notifications-modal .notification-item {
+  min-height: 64px;
+  border-color: rgba(148, 163, 184, .22);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, .78);
+  box-shadow: inset 3px 0 0 rgba(250, 204, 21, .7);
+}
+
+.notifications-modal .notification-item strong {
+  color: #f8fafc;
+}
+
+.notifications-modal .notification-item span {
+  color: #cbd5e1;
+}
+
+.notifications-modal .modal-actions .secondary {
+  min-height: 42px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, .74);
+  color: #e5e7eb;
+}
+
 .toast {
   position: fixed;
   right: 16px;
@@ -1855,6 +1969,35 @@ label {
 
   .modal-actions {
     display: grid;
+  }
+
+  .modal-root.report-menu-modal,
+  .modal-root.notifications-modal {
+    align-items: end;
+    place-items: end center;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .report-menu-modal .modal-panel,
+  .notifications-modal .modal-panel {
+    width: 100%;
+    max-height: min(82dvh, 680px);
+    border-radius: 20px 20px 14px 14px;
+    padding: 14px;
+  }
+
+  .report-menu-modal .modal-panel h2,
+  .notifications-modal .modal-panel h2 {
+    font-size: 17px;
+  }
+
+  .report-menu-modal .modal-actions.action-menu button {
+    min-height: 46px;
+    border-radius: 12px;
+  }
+
+  .notifications-modal .notification-item {
+    min-height: 60px;
   }
 
   .toast {
