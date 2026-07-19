@@ -1483,16 +1483,23 @@
 
   }
 
-  function desktopStatCard(label, value, detail, tone, imageType) {
+  function desktopStatIcon(name) {
+    const icons = {
+      tools: `<path d="M16 38l22-22"></path><path d="M18 14l8 8"></path><path d="M12 18l18 18"></path><path d="M30 12l6 6"></path>`,
+      eye: `<path d="M6 24s7-10 18-10 18 10 18 10-7 10-18 10S6 24 6 24z"></path><circle cx="24" cy="24" r="5"></circle>`,
+      check: `<circle cx="24" cy="24" r="17"></circle><path d="M15 24l6 6 13-14"></path>`,
+      user: `<circle cx="24" cy="17" r="7"></circle><path d="M10 40c2-8 8-12 14-12s12 4 14 12"></path>`
+    };
+    return `<span class="desktop-stat-icon"><svg viewBox="0 0 48 48" aria-hidden="true">${icons[name] || icons.check}</svg></span>`;
+  }
+
+  function desktopStatCard(label, value, detail, tone, iconName) {
     const node = document.createElement("article");
     node.className = `desktop-stat ${tone || ""}`;
-    node.innerHTML = `<span></span><strong></strong><small></small><img alt="" loading="lazy">`;
-    node.querySelector("span").textContent = label;
+    node.innerHTML = `${desktopStatIcon(iconName)}<span class="desktop-stat-label"></span><strong></strong><small></small>`;
+    node.querySelector(".desktop-stat-label").textContent = label;
     node.querySelector("strong").textContent = value;
     node.querySelector("small").textContent = detail;
-    const image = node.querySelector("img");
-    image.src = equipmentImagePath(imageType || "machine");
-    image.addEventListener("error", () => image.remove());
     return node;
   }
 
@@ -1632,10 +1639,10 @@
     const workers = approvedWorkers();
 
     const statRows = [
-      ["Reportes FS", fs.length, "Fuera de servicio", "danger", "dozer"],
-      ["Reportes OBS", obs.length, "Observaciones", "warn", "loader"],
-      ["Operativos", operative.length, "Informados / validados", "ok", "grader"],
-      ["Mecanicos", workers.length, "Equipo disponible", "info", "smalltruck"]
+      ["Reportes FS", fs.length, "Fuera de servicio", "danger", "tools"],
+      ["Reportes OBS", obs.length, "Observaciones", "warn", "eye"],
+      ["Operativos", operative.length, "Informados / validados", "ok", "check"],
+      ["Mecanicos", workers.length, "Equipo disponible", "info", "user"]
     ];
 
     if (el.mobileStats) {
@@ -1648,8 +1655,8 @@
 
     if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
     el.desktopStats.innerHTML = "";
-    statRows.forEach(([label, value, detail, tone, imageType]) => {
-      el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone, imageType));
+    statRows.forEach(([label, value, detail, tone, iconName]) => {
+      el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone, iconName));
     });
 
     el.desktopReportPreview.innerHTML = "";
