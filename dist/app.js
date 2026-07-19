@@ -2304,6 +2304,20 @@
     await refreshAllData();
   }
 
+  async function deleteBaseDeviation(report) {
+    if (!isAdmin() || !report?.id) return;
+    const detail = report.deviation ? `: ${report.deviation}` : "";
+    const ok = await openConfirmModal("Eliminar desvio", `Eliminar este desvio de ${report.equipment}${detail}?`, "Eliminar");
+    if (!ok) return;
+    const { error } = await supabase.from("reports").delete().eq("id", report.id);
+    if (error) {
+      showToast("No se pudo eliminar el desvio: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Desvio eliminado.");
+  }
+
   async function markBaseEquipmentDone(equipment) {
     const rows = state.reports.filter((report) => isBaseEquipmentReport(report) && normalizeEquipment(report.equipment) === normalizeEquipment(equipment));
     if (!rows.length) return;
@@ -2354,6 +2368,10 @@
       `;
       row.querySelector(".base-deviation-text").textContent = report.deviation || "Sin desvio";
       row.querySelector("button").addEventListener("click", async () => markReportDone(report));
+      if (isAdmin()) {
+        const deleteBtn = button("Eliminar", "danger", async () => deleteBaseDeviation(report));
+        row.appendChild(deleteBtn);
+      }
       list.appendChild(row);
     });
 

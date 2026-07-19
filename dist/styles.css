@@ -450,7 +450,7 @@ label {
 
 .base-deviation-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: center;
   padding: 8px;
@@ -473,6 +473,16 @@ label {
   min-height: 36px;
   padding: 0 10px;
   font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .base-deviation-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .base-deviation-row button {
+    width: 100%;
+  }
 }
 
 .report-group {
