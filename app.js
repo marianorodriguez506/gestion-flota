@@ -1546,6 +1546,10 @@
     return `<svg viewBox="0 0 200 120" role="img" aria-label="Maquina"><g>${shapes[type] || shapes.machine}</g></svg>`;
   }
 
+  function equipmentImagePath(type) {
+    return `assets/equipment/${type || "machine"}.webp`;
+  }
+
   function reportStatusClass(report) {
     const status = displayStatus(report.status);
     if (/^OBS$/i.test(status)) return "status-obs";
@@ -1562,7 +1566,10 @@
         <span class="desktop-status"></span>
         <button type="button">Abrir</button>
       </div>
-      <div class="desktop-machine-art">${machineSvg(machineType)}</div>
+      <div class="desktop-machine-art">
+        <img alt="" loading="lazy">
+        <div class="desktop-machine-fallback">${machineSvg(machineType)}</div>
+      </div>
       <strong></strong>
       <small></small>
       <p></p>
@@ -1571,6 +1578,10 @@
         <span></span>
       </div>
     `;
+    const image = node.querySelector(".desktop-machine-art img");
+    image.src = equipmentImagePath(machineType);
+    image.addEventListener("load", () => node.classList.add("has-machine-image"));
+    image.addEventListener("error", () => image.remove());
     node.querySelector(".desktop-status").textContent = displayStatus(report.status);
     node.querySelector("strong").textContent = report.equipment;
     node.querySelector("small").textContent = `${equipmentTypeLabel(report.equipment)} - ${report.location || "Sin ubicacion"}`;
