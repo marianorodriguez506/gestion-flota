@@ -933,7 +933,7 @@
     const mechanic = state.users.find((user) => user.id === report.mechanicId);
     const days = reportAgeDays(report);
     const row = document.createElement("article");
-    row.className = "report-row";
+    row.className = `report-row ${reportStatusClass(report)}`;
     row.innerHTML = `
       <div class="report-main">
         <strong></strong>
