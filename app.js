@@ -78,6 +78,8 @@
     desktopStats: document.getElementById("desktopStats"),
     desktopReportPreview: document.getElementById("desktopReportPreview"),
     desktopActivity: document.getElementById("desktopActivity"),
+    mobileStats: document.getElementById("mobileStats"),
+    mobileActiveCount: document.getElementById("mobileActiveCount"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
     reportPaste: document.getElementById("reportPaste"),
@@ -1473,6 +1475,15 @@
     return node;
   }
 
+  function mobileStatPill(label, value, tone) {
+    const node = document.createElement("article");
+    node.className = `mobile-stat ${tone || ""}`;
+    node.innerHTML = `<strong></strong><span></span>`;
+    node.querySelector("strong").textContent = value;
+    node.querySelector("span").textContent = label;
+    return node;
+  }
+
   function equipmentPrefix(equipment) {
     return String(equipment || "").toUpperCase().match(/^([A-Z]+)/)?.[1] || "";
   }
@@ -1582,20 +1593,30 @@
   }
 
   function renderHome() {
-    if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
     const active = activeReports();
     const fs = active.filter((report) => /^FS$/i.test(displayStatus(report.status)));
     const obs = active.filter((report) => /^OBS$/i.test(displayStatus(report.status)));
     const operative = state.reports.filter((report) => isOperativeInformedStatus(report.status) || report.status === "Operativo validado");
     const workers = approvedWorkers();
 
-    el.desktopStats.innerHTML = "";
-    [
+    const statRows = [
       ["Reportes FS", fs.length, "Fuera de servicio", "danger"],
       ["Reportes OBS", obs.length, "Observaciones", "warn"],
       ["Operativos", operative.length, "Informados / validados", "ok"],
       ["Mecanicos", workers.length, "Equipo disponible", "info"]
-    ].forEach(([label, value, detail, tone]) => {
+    ];
+
+    if (el.mobileStats) {
+      el.mobileStats.innerHTML = "";
+      statRows.forEach(([label, value, _detail, tone]) => {
+        el.mobileStats.appendChild(mobileStatPill(label.replace("Reportes ", ""), value, tone));
+      });
+    }
+    if (el.mobileActiveCount) el.mobileActiveCount.textContent = active.length;
+
+    if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
+    el.desktopStats.innerHTML = "";
+    statRows.forEach(([label, value, detail, tone]) => {
       el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone));
     });
 
