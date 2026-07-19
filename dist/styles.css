@@ -1199,7 +1199,7 @@ label {
     background: #a855f7;
   }
 
-  .desktop-stat span {
+  .desktop-stat-label {
     position: relative;
     z-index: 1;
     color: var(--muted);
