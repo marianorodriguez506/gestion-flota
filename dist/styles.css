@@ -43,6 +43,10 @@ body {
   display: none;
 }
 
+.mobile-brand {
+  display: none;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -1262,6 +1266,38 @@ label {
 
   .topbar-title {
     text-align: center;
+  }
+
+  .mobile-brand {
+    display: grid;
+    gap: 1px;
+    justify-items: center;
+    line-height: 1;
+  }
+
+  .mobile-brand strong {
+    font-size: 16px;
+    letter-spacing: .02em;
+  }
+
+  .mobile-brand span {
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .08em;
+  }
+
+  .mobile-brand em {
+    color: var(--accent);
+    font-family: "Segoe Script", "Brush Script MT", cursive;
+    font-size: 18px;
+    font-style: italic;
+    line-height: 1.05;
+  }
+
+  .topbar-title .eyebrow,
+  .topbar-title h1 {
+    display: none;
   }
 
   .eyebrow {
