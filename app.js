@@ -70,6 +70,8 @@
     notificationsBtn: document.getElementById("notificationsBtn"),
     userInfoStrip: document.getElementById("userInfoStrip"),
     userNameDisplay: document.getElementById("userNameDisplay"),
+    desktopUserName: document.getElementById("desktopUserName"),
+    desktopUserRole: document.getElementById("desktopUserRole"),
     loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
     welcomeText: document.getElementById("welcomeText"),
@@ -1415,6 +1417,9 @@
     el.screenLabel.textContent = screen.label;
     el.backBtn.classList.toggle("hidden", name === "home" || name === "auth");
     el.logoutBtn.classList.toggle("hidden", name === "auth");
+    document.querySelectorAll(".sidebar-nav [data-screen]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.screen === name);
+    });
 
     if (options.history !== false && window.history?.pushState) {
       const nextState = { screen: name };
@@ -1429,16 +1434,20 @@
 
   function renderUserControls() {
     if (!isLoggedIn()) {
+      document.body.classList.remove("logged-in");
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
       return;
     }
 
+    document.body.classList.add("logged-in");
     el.userInfoStrip.classList.remove("hidden");
     el.logoutBtn.classList.remove("hidden");
     el.userNameDisplay.textContent = state.currentUser.name;
     el.rolePill.textContent = isAdmin() ? "Administrador" : "Trabajador";
-    el.welcomeText.textContent = `Hola, ${state.currentUser.name}`;
+    if (el.desktopUserName) el.desktopUserName.textContent = state.currentUser.name;
+    if (el.desktopUserRole) el.desktopUserRole.textContent = isAdmin() ? "Administrador" : "Trabajador";
+    el.welcomeText.textContent = `Buen dia, ${state.currentUser.name}`;
 
     document.querySelectorAll(".admin-only").forEach((node) => {
       node.classList.toggle("admin-disabled", !isAdmin());

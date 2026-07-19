@@ -10,6 +10,37 @@
 </head>
 <body>
   <main class="app">
+    <aside class="desktop-sidebar" aria-label="Navegacion principal">
+      <div class="sidebar-brand">
+        <div class="brand-mark">GF</div>
+        <div>
+          <strong>GESTION FLOTA</strong>
+          <span>MANTENIMIENTO</span>
+          <em>El Cholo</em>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <button data-screen="home" type="button">Inicio</button>
+        <button data-screen="tomorrow" type="button">Plan Manana</button>
+        <button data-screen="immediate" type="button">Reportes Activos</button>
+        <button data-screen="orders" type="button">Repuestos</button>
+        <button data-screen="doneTasks" type="button">Tareas realizadas</button>
+        <button data-screen="baseEquipment" type="button">Equipos en base</button>
+        <button data-screen="mechanic" type="button">Reporte mecanico</button>
+        <button data-screen="history" type="button">Historial</button>
+        <button data-screen="fleet" type="button">Informacion Flota</button>
+        <button data-screen="locations" type="button">Ubicaciones</button>
+        <button class="admin-only" data-screen="users" type="button">Mecanicos</button>
+        <button class="admin-only" data-screen="panel" type="button">Panel</button>
+        <button class="admin-only" data-screen="validations" type="button">Validaciones</button>
+        <button class="admin-only" data-screen="operatives" type="button">Operativos</button>
+      </nav>
+      <div class="sidebar-user">
+        <span id="desktopUserName">Usuario</span>
+        <small id="desktopUserRole">Sesion activa</small>
+      </div>
+    </aside>
+    <div class="app-shell">
     <header class="topbar">
       <button id="backBtn" class="icon-btn hidden" type="button" aria-label="Volver">←</button>
       <div class="topbar-title">
@@ -356,6 +387,7 @@
       <section id="notificationsList" class="list"></section>
       <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
     </section>
+    </div>
   </main>
   <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
     <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
