@@ -1712,6 +1712,110 @@ label {
     border-color: var(--line);
     background: linear-gradient(145deg, rgba(8, 24, 40, .98), rgba(4, 14, 25, .98));
   }
+
+  #immediateScreen > h2 {
+    margin: 2px 0 12px;
+    font-size: 20px;
+  }
+
+  #immediateScreen > h3 {
+    margin: 16px 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  #days-search-container {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(8, 24, 40, .94), rgba(4, 14, 25, .96));
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  }
+
+  #immediateList {
+    gap: 12px;
+  }
+
+  .report-group {
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(8, 24, 40, .94), rgba(4, 14, 25, .96));
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  }
+
+  .report-group-head {
+    padding: 11px 12px;
+    background: rgba(13, 31, 48, .94);
+  }
+
+  .report-group-head h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+  }
+
+  .report-group-head span {
+    background: rgba(250, 204, 21, .14);
+    color: var(--accent);
+  }
+
+  .report-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 12px;
+    background: rgba(3, 12, 22, .32);
+  }
+
+  .report-row.pressing {
+    background: rgba(250, 204, 21, .08);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .report-main {
+    gap: 8px;
+  }
+
+  .report-main strong {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .report-status,
+  .age-pill {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .report-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .report-failure,
+  .report-mechanic {
+    white-space: normal;
+  }
+
+  .report-mechanic {
+    text-align: left;
+    color: var(--accent);
+    font-weight: 800;
+  }
+
+  .report-row-actions {
+    align-self: center;
+  }
+
+  .compact-more,
+  .compact-assign {
+    min-height: 36px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 520px) {
