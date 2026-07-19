@@ -1318,6 +1318,117 @@ label {
   body.logged-in textarea {
     background: rgba(2, 8, 15, .72);
   }
+
+  body.logged-in #immediateScreen > h2 {
+    margin: 0 0 18px;
+    font-size: 26px;
+  }
+
+  body.logged-in #immediateScreen > h3 {
+    margin: 18px 0 12px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  body.logged-in #immediateForm {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  body.logged-in #immediateForm textarea {
+    grid-column: span 2;
+    min-height: 44px;
+  }
+
+  body.logged-in #immediateForm button {
+    grid-column: span 2;
+  }
+
+  body.logged-in #immediateScreen > .panel.compact.admin-only:not(.admin-disabled),
+  body.logged-in #days-search-container {
+    display: inline-grid;
+    width: min(100%, 360px);
+    margin: 0 12px 18px 0;
+    vertical-align: top;
+  }
+
+  body.logged-in #days-search-container {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(8, 24, 40, .92), rgba(4, 14, 25, .94));
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .20);
+  }
+
+  body.logged-in #immediateList {
+    gap: 14px;
+  }
+
+  body.logged-in .report-group {
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(8, 24, 40, .94), rgba(4, 14, 25, .96));
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .20);
+  }
+
+  body.logged-in .report-group-head {
+    padding: 13px 16px;
+    background: rgba(13, 31, 48, .92);
+  }
+
+  body.logged-in .report-group-head h2 {
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  body.logged-in .report-group-head span {
+    background: rgba(250, 204, 21, .14);
+    color: var(--accent);
+  }
+
+  body.logged-in .report-row {
+    grid-template-columns: minmax(220px, .8fr) minmax(0, 1.3fr) minmax(130px, .45fr) auto;
+    gap: 10px 14px;
+    padding: 12px 16px;
+  }
+
+  body.logged-in .report-row:hover {
+    background: rgba(255, 255, 255, .035);
+  }
+
+  body.logged-in .report-main {
+    grid-column: 1;
+  }
+
+  body.logged-in .report-summary {
+    grid-column: 2 / span 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, .35fr);
+    gap: 14px;
+    font-size: 13px;
+  }
+
+  body.logged-in .report-row-actions {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
+
+  body.logged-in .report-main strong {
+    font-size: 18px;
+  }
+
+  body.logged-in .report-status,
+  body.logged-in .age-pill {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+
+  body.logged-in .report-failure,
+  body.logged-in .report-mechanic {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 899px) {

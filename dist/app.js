@@ -1660,7 +1660,7 @@
     if (!daysSearchContainer) {
         daysSearchContainer = document.createElement("div");
         daysSearchContainer.id = "days-search-container";
-        daysSearchContainer.innerHTML = `<input type="number" id="days-search-input" min="0" placeholder="⏳ Filtrar por antigüedad (ej: 0 para hoy, 1 para ayer...)" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; background-color: #1e1e1e; color: white; font-size: 16px;">`;
+        daysSearchContainer.innerHTML = `<label>Antiguedad maxima<input type="number" id="days-search-input" min="0" placeholder="0 hoy, 1 ayer..."></label>`;
         // Lo insertamos justo antes de la lista de reportes
         el.immediateList.parentNode.insertBefore(daysSearchContainer, el.immediateList);
         
