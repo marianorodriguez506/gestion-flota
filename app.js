@@ -684,6 +684,20 @@
     return state.reports.filter((report) => normalizeEquipment(report.equipment) === normalizeEquipment(equipment));
   }
 
+  function isDoneTaskReport(report) {
+    return report?.status === "Tarea realizada";
+  }
+
+  function isBaseChecklistReport(report) {
+    return report?.status === "Equipo en base" || normalizeLocationText(report?.location) === "base";
+  }
+
+  function regularEquipmentReports(equipment) {
+    return relatedReports(equipment)
+      .filter((report) => !isDoneTaskReport(report))
+      .filter((report) => !isBaseChecklistReport(report));
+  }
+
   function fleetItem(equipment) {
     return state.fleet.find((item) => normalizeEquipment(item.equipment) === normalizeEquipment(equipment));
   }
@@ -2026,7 +2040,7 @@
   }
 
   function showReportHistory(report) {
-    const history = relatedReports(report.equipment)
+    const history = regularEquipmentReports(report.equipment)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
       .map((item) => ({
         label: `${formatDateTime(item.createdAt)} · ${displayStatus(item.status)}`,
@@ -2150,7 +2164,7 @@
       el.mechanicEquipmentHistory.appendChild(empty("Escribi un interno para ver su historial."));
       return;
     }
-    const rows = relatedReports(equipment).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const rows = regularEquipmentReports(equipment).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     if (!rows.length) {
       el.mechanicEquipmentHistory.appendChild(empty("Ese equipo no tiene movimientos cargados."));
       return;
@@ -2406,8 +2420,7 @@
       el.doneTasksList.appendChild(heading);
       items.forEach((report) => {
         el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, [
-          button("Ver detalles", "secondary", () => showReportDetails(report)),
-          button("Ver historial", "secondary", () => showReportHistory(report))
+          button("Ver detalles", "secondary", () => showReportDetails(report))
         ]));
       });
     });
@@ -2772,7 +2785,7 @@
         { label: "Notas", value: item.notes },
         { label: "Reportes activos", value: activeReports().filter((report) => normalizeEquipment(report.equipment) === normalizeEquipment(item.equipment)).length },
         { label: "Pedidos", value: relatedOrders(item.equipment).length },
-        { label: "Historial", value: relatedReports(item.equipment).length }
+        { label: "Historial", value: regularEquipmentReports(item.equipment).length }
       ])));
       el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
     });
