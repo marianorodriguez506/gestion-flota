@@ -1473,22 +1473,100 @@
     return node;
   }
 
+  function equipmentPrefix(equipment) {
+    return String(equipment || "").toUpperCase().match(/^([A-Z]+)/)?.[1] || "";
+  }
+
+  function equipmentMachineType(equipment) {
+    const prefix = equipmentPrefix(equipment);
+    const map = {
+      MN: "grader",
+      RV: "roller",
+      CV: "dump",
+      PT: "drill",
+      TT: "pipe",
+      CCH: "smalltruck",
+      PR: "backhoe",
+      TO: "dozer",
+      CF: "loader",
+      RE: "excavator",
+      CT: "truck",
+      CR: "watertruck"
+    };
+    return map[prefix] || "machine";
+  }
+
+  function equipmentTypeLabel(equipment) {
+    const prefix = equipmentPrefix(equipment);
+    const map = {
+      MN: "Motoniveladora",
+      RV: "Rodillo vibrador",
+      CV: "Camion volcador",
+      PT: "Pilotera",
+      TT: "Tiendetubo",
+      CCH: "Camion chico",
+      PR: "Retropala",
+      TO: "Topadora",
+      CF: "Cargador frontal",
+      RE: "Excavadora",
+      CT: "Camion tractor",
+      CR: "Camion regador"
+    };
+    return map[prefix] || "Equipo";
+  }
+
+  function machineSvg(type) {
+    const common = `<circle cx="48" cy="88" r="14"></circle><circle cx="124" cy="88" r="14"></circle>`;
+    const shapes = {
+      dozer: `<path d="M24 78h114l18 14H18z"></path><path d="M48 44h62l20 34H38z"></path><path d="M132 70l38-14v28l-38 8z"></path>${common}`,
+      loader: `<path d="M30 78h104l14 14H22z"></path><path d="M56 42h58l24 36H42z"></path><path d="M136 72l38-18 10 20-42 14z"></path>${common}`,
+      excavator: `<path d="M34 78h94l18 14H24z"></path><path d="M58 48h54l22 30H46z"></path><path d="M120 52l36-20 10 10-34 28z"></path><path d="M158 42l22 18-12 10-20-20z"></path>${common}`,
+      grader: `<path d="M26 80h128l12 12H18z"></path><path d="M62 46h50l18 32H48z"></path><path d="M84 92l50-20 6 10-48 22z"></path><circle cx="42" cy="90" r="11"></circle><circle cx="96" cy="90" r="12"></circle><circle cx="150" cy="90" r="11"></circle>`,
+      roller: `<path d="M58 48h58l24 32H42z"></path><rect x="26" y="76" width="58" height="26" rx="13"></rect><circle cx="130" cy="90" r="15"></circle>`,
+      dump: `<path d="M36 58h68l22 24H28z"></path><path d="M104 46h58l12 34h-48z"></path>${common}`,
+      truck: `<path d="M30 58h82v24H28z"></path><path d="M112 50h40l22 32h-62z"></path>${common}`,
+      watertruck: `<path d="M32 62h78a18 18 0 0 1 18 18v2H28z"></path><path d="M122 50h36l20 32h-56z"></path>${common}`,
+      smalltruck: `<path d="M34 60h76v22H28z"></path><path d="M110 54h34l18 28h-52z"></path><circle cx="54" cy="88" r="12"></circle><circle cx="134" cy="88" r="12"></circle>`,
+      backhoe: `<path d="M34 76h92l14 16H24z"></path><path d="M58 46h50l20 30H46z"></path><path d="M128 60l28-20 8 10-26 24z"></path><path d="M44 70l-28-18-8 14 32 20z"></path>${common}`,
+      drill: `<path d="M52 78h86l14 14H42z"></path><path d="M72 48h42l18 30H58z"></path><path d="M138 20h12v72h-12z"></path><path d="M132 22h24l-12-16z"></path>${common}`,
+      pipe: `<path d="M40 76h96l14 16H30z"></path><path d="M68 46h48l18 30H54z"></path><path d="M118 60l54-22 8 14-54 28z"></path>${common}`,
+      machine: `<path d="M32 72h112l18 20H22z"></path><path d="M62 44h54l22 32H48z"></path>${common}`
+    };
+    return `<svg viewBox="0 0 200 120" role="img" aria-label="Maquina"><g>${shapes[type] || shapes.machine}</g></svg>`;
+  }
+
+  function reportStatusClass(report) {
+    const status = displayStatus(report.status);
+    if (/^OBS$/i.test(status)) return "status-obs";
+    if (/operativo|^OP$/i.test(status)) return "status-op";
+    return "status-fs";
+  }
+
   function desktopReportCard(report) {
+    const machineType = equipmentMachineType(report.equipment);
     const node = document.createElement("article");
-    node.className = "desktop-report-card";
+    node.className = `desktop-report-card ${reportStatusClass(report)} machine-${machineType}`;
     node.innerHTML = `
       <div class="desktop-report-top">
         <span class="desktop-status"></span>
         <button type="button">Abrir</button>
       </div>
+      <div class="desktop-machine-art">${machineSvg(machineType)}</div>
       <strong></strong>
       <small></small>
       <p></p>
+      <div class="desktop-report-meta">
+        <span></span>
+        <span></span>
+      </div>
     `;
     node.querySelector(".desktop-status").textContent = displayStatus(report.status);
     node.querySelector("strong").textContent = report.equipment;
-    node.querySelector("small").textContent = report.location || "Sin ubicacion";
+    node.querySelector("small").textContent = `${equipmentTypeLabel(report.equipment)} - ${report.location || "Sin ubicacion"}`;
     node.querySelector("p").textContent = report.deviation || "Sin falla";
+    const meta = node.querySelectorAll(".desktop-report-meta span");
+    meta[0].textContent = report.hourmeter ? `${report.hourmeter} h` : "Sin horometro";
+    meta[1].textContent = report.mechanicId ? workerName(report.mechanicId) : "Sin asignar";
     node.querySelector("button").addEventListener("click", () => setScreen("immediate"));
     return node;
   }
