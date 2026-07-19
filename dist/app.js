@@ -1565,7 +1565,7 @@
   }
 
   function equipmentImagePath(type) {
-    return `assets/equipment/${type || "machine"}.webp`;
+    return `assets/equipment/${type || "machine"}.jpg`;
   }
 
   function reportStatusClass(report) {

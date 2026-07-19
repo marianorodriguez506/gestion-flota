@@ -1,19 +1,19 @@
 Imagenes de equipos para el dashboard de PC.
 
-La app busca primero archivos WebP con estos nombres:
+La app busca primero archivos JPG optimizados con estos nombres:
 
-- `grader.webp` para MN, motoniveladora
-- `roller.webp` para RV, rodillo vibrador
-- `dump.webp` para CV, camion volcador
-- `drill.webp` para PT, pilotera
-- `pipe.webp` para TT, tiendetubo
-- `smalltruck.webp` para CCH, camion chico
-- `backhoe.webp` para PR, retropala
-- `dozer.webp` para TO, topadora
-- `loader.webp` para CF, cargador frontal
-- `excavator.webp` para RE, excavadora
-- `truck.webp` para CT, camion tractor
-- `watertruck.webp` para CR, camion regador
-- `machine.webp` para fallback generico
+- `grader.jpg` para MN, motoniveladora
+- `roller.jpg` para RV, rodillo vibrador
+- `dump.jpg` para CV, camion volcador
+- `drill.jpg` para PT, pilotera
+- `pipe.jpg` para TT, tiendetubo
+- `smalltruck.jpg` para CCH, camion chico
+- `backhoe.jpg` para PR, retropala
+- `dozer.jpg` para TO, topadora
+- `loader.jpg` para CF, cargador frontal
+- `excavator.jpg` para RE, excavadora
+- `truck.jpg` para CT, camion tractor
+- `watertruck.jpg` para CR, camion regador
+- `machine.jpg` para fallback generico
 
 Si una imagen no existe, la tarjeta usa la ilustracion interna como respaldo.
