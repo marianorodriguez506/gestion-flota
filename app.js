@@ -75,6 +75,9 @@
     loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
     welcomeText: document.getElementById("welcomeText"),
+    desktopStats: document.getElementById("desktopStats"),
+    desktopReportPreview: document.getElementById("desktopReportPreview"),
+    desktopActivity: document.getElementById("desktopActivity"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
     reportPaste: document.getElementById("reportPaste"),
@@ -1460,7 +1463,83 @@
 
   }
 
+  function desktopStatCard(label, value, detail, tone) {
+    const node = document.createElement("article");
+    node.className = `desktop-stat ${tone || ""}`;
+    node.innerHTML = `<span></span><strong></strong><small></small>`;
+    node.querySelector("span").textContent = label;
+    node.querySelector("strong").textContent = value;
+    node.querySelector("small").textContent = detail;
+    return node;
+  }
+
+  function desktopReportCard(report) {
+    const node = document.createElement("article");
+    node.className = "desktop-report-card";
+    node.innerHTML = `
+      <div class="desktop-report-top">
+        <span class="desktop-status"></span>
+        <button type="button">Abrir</button>
+      </div>
+      <strong></strong>
+      <small></small>
+      <p></p>
+    `;
+    node.querySelector(".desktop-status").textContent = displayStatus(report.status);
+    node.querySelector("strong").textContent = report.equipment;
+    node.querySelector("small").textContent = report.location || "Sin ubicacion";
+    node.querySelector("p").textContent = report.deviation || "Sin falla";
+    node.querySelector("button").addEventListener("click", () => setScreen("immediate"));
+    return node;
+  }
+
+  function desktopActivityRow(title, detail, meta) {
+    const node = document.createElement("article");
+    node.className = "desktop-activity-row";
+    node.innerHTML = `<strong></strong><span></span><small></small>`;
+    node.querySelector("strong").textContent = title;
+    node.querySelector("span").textContent = detail || "Sin detalle";
+    node.querySelector("small").textContent = meta || "";
+    return node;
+  }
+
   function renderHome() {
+    if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
+    const active = activeReports();
+    const fs = active.filter((report) => /^FS$/i.test(displayStatus(report.status)));
+    const obs = active.filter((report) => /^OBS$/i.test(displayStatus(report.status)));
+    const operative = state.reports.filter((report) => isOperativeInformedStatus(report.status) || report.status === "Operativo validado");
+    const workers = approvedWorkers();
+
+    el.desktopStats.innerHTML = "";
+    [
+      ["Reportes FS", fs.length, "Fuera de servicio", "danger"],
+      ["Reportes OBS", obs.length, "Observaciones", "warn"],
+      ["Operativos", operative.length, "Informados / validados", "ok"],
+      ["Mecanicos", workers.length, "Equipo disponible", "info"]
+    ].forEach(([label, value, detail, tone]) => {
+      el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone));
+    });
+
+    el.desktopReportPreview.innerHTML = "";
+    active.slice(0, 6).forEach((report) => el.desktopReportPreview.appendChild(desktopReportCard(report)));
+    if (!active.length) el.desktopReportPreview.appendChild(empty("No hay reportes activos."));
+
+    el.desktopActivity.innerHTML = "";
+    const activity = [
+      ...state.notifications.slice(0, 4).map((item) => ({
+        title: item.read ? "Notificacion leida" : "Notificacion nueva",
+        detail: item.text,
+        meta: formatDateTime(item.at)
+      })),
+      ...state.orders.slice(0, 3).map((order) => ({
+        title: `Pedido ${order.status}`,
+        detail: `${order.equipment} - ${order.requesterName || "Sin solicitante"}`,
+        meta: formatDateTime(order.createdAt)
+      }))
+    ].slice(0, 6);
+    activity.forEach((item) => el.desktopActivity.appendChild(desktopActivityRow(item.title, item.detail, item.meta)));
+    if (!activity.length) el.desktopActivity.appendChild(empty("No hay actividad reciente."));
   }
 
   function renderImmediate() {
