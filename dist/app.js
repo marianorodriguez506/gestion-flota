@@ -1483,13 +1483,16 @@
 
   }
 
-  function desktopStatCard(label, value, detail, tone) {
+  function desktopStatCard(label, value, detail, tone, imageType) {
     const node = document.createElement("article");
     node.className = `desktop-stat ${tone || ""}`;
-    node.innerHTML = `<span></span><strong></strong><small></small>`;
+    node.innerHTML = `<span></span><strong></strong><small></small><img alt="" loading="lazy">`;
     node.querySelector("span").textContent = label;
     node.querySelector("strong").textContent = value;
     node.querySelector("small").textContent = detail;
+    const image = node.querySelector("img");
+    image.src = equipmentImagePath(imageType || "machine");
+    image.addEventListener("error", () => image.remove());
     return node;
   }
 
@@ -1629,10 +1632,10 @@
     const workers = approvedWorkers();
 
     const statRows = [
-      ["Reportes FS", fs.length, "Fuera de servicio", "danger"],
-      ["Reportes OBS", obs.length, "Observaciones", "warn"],
-      ["Operativos", operative.length, "Informados / validados", "ok"],
-      ["Mecanicos", workers.length, "Equipo disponible", "info"]
+      ["Reportes FS", fs.length, "Fuera de servicio", "danger", "dozer"],
+      ["Reportes OBS", obs.length, "Observaciones", "warn", "loader"],
+      ["Operativos", operative.length, "Informados / validados", "ok", "grader"],
+      ["Mecanicos", workers.length, "Equipo disponible", "info", "smalltruck"]
     ];
 
     if (el.mobileStats) {
@@ -1645,8 +1648,8 @@
 
     if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
     el.desktopStats.innerHTML = "";
-    statRows.forEach(([label, value, detail, tone]) => {
-      el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone));
+    statRows.forEach(([label, value, detail, tone, imageType]) => {
+      el.desktopStats.appendChild(desktopStatCard(label, value, detail, tone, imageType));
     });
 
     el.desktopReportPreview.innerHTML = "";
