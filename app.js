@@ -319,8 +319,13 @@
     };
   }
   function activeReports() {
-    return state.reports.filter((report) => report.status !== "Operativo validado" && !isTechnicalObservation(report));
-  }
+  return state.reports.filter(
+    (report) =>
+      report.status !== "Operativo validado" &&
+      report.status !== "Tarea realizada" &&
+      !isTechnicalObservation(report)
+  );
+}
 
   function isTechnicalObservation(report) {
     return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
@@ -3379,7 +3384,7 @@
     const { error } = await supabase.from("reports").insert({
       id: uid(),
       equipment,
-      location: target,
+      location: "",
       deviation: task,
       operation_note: `Tarea realizada por ${state.currentUser.name}`,
       status: "Tarea realizada",
