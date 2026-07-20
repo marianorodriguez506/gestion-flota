@@ -318,15 +318,9 @@
       createdAt: row.created_at || ""
     };
   }
- function activeReports() {
-  return state.reports.filter(
-    (report) =>
-      report.status !== "Operativo validado" &&
-      report.status !== "Tarea realizada" &&
-      report.status !== "Equipo en base" &&
-      !isTechnicalObservation(report)
-  );
-}
+  function activeReports() {
+    return state.reports.filter((report) => report.status !== "Operativo validado" && !isTechnicalObservation(report));
+  }
 
   function isTechnicalObservation(report) {
     return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
