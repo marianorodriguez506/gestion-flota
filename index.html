@@ -234,6 +234,7 @@
         </label>
         <div class="card-actions">
           <button id="refreshPlanBtn" class="secondary" type="button">Actualizar</button>
+          <button id="savePlanBtn" class="primary admin-only" type="button">Guardar cambios</button>
           <button id="clearPlanBtn" class="danger" type="button">Limpiar asignaciones</button>
           <button id="copyPlanBtn" class="primary" type="button">Copiar Plan Mañana</button>
         </div>
@@ -259,10 +260,6 @@
         <textarea name="notes" placeholder="Detalle del mecanico"></textarea>
         <button class="primary" type="submit">Guardar reporte del equipo</button>
       </form>
-      <section class="panel compact">
-        <h3>Historial del equipo</h3>
-        <div id="mechanicEquipmentHistory" class="list compact-list"></div>
-      </section>
       <h3>Monitor de movimientos</h3>
       <section id="mechanicList" class="list"></section>
     </section>

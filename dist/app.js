@@ -43,6 +43,7 @@
     availability: [],
     savedLocations: [],
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+    planDraft: null,
     orderDraft: null
   };
 
@@ -88,6 +89,7 @@
     activeReportSearch: document.getElementById("activeReportSearch"),
     planDate: document.getElementById("planDate"),
     refreshPlanBtn: document.getElementById("refreshPlanBtn"),
+    savePlanBtn: document.getElementById("savePlanBtn"),
     clearPlanBtn: document.getElementById("clearPlanBtn"),
     copyPlanBtn: document.getElementById("copyPlanBtn"),
     availabilityList: document.getElementById("availabilityList"),
@@ -319,8 +321,14 @@
     };
   }
   function activeReports() {
-    return state.reports.filter((report) => report.status !== "Operativo validado" && !isTechnicalObservation(report));
-  }
+  return state.reports.filter(
+    (report) =>
+      report.status !== "Operativo validado" &&
+      report.status !== "Tarea realizada" &&
+      !isTechnicalObservation(report) &&
+      !isMechanicSheetReport(report)
+  );
+}
 
   function isTechnicalObservation(report) {
     return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
@@ -350,8 +358,39 @@
     return state.users.find((user) => user.id === userId)?.name || "Sin dato";
   }
 
+  function emptyPlanDraft(date = state.planDate) {
+    return { date, assignments: {}, manualItems: [] };
+  }
+
+  function ensurePlanDraft() {
+    if (!state.planDraft || state.planDraft.date !== state.planDate) {
+      state.planDraft = emptyPlanDraft();
+    }
+    return state.planDraft;
+  }
+
+  function planDraftPendingCount() {
+    const draft = ensurePlanDraft();
+    return Object.keys(draft.assignments).length + draft.manualItems.length;
+  }
+
+  function applyPlanDraft(report) {
+    const draft = ensurePlanDraft();
+    const change = draft.assignments[report.id];
+    if (!change) return report;
+    return {
+      ...report,
+      mechanicId: change.mechanicId || null,
+      planDate: change.planDate || ""
+    };
+  }
+
   function planReports() {
-    return uniqueReports(activeReports().filter((report) => report.mechanicId && isReportInSelectedPlan(report)));
+    const draft = ensurePlanDraft();
+    const rows = activeReports()
+      .map(applyPlanDraft)
+      .filter((report) => report.mechanicId && isReportInSelectedPlan(report));
+    return uniqueReports([...rows, ...draft.manualItems]);
   }
 
   function uniqueReports(rows) {
@@ -688,6 +727,10 @@
     return report?.status === "Tarea realizada";
   }
 
+  function isMechanicSheetReport(report) {
+    return /reporte mecanico/i.test(report?.location || "") || /observaci[oÃ³]n t[eÃ©]cnica/i.test(report?.status || "");
+  }
+
   function isBaseChecklistReport(report) {
     return report?.status === "Equipo en base" || normalizeLocationText(report?.location) === "base";
   }
@@ -695,6 +738,7 @@
   function regularEquipmentReports(equipment) {
     return relatedReports(equipment)
       .filter((report) => !isDoneTaskReport(report))
+      .filter((report) => !isMechanicSheetReport(report))
       .filter((report) => !isBaseChecklistReport(report));
   }
 
@@ -1275,12 +1319,19 @@
     return approvedWorkers().filter((worker) => workerAvailability(worker.id) !== "franco");
   }
 
-  async function assignReportToWorker(report, worker) {
+  async function assignReportToWorker(report, worker, options = {}) {
     if (workerAvailability(worker.id) === "franco") {
       showToast(`${worker.name} esta de franco en este plan.`);
       return;
     }
     const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    if (options.defer) {
+      const draft = ensurePlanDraft();
+      draft.assignments[report.id] = { mechanicId: worker.id, planDate };
+      renderTomorrow();
+      showToast(`${report.equipment} queda pendiente para guardar.`);
+      return;
+    }
     let updated = null;
     try {
       updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
@@ -1317,7 +1368,8 @@
   }
 
   async function chooseReportForWorker(worker) {
-    const rows = activeReports().filter((report) => !(report.mechanicId === worker.id && isReportInSelectedPlan(report)));
+    const assignedIds = new Set(planReports().map((report) => report.id));
+    const rows = activeReports().filter((report) => !assignedIds.has(report.id));
     const selected = await openChoiceModal(
       `Agregar equipo a ${worker.name}`,
       rows,
@@ -1327,7 +1379,7 @@
       `,
       "No hay reportes activos para asignar."
     );
-    if (selected) await assignReportToWorker(selected, worker);
+    if (selected) await assignReportToWorker(selected, worker, { defer: true });
   }
 
   function openManualPlanModal(worker) {
@@ -1387,27 +1439,21 @@
     }
 
     const report = {
-      id: uid(),
+      id: `draft-${uid()}`,
       equipment: manual.title,
       location: manual.location || "Plan Manana",
       deviation: manual.detail || "Carga manual del Plan Manana",
       status: "Pendiente",
-      mechanic_id: worker.id,
-      plan_date: state.planDate,
-      created_at: new Date().toISOString(),
-      created_by: state.currentUser.id
+      mechanicId: worker.id,
+      planDate: state.planDate,
+      createdAt: new Date().toISOString(),
+      createdBy: state.currentUser.id,
+      draftManual: true
     };
 
-    const { error } = await supabase.from("reports").insert(report);
-    if (error) {
-      showToast("No se pudo agregar la carga manual: " + error.message);
-      return;
-    }
-
-    await saveCurrentLocationForReport(report);
-    await createNotification(`${normalizeEquipment(report.equipment)} agregado manualmente a ${worker.name}`);
-    await refreshAllData();
-    showToast("Carga manual agregada.");
+    ensurePlanDraft().manualItems.push(report);
+    renderTomorrow();
+    showToast("Carga manual pendiente para guardar.");
   }
   function todayLabel() {
     return new Date().toLocaleString("es-AR", {
@@ -1793,6 +1839,11 @@
 
   function renderTomorrow() {
     if (el.planDate && el.planDate.value !== state.planDate) el.planDate.value = state.planDate;
+    if (el.savePlanBtn) {
+      const pending = planDraftPendingCount();
+      el.savePlanBtn.textContent = pending ? `Guardar cambios (${pending})` : "Guardar cambios";
+      el.savePlanBtn.disabled = !pending;
+    }
     el.tomorrowList.innerHTML = "";
     renderAvailability();
 
@@ -1838,7 +1889,7 @@
             button("Ver detalles", "secondary", () => showReportDetails(report)),
             button("Ver historial", "secondary", () => showReportHistory(report))
           ];
-          if (isAdmin() || report.mechanicId === state.currentUser.id) {
+          if (!report.draftManual && (isAdmin() || report.mechanicId === state.currentUser.id)) {
             reportActions.push(button("Marcar reparacion realizada", "ok", async () => markRepairDone(report)));
             if (!isOperativeInformedStatus(report.status)) {
               reportActions.push(button("Informar reparacion parcial", "secondary", async () => reportWorkAndKeepActive(report)));
@@ -1846,6 +1897,9 @@
             if (isAdmin()) {
               reportActions.push(button("Eliminar asignacion", "danger", async () => removePlanAssignment(report)));
             }
+          }
+          if (report.draftManual && isAdmin()) {
+            reportActions.push(button("Eliminar asignacion", "danger", async () => removePlanAssignment(report)));
           }
           if (isAdmin() && isOperativeInformedStatus(report.status)) {
             reportActions.push(button("Validar", "primary", async () => validateReport(report)));
@@ -1858,16 +1912,66 @@
     });
   }
 
+  async function savePlanChanges() {
+    if (!isAdmin()) return;
+    const draft = ensurePlanDraft();
+    const assignmentEntries = Object.entries(draft.assignments);
+    const manualItems = [...draft.manualItems];
+    if (!assignmentEntries.length && !manualItems.length) {
+      showToast("No hay cambios pendientes en el plan.");
+      return;
+    }
+
+    for (const [reportId, change] of assignmentEntries) {
+      const updates = change.mechanicId
+        ? { mechanic_id: change.mechanicId, plan_date: change.planDate || state.planDate }
+        : { mechanic_id: null, plan_date: null };
+      const updated = await updateReport(reportId, updates);
+      mergeReportUpdate(reportId, updated, {
+        mechanicId: change.mechanicId || null,
+        planDate: change.planDate || ""
+      });
+    }
+
+    if (manualItems.length) {
+      const payload = manualItems.map((item) => ({
+        id: uid(),
+        equipment: item.equipment,
+        location: item.location || "Plan Manana",
+        deviation: item.deviation || "Carga manual del Plan Manana",
+        status: item.status || "Pendiente",
+        mechanic_id: item.mechanicId,
+        plan_date: state.planDate,
+        created_at: new Date().toISOString(),
+        created_by: state.currentUser.id
+      }));
+      const { error } = await supabase.from("reports").insert(payload);
+      if (error) {
+        showToast("No se pudo guardar la carga manual: " + error.message);
+        return;
+      }
+    }
+
+    state.planDraft = emptyPlanDraft();
+    await createNotification(`Plan Manana ${state.planDate} guardado por ${state.currentUser.name}`);
+    await refreshAllData();
+    showToast("Plan guardado.");
+  }
+
   async function removePlanAssignment(report) {
     if (!isAdmin()) return;
     const ok = await openConfirmModal("Quitar asignaci\u00f3n", `Quitar ${report.equipment} del Plan Ma\u00f1ana? El reporte queda activo pero sin mec\u00e1nico.`, "Quitar");
     if (!ok) return;
 
-    const updated = await updateReport(report.id, { mechanic_id: null, plan_date: null });
-    mergeReportUpdate(report.id, updated, { mechanicId: null, planDate: "" });
-    await createNotification(`${report.equipment} quitado del Plan Mañana por ${state.currentUser.name}`);
-    await refreshAllData();
-    showToast("Asignación eliminada.");
+    const draft = ensurePlanDraft();
+    if (report.draftManual) {
+      draft.manualItems = draft.manualItems.filter((item) => item.id !== report.id);
+    } else {
+      draft.assignments[report.id] = { mechanicId: null, planDate: "" };
+    }
+    renderTomorrow();
+    showToast("Asignacion pendiente de guardar.");
+    return;
   }
   async function clearPlanAssignments() {
     if (!isAdmin()) return;
@@ -1879,13 +1983,17 @@
     const ok = await openConfirmModal("Limpiar asignaciones", `Limpiar ${rows.length} asignaciones del Plan Ma\u00f1ana? Los reportes quedan activos pero sin mec\u00e1nico.`, "Limpiar");
     if (!ok) return;
 
+    const draft = ensurePlanDraft();
     for (const report of rows) {
-      await updateReport(report.id, { mechanic_id: null, plan_date: null });
+      if (report.draftManual) {
+        draft.manualItems = draft.manualItems.filter((item) => item.id !== report.id);
+      } else {
+        draft.assignments[report.id] = { mechanicId: null, planDate: "" };
+      }
     }
-
-    await createNotification(`Plan Mañana ${state.planDate} limpiado por ${state.currentUser.name}`);
-    await refreshAllData();
-    showToast("Asignaciones limpiadas.");
+    renderTomorrow();
+    showToast("Limpieza pendiente de guardar.");
+    return;
   }
   function renderMyJobs() {
     if (!el.myJobsList) return;
@@ -2152,7 +2260,7 @@
   }
 
   function mechanicReportRows() {
-    const rows = state.reports.filter((row) => isTechnicalObservation(row) || row.operationNote);
+    const rows = state.reports.filter((row) => isMechanicSheetReport(row));
     return rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
@@ -2182,7 +2290,6 @@
   function renderMechanicReports() {
     if (!el.mechanicList) return;
     el.mechanicList.innerHTML = "";
-    renderMechanicEquipmentHistory();
     const rows = mechanicReportRows();
     if (!rows.length) {
       el.mechanicList.appendChild(empty("No hay movimientos cargados."));
@@ -3202,10 +3309,12 @@
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
+    state.planDraft = emptyPlanDraft();
     await refreshAllData();
   });
 
   el.refreshPlanBtn?.addEventListener("click", () => refreshAllData());
+  el.savePlanBtn?.addEventListener("click", savePlanChanges);
   el.clearPlanBtn?.addEventListener("click", clearPlanAssignments);
   el.copyPlanBtn?.addEventListener("click", () => copyPlan());
 
@@ -3348,6 +3457,7 @@
     const payload = deviations.map((deviation) => ({
       id: uid(),
       equipment,
+      location: "Reporte mecanico",
       deviation,
       operation_note: note,
       status: "Observacion tecnica",
@@ -3379,7 +3489,7 @@
     const { error } = await supabase.from("reports").insert({
       id: uid(),
       equipment,
-      location: target,
+      location: "",
       deviation: task,
       operation_note: `Tarea realizada por ${state.currentUser.name}`,
       status: "Tarea realizada",
