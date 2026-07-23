@@ -886,6 +886,19 @@
     showToast("Equipo eliminado.");
   }
 
+  async function deleteDoneTask(report) {
+    if (!isAdmin() || !report?.id) return;
+    const ok = await openConfirmModal("Eliminar tarea", `Eliminar la tarea realizada en ${report.equipment || "sin interno"}?`, "Eliminar");
+    if (!ok) return;
+    const { error } = await supabase.from("reports").delete().eq("id", report.id);
+    if (error) {
+      showToast("No se pudo eliminar la tarea: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Tarea eliminada.");
+  }
+
   function openInfoModal(title, rows) {
     el.modalTitle.textContent = title;
     el.modalBody.innerHTML = "";
@@ -2526,9 +2539,13 @@
       heading.textContent = day === "Sin fecha" ? day : new Date(`${day}T00:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
       el.doneTasksList.appendChild(heading);
       items.forEach((report) => {
-        el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, [
+        const actions = [
           button("Ver detalles", "secondary", () => showReportDetails(report))
-        ]));
+        ];
+        if (isAdmin()) {
+          actions.push(button("Eliminar", "danger", async () => deleteDoneTask(report)));
+        }
+        el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, actions));
       });
     });
   }
