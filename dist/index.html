@@ -23,6 +23,7 @@
         <button data-screen="home" type="button">Inicio</button>
         <button data-screen="tomorrow" type="button">Plan Manana</button>
         <button data-screen="immediate" type="button">Reportes Activos</button>
+        <button data-screen="activeMap" type="button">Mapa activos</button>
         <button data-screen="orders" type="button">Repuestos</button>
         <button data-screen="doneTasks" type="button">Tareas realizadas</button>
         <button data-screen="baseEquipment" type="button">Equipos en base</button>
@@ -158,6 +159,7 @@
       </div>
 
       <div class="home-grid">
+        <button class="module-btn" data-screen="activeMap">Mapa activos</button>
         <button class="module-btn" data-screen="doneTasks">Tareas realizadas</button>
         <button class="module-btn" data-screen="baseEquipment">Equipos en base</button>
         <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
@@ -412,6 +414,16 @@
         </div>
       </section>
       <section id="locationsList" class="list"></section>
+    </section>
+    <section id="activeMapScreen" class="screen">
+      <section class="panel compact">
+        <h2>Mapa de activos</h2>
+        <p class="hint">Muestra reportes activos solo cuando la ubicacion existe en la base GPS.</p>
+      </section>
+      <section class="active-map-layout">
+        <div id="activeMapCanvas" class="active-map-canvas" aria-label="Mapa de activos"></div>
+        <section id="activeMapList" class="active-map-list"></section>
+      </section>
     </section>
     <section id="notificationsScreen" class="screen">
       <section id="notificationsList" class="list"></section>

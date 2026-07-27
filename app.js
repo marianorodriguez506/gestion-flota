@@ -25,6 +25,7 @@
     validations: { id: "validationsScreen", title: "Validaciones pendientes", label: "Revisión" },
     users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
     locations: { id: "locationsScreen", title: "Base de ubicaciones", label: "GPS" },
+    activeMap: { id: "activeMapScreen", title: "Mapa de activos", label: "Mapa" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
   };
 
@@ -128,6 +129,8 @@
     addLocationGpsBtn: document.getElementById("addLocationGpsBtn"),
     addLocationLinkBtn: document.getElementById("addLocationLinkBtn"),
     locationsList: document.getElementById("locationsList"),
+    activeMapCanvas: document.getElementById("activeMapCanvas"),
+    activeMapList: document.getElementById("activeMapList"),
     notificationsList: document.getElementById("notificationsList"),
     clearNotifications: document.getElementById("clearNotifications"),
     modalRoot: document.getElementById("modalRoot"),
@@ -3093,6 +3096,110 @@
   }
 
 
+  function activeMapRows() {
+    return activeReports()
+      .map((report) => ({ report, location: savedLocationForName(report.location) }))
+      .filter(({ location }) => location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude))
+      .sort((a, b) => {
+        const byLocation = a.location.name.localeCompare(b.location.name, "es", { numeric: true, sensitivity: "base" });
+        if (byLocation) return byLocation;
+        return a.report.equipment.localeCompare(b.report.equipment, "es", { numeric: true, sensitivity: "base" });
+      });
+  }
+
+  function activeMapTone(reports) {
+    if (reports.some((report) => reportStatusClass(report) === "status-fs")) return "status-fs";
+    if (reports.some((report) => reportStatusClass(report) === "status-obs")) return "status-obs";
+    return "status-op";
+  }
+
+  function renderActiveMap() {
+    if (!el.activeMapCanvas || !el.activeMapList) return;
+    el.activeMapCanvas.innerHTML = "";
+    el.activeMapList.innerHTML = "";
+
+    const rows = activeMapRows();
+    const missing = activeReports()
+      .filter((report) => !rows.some(({ report: mapped }) => mapped.id === report.id))
+      .sort((a, b) => a.equipment.localeCompare(b.equipment, "es", { numeric: true, sensitivity: "base" }));
+
+    if (!rows.length) {
+      el.activeMapCanvas.appendChild(empty("No hay reportes activos con ubicacion GPS guardada."));
+    } else {
+      const lats = rows.map(({ location }) => location.latitude);
+      const lngs = rows.map(({ location }) => location.longitude);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const latRange = Math.max(maxLat - minLat, 0.001);
+      const lngRange = Math.max(maxLng - minLng, 0.001);
+      const grouped = new Map();
+
+      rows.forEach((row) => {
+        const key = row.location.id || row.location.normalizedName || normalizeLocationText(row.location.name);
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(row);
+      });
+
+      grouped.forEach((items) => {
+        const { location } = items[0];
+        const reports = items.map((item) => item.report);
+        const left = maxLng === minLng ? 50 : 8 + ((location.longitude - minLng) / lngRange) * 84;
+        const top = maxLat === minLat ? 50 : 92 - ((location.latitude - minLat) / latRange) * 84;
+        const pin = document.createElement("button");
+        pin.type = "button";
+        pin.className = `active-map-pin ${activeMapTone(reports)}`;
+        pin.style.left = `${Number.isFinite(left) ? left : 50}%`;
+        pin.style.top = `${Number.isFinite(top) ? top : 50}%`;
+        pin.title = `${location.name}: ${reports.map((report) => report.equipment).join(", ")}`;
+        pin.innerHTML = `<strong></strong><span></span>`;
+        pin.querySelector("strong").textContent = reports.length;
+        pin.querySelector("span").textContent = location.name;
+        pin.addEventListener("click", () => {
+          openInfoModal(`Ubicacion ${location.name}`, reports.map((report) => ({
+            label: report.equipment,
+            value: `${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`
+          })));
+        });
+        el.activeMapCanvas.appendChild(pin);
+      });
+    }
+
+    if (!rows.length && !missing.length) {
+      el.activeMapList.appendChild(empty("No hay reportes activos para mostrar."));
+      return;
+    }
+
+    rows.forEach(({ report, location }) => {
+      const details = `${location.name} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
+      const actions = [
+        mapsButton(report),
+        button("Ver detalles", "secondary", () => showReportDetails(report))
+      ];
+      const item = card(report.equipment, equipmentTypeLabel(report.equipment), details, actions);
+      item.classList.add("active-map-card", reportStatusClass(report));
+      el.activeMapList.appendChild(item);
+    });
+
+    if (missing.length) {
+      const missingBox = document.createElement("section");
+      missingBox.className = "active-map-missing";
+      const title = document.createElement("h3");
+      title.textContent = "Sin ubicacion guardada";
+      missingBox.appendChild(title);
+      missing.forEach((report) => {
+        missingBox.appendChild(card(
+          report.equipment,
+          report.location || "Sin ubicacion",
+          report.deviation || "Sin falla",
+          [button("Ver detalles", "secondary", () => showReportDetails(report))]
+        ));
+      });
+      el.activeMapList.appendChild(missingBox);
+    }
+  }
+
   function renderLocations() {
     if (!el.locationsList) return;
     el.locationsList.innerHTML = "";
@@ -3157,6 +3264,7 @@
     renderValidations();
     renderUsers();
     renderLocations();
+    renderActiveMap();
     renderNotifications();
   }
 
