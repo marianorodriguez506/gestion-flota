@@ -501,6 +501,39 @@ label {
   pointer-events: none;
 }
 
+.active-map-canvas.leaflet-active {
+  background: #0b1724;
+}
+
+.active-map-canvas.leaflet-active::after {
+  content: none;
+}
+
+.active-map-canvas .leaflet-container {
+  font: inherit;
+}
+
+.active-map-canvas .leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.active-map-popup {
+  display: grid;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.active-map-popup strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.active-map-popup span {
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
 .active-map-canvas .empty {
   position: absolute;
   inset: 16px;

@@ -61,6 +61,7 @@
   let reportMenuModalOpen = false;
   let notificationsModalOpen = false;
   let notificationsModalResolve = null;
+  let activeMapInstance = null;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
@@ -3113,8 +3114,108 @@
     return "status-op";
   }
 
+  function groupedActiveMapRows(rows) {
+    const grouped = new Map();
+    rows.forEach((row) => {
+      const key = row.location.id || row.location.normalizedName || normalizeLocationText(row.location.name);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(row);
+    });
+    return grouped;
+  }
+
+  function clearActiveMapInstance() {
+    if (!activeMapInstance) return;
+    activeMapInstance.remove();
+    activeMapInstance = null;
+  }
+
+  function activeMapPopup(location, reports) {
+    const box = document.createElement("div");
+    box.className = "active-map-popup";
+    const title = document.createElement("strong");
+    title.textContent = location.name;
+    box.appendChild(title);
+    reports.forEach((report) => {
+      const row = document.createElement("span");
+      row.textContent = `${report.equipment} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
+      box.appendChild(row);
+    });
+    return box;
+  }
+
+  function renderLeafletActiveMap(groupedRows) {
+    if (!window.L) return false;
+    clearActiveMapInstance();
+    el.activeMapCanvas.classList.add("leaflet-active");
+    const map = window.L.map(el.activeMapCanvas, {
+      scrollWheelZoom: false,
+      zoomControl: true
+    });
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    const bounds = [];
+    groupedRows.forEach((items) => {
+      const { location } = items[0];
+      const reports = items.map((item) => item.report);
+      const latLng = [location.latitude, location.longitude];
+      bounds.push(latLng);
+      window.L.marker(latLng, { title: `${location.name}: ${reports.map((report) => report.equipment).join(", ")}` })
+        .addTo(map)
+        .bindPopup(activeMapPopup(location, reports));
+    });
+
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 14);
+    } else {
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+    }
+    setTimeout(() => map.invalidateSize(), 80);
+    activeMapInstance = map;
+    return true;
+  }
+
+  function renderFallbackActiveMap(rows, groupedRows) {
+    const lats = rows.map(({ location }) => location.latitude);
+    const lngs = rows.map(({ location }) => location.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    const latRange = Math.max(maxLat - minLat, 0.001);
+    const lngRange = Math.max(maxLng - minLng, 0.001);
+
+    groupedRows.forEach((items) => {
+      const { location } = items[0];
+      const reports = items.map((item) => item.report);
+      const left = maxLng === minLng ? 50 : 8 + ((location.longitude - minLng) / lngRange) * 84;
+      const top = maxLat === minLat ? 50 : 92 - ((location.latitude - minLat) / latRange) * 84;
+      const pin = document.createElement("button");
+      pin.type = "button";
+      pin.className = `active-map-pin ${activeMapTone(reports)}`;
+      pin.style.left = `${Number.isFinite(left) ? left : 50}%`;
+      pin.style.top = `${Number.isFinite(top) ? top : 50}%`;
+      pin.title = `${location.name}: ${reports.map((report) => report.equipment).join(", ")}`;
+      pin.innerHTML = `<strong></strong><span></span>`;
+      pin.querySelector("strong").textContent = reports.length;
+      pin.querySelector("span").textContent = location.name;
+      pin.addEventListener("click", () => {
+        openInfoModal(`Ubicacion ${location.name}`, reports.map((report) => ({
+          label: report.equipment,
+          value: `${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`
+        })));
+      });
+      el.activeMapCanvas.appendChild(pin);
+    });
+  }
+
   function renderActiveMap() {
     if (!el.activeMapCanvas || !el.activeMapList) return;
+    clearActiveMapInstance();
+    el.activeMapCanvas.classList.remove("leaflet-active");
     el.activeMapCanvas.innerHTML = "";
     el.activeMapList.innerHTML = "";
 
@@ -3126,44 +3227,10 @@
     if (!rows.length) {
       el.activeMapCanvas.appendChild(empty("No hay reportes activos con ubicacion GPS guardada."));
     } else {
-      const lats = rows.map(({ location }) => location.latitude);
-      const lngs = rows.map(({ location }) => location.longitude);
-      const minLat = Math.min(...lats);
-      const maxLat = Math.max(...lats);
-      const minLng = Math.min(...lngs);
-      const maxLng = Math.max(...lngs);
-      const latRange = Math.max(maxLat - minLat, 0.001);
-      const lngRange = Math.max(maxLng - minLng, 0.001);
-      const grouped = new Map();
-
-      rows.forEach((row) => {
-        const key = row.location.id || row.location.normalizedName || normalizeLocationText(row.location.name);
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key).push(row);
-      });
-
-      grouped.forEach((items) => {
-        const { location } = items[0];
-        const reports = items.map((item) => item.report);
-        const left = maxLng === minLng ? 50 : 8 + ((location.longitude - minLng) / lngRange) * 84;
-        const top = maxLat === minLat ? 50 : 92 - ((location.latitude - minLat) / latRange) * 84;
-        const pin = document.createElement("button");
-        pin.type = "button";
-        pin.className = `active-map-pin ${activeMapTone(reports)}`;
-        pin.style.left = `${Number.isFinite(left) ? left : 50}%`;
-        pin.style.top = `${Number.isFinite(top) ? top : 50}%`;
-        pin.title = `${location.name}: ${reports.map((report) => report.equipment).join(", ")}`;
-        pin.innerHTML = `<strong></strong><span></span>`;
-        pin.querySelector("strong").textContent = reports.length;
-        pin.querySelector("span").textContent = location.name;
-        pin.addEventListener("click", () => {
-          openInfoModal(`Ubicacion ${location.name}`, reports.map((report) => ({
-            label: report.equipment,
-            value: `${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`
-          })));
-        });
-        el.activeMapCanvas.appendChild(pin);
-      });
+      const grouped = groupedActiveMapRows(rows);
+      if (!renderLeafletActiveMap(grouped)) {
+        renderFallbackActiveMap(rows, grouped);
+      }
     }
 
     if (!rows.length && !missing.length) {
