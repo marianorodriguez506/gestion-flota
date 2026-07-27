@@ -1911,6 +1911,64 @@ label {
     font-size: 16px;
   }
 
+  #tomorrowScreen .panel.compact .card-actions,
+  .plan-worker .worker-actions,
+  .plan-report-card .card-actions {
+    display: grid;
+    gap: 6px;
+  }
+
+  #tomorrowScreen .panel.compact .card-actions,
+  .plan-worker .worker-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #tomorrowScreen .panel.compact .card-actions button,
+  .plan-worker .worker-actions button,
+  .plan-report-card .card-actions button {
+    min-height: 36px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+
+  .plan-items {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .plan-report-card {
+    padding: 10px 11px;
+  }
+
+  .plan-report-card .card-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .plan-report-card .card-head h2 {
+    font-size: 18px;
+  }
+
+  .plan-report-card .tag {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .plan-report-card .meta {
+    display: none;
+  }
+
+  .plan-report-card .card-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 8px;
+  }
+
   .tag {
     background: rgba(250, 204, 21, .12);
     color: var(--accent);

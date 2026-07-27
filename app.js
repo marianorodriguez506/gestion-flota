@@ -398,7 +398,7 @@
   }
 
   function isReportInSelectedPlan(report) {
-    return !report.planDate || report.planDate === state.planDate;
+    return report.planDate === state.planDate;
   }
 
   function myReports() {
@@ -1347,7 +1347,7 @@
     }
     let updated = null;
     try {
-      updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
+      updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: null });
     } catch (error) {
       if (!String(error.message || "").includes("plan_date")) throw error;
       updated = await updateReport(report.id, { mechanic_id: worker.id });
@@ -1358,7 +1358,7 @@
       return;
     }
 
-    mergeReportUpdate(report.id, updated, { mechanicId: worker.id, planDate });
+    mergeReportUpdate(report.id, updated, { mechanicId: worker.id, planDate: "" });
     renderImmediate();
     renderTomorrow();
     renderMyJobs();
@@ -1899,8 +1899,8 @@
         workerRows.forEach((report) => {
           const reportActions = [
             mapsButton(report),
-            button("Ver detalles", "secondary", () => showReportDetails(report)),
-            button("Ver historial", "secondary", () => showReportHistory(report))
+            button("Ver info", "secondary", () => showReportDetails(report)),
+            button("Historial", "secondary", () => showReportHistory(report))
           ];
           if (!report.draftManual && (isAdmin() || report.mechanicId === state.currentUser.id)) {
             reportActions.push(button("Marcar reparacion realizada", "ok", async () => markRepairDone(report)));
@@ -1918,7 +1918,9 @@
             reportActions.push(button("Validar", "primary", async () => validateReport(report)));
             reportActions.push(button("Rechazar", "secondary", async () => rejectReport(report)));
           }
-          list.appendChild(card(report.equipment, displayStatus(report.status), reportLine(report), reportActions));
+          const planCard = card(report.equipment, report.location || "Sin ubicacion", reportLine(report), reportActions);
+          planCard.classList.add("plan-report-card");
+          list.appendChild(planCard);
         });
       }
       el.tomorrowList.appendChild(section);
