@@ -60,6 +60,22 @@ body {
   display: none;
 }
 
+.install-app-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 82px;
+  z-index: 36;
+  min-height: 42px;
+  border: 1px solid rgba(250, 204, 21, .45);
+  border-radius: 999px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  color: #06111f;
+  font-size: 13px;
+  font-weight: 950;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .28);
+}
+
 .topbar {
   display: flex;
   align-items: center;

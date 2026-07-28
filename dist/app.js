@@ -62,6 +62,7 @@
   let notificationsModalOpen = false;
   let notificationsModalResolve = null;
   let activeMapInstance = null;
+  let deferredInstallPrompt = null;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
@@ -137,6 +138,7 @@
     activeMapList: document.getElementById("activeMapList"),
     notificationsList: document.getElementById("notificationsList"),
     clearNotifications: document.getElementById("clearNotifications"),
+    installAppBtn: document.getElementById("installAppBtn"),
     modalRoot: document.getElementById("modalRoot"),
     modalTitle: document.getElementById("modalTitle"),
     modalBody: document.getElementById("modalBody"),
@@ -3702,11 +3704,34 @@
 
   function registerServiceWorker() {
     if (!("serviceWorker" in navigator)) return;
-    window.addEventListener("load", () => {
+    const register = () => {
       navigator.serviceWorker.register("/sw.js").catch((error) => {
         console.info("Service worker no disponible:", error);
       });
-    });
+    };
+    if (document.readyState === "complete") {
+      register();
+    } else {
+      window.addEventListener("load", register, { once: true });
+    }
+  }
+
+  function updateInstallButton() {
+    if (!el.installAppBtn) return;
+    const standalone = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone;
+    el.installAppBtn.classList.toggle("hidden", standalone || !deferredInstallPrompt);
+  }
+
+  async function installApp() {
+    if (!deferredInstallPrompt) {
+      showToast("En Chrome toca el menu de tres puntos y elegi Instalar app o Agregar a pantalla principal.");
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice.catch(() => null);
+    deferredInstallPrompt = null;
+    updateInstallButton();
+    if (choice?.outcome === "accepted") showToast("App instalada.");
   }
 
   el.modalRoot?.addEventListener("click", (event) => {
@@ -3738,6 +3763,16 @@
     const screen = event.state?.screen || "home";
     setScreen(screen, { history: false });
   });
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallButton();
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    updateInstallButton();
+    showToast("App instalada.");
+  });
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
@@ -3757,6 +3792,7 @@
   }
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
+  el.installAppBtn?.addEventListener("click", installApp);
   el.usersBtn.addEventListener("click", () => setScreen("users"));
   el.notificationsBtn?.addEventListener("click", () => window.showNotificationsHistory?.());
   el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
