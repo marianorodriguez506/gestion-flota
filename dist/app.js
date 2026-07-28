@@ -3667,6 +3667,8 @@
   }
 
   async function initializeApp() {
+    registerServiceWorker();
+
     if (!supabase) {
       el.loginError.textContent = "Falta cargar Supabase. Revisá supabase-config.js.";
       setScreen("auth", { replaceHistory: true });
@@ -3696,6 +3698,15 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "saved_locations" }, () => refreshAllData())
       .subscribe();
+  }
+
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.info("Service worker no disponible:", error);
+      });
+    });
   }
 
   el.modalRoot?.addEventListener("click", (event) => {

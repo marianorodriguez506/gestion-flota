@@ -1,42 +1,71 @@
-const CACHE = "gestion-flota-v7";
-const ASSETS = [
-  "./index.html",
-  "./styles.css",
-  "./app.js",
-  "./supabase-config.js",
-  "./manifest.webmanifest"
+const CACHE_VERSION = "gestion-flota-pwa-v1";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/offline.html",
+  "/styles.css",
+  "/app.js",
+  "/supabase-config.js",
+  "/manifest.webmanifest",
+  "/assets/icons/icon-192.png",
+  "/assets/icons/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL))
+  );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", (event) => {
-  const requestUrl = new URL(event.request.url);
-  const freshFiles = ["/", "/index.html", "/app.js", "/supabase-config.js", "/sw.js"];
+  const { request } = event;
+  if (request.method !== "GET") return;
 
-  if (event.request.method === "GET" && requestUrl.origin === self.location.origin && freshFiles.includes(requestUrl.pathname)) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+  const requestUrl = new URL(request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isApiRequest = isSameOrigin && requestUrl.pathname.startsWith("/api/");
+  const isSupabaseRequest = requestUrl.hostname.includes("supabase.co");
+  if (isApiRequest || isSupabaseRequest) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(networkFirstPage(request));
     return;
   }
 
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  if (isSameOrigin) {
+    event.respondWith(staleWhileRevalidate(request));
+  }
 });
+
+async function networkFirstPage(request) {
+  try {
+    const response = await fetch(request);
+    const cache = await caches.open(CACHE_VERSION);
+    cache.put("/index.html", response.clone());
+    return response;
+  } catch (_error) {
+    return (await caches.match("/index.html")) || caches.match("/offline.html");
+  }
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE_VERSION);
+  const cached = await cache.match(request, { ignoreSearch: true });
+  const fresh = fetch(request)
+    .then((response) => {
+      if (response.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => cached);
+  return cached || fresh;
+}
