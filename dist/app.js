@@ -84,6 +84,9 @@
     desktopActivity: document.getElementById("desktopActivity"),
     mobileStats: document.getElementById("mobileStats"),
     mobileActiveCount: document.getElementById("mobileActiveCount"),
+    mobileAssignedBlock: document.getElementById("mobileAssignedBlock"),
+    mobileAssignedList: document.getElementById("mobileAssignedList"),
+    mobileToolsPanel: document.getElementById("mobileToolsPanel"),
     immediateForm: document.getElementById("immediateForm"),
     immediateList: document.getElementById("immediateList"),
     reportPaste: document.getElementById("reportPaste"),
@@ -1640,6 +1643,12 @@
     document.querySelectorAll(".sidebar-nav [data-screen]").forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.screen === name);
     });
+    document.querySelectorAll(".mobile-bottom-nav [data-screen]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.screen === name);
+    });
+    document.querySelectorAll(".mobile-bottom-nav [data-mobile-more]").forEach((btn) => {
+      btn.classList.toggle("active", name === "home" && Boolean(el.mobileToolsPanel?.open));
+    });
 
     if (options.history !== false && window.history?.pushState) {
       const nextState = { screen: name };
@@ -1707,6 +1716,37 @@
     node.querySelector("strong").textContent = value;
     node.querySelector("span").textContent = label;
     return node;
+  }
+
+  function mobileAssignedCard(report) {
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = `mobile-assigned-card ${reportStatusClass(report)}`;
+    node.innerHTML = `
+      <strong></strong>
+      <span></span>
+      <small></small>
+    `;
+    node.querySelector("strong").textContent = report.equipment;
+    node.querySelector("span").textContent = report.location || "Sin ubicacion";
+    node.querySelector("small").textContent = report.deviation || "Sin falla";
+    node.addEventListener("click", () => showReportDetails(report));
+    return node;
+  }
+
+  function renderMobileAssigned() {
+    if (!el.mobileAssignedBlock || !el.mobileAssignedList) return;
+    const showBlock = isLoggedIn() && !isAdmin();
+    el.mobileAssignedBlock.classList.toggle("hidden", !showBlock);
+    el.mobileAssignedList.innerHTML = "";
+    if (!showBlock) return;
+
+    const own = myReports().slice(0, 4);
+    if (!own.length) {
+      el.mobileAssignedList.appendChild(empty("No tenes equipos asignados para este plan."));
+      return;
+    }
+    own.forEach((report) => el.mobileAssignedList.appendChild(mobileAssignedCard(report)));
   }
 
   function equipmentPrefix(equipment) {
@@ -1834,13 +1874,21 @@
     const obs = active.filter((report) => /^OBS$/i.test(displayStatus(report.status)));
     const operative = state.reports.filter((report) => isOperativeInformedStatus(report.status) || report.status === "Operativo validado");
     const workers = approvedWorkers();
+    const own = myReports();
 
-    const statRows = [
-      ["Reportes FS", fs.length, "Fuera de servicio", "danger", "tools"],
-      ["Reportes OBS", obs.length, "Observaciones", "warn", "eye"],
-      ["Operativos", operative.length, "Informados / validados", "ok", "check"],
-      ["Mecanicos", workers.length, "Equipo disponible", "info", "user"]
-    ];
+    const statRows = isAdmin()
+      ? [
+        ["Reportes FS", fs.length, "Fuera de servicio", "danger", "tools"],
+        ["Reportes OBS", obs.length, "Observaciones", "warn", "eye"],
+        ["Operativos", operative.length, "Informados / validados", "ok", "check"],
+        ["Mecanicos", workers.length, "Equipo disponible", "info", "user"]
+      ]
+      : [
+        ["Mis asignados", own.length, "Trabajos para hoy", "info", "user"],
+        ["FS", own.filter((report) => /^FS$/i.test(displayStatus(report.status))).length, "Fuera de servicio", "danger", "tools"],
+        ["OBS", own.filter((report) => /^OBS$/i.test(displayStatus(report.status))).length, "Observaciones", "warn", "eye"],
+        ["Plan", planReports().length, "Equipos del dia", "ok", "check"]
+      ];
 
     if (el.mobileStats) {
       el.mobileStats.innerHTML = "";
@@ -1849,6 +1897,7 @@
       });
     }
     if (el.mobileActiveCount) el.mobileActiveCount.textContent = active.length;
+    renderMobileAssigned();
 
     if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
     el.desktopStats.innerHTML = "";
@@ -3675,6 +3724,20 @@
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
+  document.querySelector("[data-mobile-more]")?.addEventListener("click", () => {
+    setScreen("home");
+    if (el.mobileToolsPanel) {
+      el.mobileToolsPanel.open = !el.mobileToolsPanel.open;
+      el.mobileToolsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelector("[data-mobile-more]")?.classList.toggle("active", el.mobileToolsPanel.open);
+    }
+  });
+  el.mobileToolsPanel?.addEventListener("toggle", () => {
+    document.querySelector("[data-mobile-more]")?.classList.toggle("active", el.mobileToolsPanel.open);
+  });
+  if (el.mobileToolsPanel && window.matchMedia?.("(max-width: 899px)").matches) {
+    el.mobileToolsPanel.open = false;
+  }
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.usersBtn.addEventListener("click", () => setScreen("users"));

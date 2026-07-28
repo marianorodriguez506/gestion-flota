@@ -131,6 +131,14 @@
         </button>
       </section>
 
+      <section id="mobileAssignedBlock" class="mobile-assigned-block mechanic-only">
+        <div class="mobile-section-title">
+          <span>Tus asignados</span>
+          <button data-screen="myJobs" type="button">Ver todos</button>
+        </div>
+        <div id="mobileAssignedList" class="mobile-assigned-list"></div>
+      </section>
+
       <section id="desktopDashboard" class="desktop-dashboard" aria-label="Resumen de flota">
         <div id="desktopStats" class="desktop-stats"></div>
         <div class="desktop-home-grid">
@@ -151,14 +159,22 @@
       </section>
 
       <div class="quick-actions">
-        <button class="quick-btn urgent" data-screen="immediate">📋 Reportes activos</button>
+        <button class="quick-btn urgent" data-screen="immediate">Reportes activos</button>
 
         <button class="quick-btn mechanic-only" data-screen="myJobs">Mis trabajos</button>
 
-        <button class="quick-btn" data-screen="orders">📦 Repuestos</button>
         <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
+        <button class="quick-btn" data-screen="orders">Repuestos</button>
+        <button class="quick-btn admin-only" data-screen="validations">Validaciones</button>
+        <button class="quick-btn mechanic-only" data-screen="mechanic">Reporte mecánico</button>
       </div>
 
+      <details id="mobileToolsPanel" class="mobile-tools-panel" open>
+        <summary>
+          <span>Más herramientas</span>
+          <small>Accede a todas las opciones del sistema</small>
+        </summary>
+        <div class="mobile-tools-body">
       <div class="home-grid">
         <button class="module-btn" data-screen="activeMap">Mapa activos</button>
         <button class="module-btn" data-screen="doneTasks">Tareas realizadas</button>
@@ -172,6 +188,8 @@
       </div>
       <button id="usersBtn" class="wide-btn" type="button">Gestión de mecánicos</button>
       <button id="locationsBtn" class="wide-btn" type="button">Base de ubicaciones</button>
+        </div>
+      </details>
     </section>
     
     <section id="immediateScreen" class="screen">
@@ -430,6 +448,12 @@
       <section id="notificationsList" class="list"></section>
       <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
     </section>
+    <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
+      <button data-screen="home" type="button"><span>Inicio</span></button>
+      <button data-screen="immediate" type="button"><span>Reportes</span></button>
+      <button data-screen="tomorrow" type="button"><span>Plan Mañana</span></button>
+      <button data-mobile-more type="button"><span>Más</span></button>
+    </nav>
     </div>
   </main>
   <div id="modalRoot" class="modal-root hidden" aria-hidden="true">
