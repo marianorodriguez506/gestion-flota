@@ -476,7 +476,7 @@ label {
 
 .active-map-canvas {
   position: relative;
-  min-height: 360px;
+  min-height: 520px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -587,6 +587,7 @@ label {
 
 .active-map-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 10px;
   padding-bottom: 32px;
 }
@@ -1288,12 +1289,11 @@ label {
   }
 
   body.logged-in .active-map-layout {
-    grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
-    align-items: start;
+    grid-template-columns: 1fr;
   }
 
   body.logged-in .active-map-canvas {
-    min-height: 560px;
+    min-height: min(72vh, 760px);
     border-radius: 14px;
   }
 
@@ -1767,6 +1767,14 @@ label {
 
   .app {
     padding: max(12px, env(safe-area-inset-top)) 12px max(18px, env(safe-area-inset-bottom));
+  }
+
+  .active-map-canvas {
+    min-height: 440px;
+  }
+
+  .active-map-list {
+    grid-template-columns: 1fr;
   }
 
   .topbar {

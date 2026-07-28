@@ -3162,9 +3162,22 @@
       const { location } = items[0];
       const reports = items.map((item) => item.report);
       const latLng = [location.latitude, location.longitude];
+      const tone = activeMapTone(reports);
+      const color = tone === "status-fs" ? "#ef4444" : tone === "status-obs" ? "#f59e0b" : "#22c55e";
       bounds.push(latLng);
-      window.L.marker(latLng, { title: `${location.name}: ${reports.map((report) => report.equipment).join(", ")}` })
+      window.L.circleMarker(latLng, {
+        radius: Math.min(22, 10 + reports.length * 2),
+        color: "#ffffff",
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.9
+      })
         .addTo(map)
+        .bindTooltip(`${location.name} (${reports.length})`, {
+          direction: "top",
+          offset: [0, -10],
+          opacity: 0.95
+        })
         .bindPopup(activeMapPopup(location, reports));
     });
 
@@ -3239,11 +3252,15 @@
     }
 
     rows.forEach(({ report, location }) => {
-      const details = `${location.name} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
+      const coords = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      const details = `${location.name} - GPS usado: ${coords} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
       const actions = [
         mapsButton(report),
         button("Ver detalles", "secondary", () => showReportDetails(report))
       ];
+      if (isAdmin()) {
+        actions.push(button("Corregir ubicacion", "secondary", () => editSavedLocation(location)));
+      }
       const item = card(report.equipment, equipmentTypeLabel(report.equipment), details, actions);
       item.classList.add("active-map-card", reportStatusClass(report));
       el.activeMapList.appendChild(item);
