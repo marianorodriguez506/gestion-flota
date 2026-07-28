@@ -1989,7 +1989,7 @@
     renderAvailability();
 
     const rows = planReports();
-    const workers = approvedWorkers();
+    const workers = approvedWorkers().filter((worker) => workerAvailability(worker.id) !== "franco");
 
     if (!workers.length) {
       el.tomorrowList.appendChild(empty("No hay mecánicos aprobados."));
@@ -1998,13 +1998,10 @@
 
     workers.forEach((worker) => {
       const workerRows = rows.filter((report) => reportHasWorker(report, worker.id));
-      const available = workerAvailability(worker.id);
       const actions = [];
       if (isAdmin()) {
-        if (available !== "franco") {
-          actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
-          actions.push(button("Carga manual", "secondary", async () => createManualPlanItem(worker)));
-        }
+        actions.push(button("Agregar equipo", "primary", async () => chooseReportForWorker(worker)));
+        actions.push(button("Carga manual", "secondary", async () => createManualPlanItem(worker)));
         actions.push(button("Copiar trabajos", "secondary", () => copyPlan(worker.id)));
       }
 
@@ -2013,7 +2010,7 @@
       section.innerHTML = `
         <div class="card-head">
           <h2>${worker.name}</h2>
-          <span class="tag ${available === "franco" ? "danger" : "ok"}">${available === "franco" ? "Franco" : "Disponible"}</span>
+          <span class="tag ok">Disponible</span>
         </div>
         <div class="worker-actions"></div>
         <div class="plan-items"></div>
@@ -2398,8 +2395,60 @@
     return lines.join("\n").trim();
   }
 
+  function buildWhatsAppPlanText(workerId) {
+    const workers = workerId
+      ? approvedWorkers().filter((worker) => worker.id === workerId)
+      : approvedWorkers();
+    const taskLines = workers
+      .filter((worker) => workerAvailability(worker.id) !== "franco")
+      .map((worker) => {
+        const reports = planReports().filter((report) => reportHasWorker(report, worker.id));
+        if (!reports.length) return "";
+        const equipment = reports.map((report) => formatPlanEquipment(report.equipment)).join(" + ");
+        const locations = uniqueTexts(reports.map((report) => shortPlanLocation(report.location))).join(" / ");
+        return `${planWorkerName(worker.name)} ${equipment}${locations ? ` ${locations}` : ""}`;
+      })
+      .filter(Boolean);
+    if (!taskLines.length) return "";
+    const lines = [`TAREAS ${formatPlanDateForWhatsApp(state.planDate)}`, ""];
+    taskLines.forEach((line, index) => lines.push(`${index + 1}.${line}`));
+    lines.push("", "SUJETO A MODIFICACION");
+    return lines.join("\n");
+  }
+
+  function planWorkerName(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    return parts.length > 1 ? parts[parts.length - 1] : (parts[0] || "Mecanico");
+  }
+
+  function formatPlanEquipment(equipment) {
+    return String(equipment || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[-_]+/g, " ")
+      .replace(/\s+/g, " ");
+  }
+
+  function shortPlanLocation(location) {
+    return String(location || "").trim().toUpperCase();
+  }
+
+  function uniqueTexts(values) {
+    return [...new Set(values.filter(Boolean))];
+  }
+
+  function formatPlanDateForWhatsApp(value) {
+    const [year, month, day] = String(value || "").split("-");
+    if (year && month && day) return `${day}/${month}`;
+    return new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+  }
+
   async function copyPlan(workerId) {
-    const text = buildPlanText(workerId);
+    const text = buildWhatsAppPlanText(workerId);
+    if (!text) {
+      showToast("No hay tareas para copiar.");
+      return;
+    }
     const copied = await writeClipboard(text);
     if (navigator.share && !workerId) {
       await navigator.share({ text });
