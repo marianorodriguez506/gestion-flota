@@ -41,6 +41,7 @@ alter table public.reports add column if not exists repaired_at timestamptz;
 alter table public.reports add column if not exists validated_at timestamptz;
 alter table public.reports add column if not exists plan_date date;
 alter table public.reports add column if not exists hourmeter text;
+alter table public.reports add column if not exists mechanic_ids jsonb not null default '[]'::jsonb;
 
 create table if not exists public.worker_availability (
   id uuid primary key default gen_random_uuid(),
@@ -92,6 +93,7 @@ create table if not exists public.saved_locations (
 create index if not exists profiles_username_idx on public.profiles(username);
 create index if not exists reports_mechanic_idx on public.reports(mechanic_id);
 create index if not exists reports_plan_date_idx on public.reports(plan_date);
+create index if not exists reports_mechanic_ids_idx on public.reports using gin(mechanic_ids);
 create index if not exists reports_created_by_idx on public.reports(created_by);
 create index if not exists orders_requester_idx on public.orders(requester_id);
 alter table public.orders add column if not exists destination text;
@@ -300,6 +302,7 @@ create policy reports_update_approved
     and (
       auth.uid() = created_by
       or auth.uid() = mechanic_id
+      or mechanic_ids ? auth.uid()::text
       or private.is_admin()
     )
   )
@@ -308,6 +311,7 @@ create policy reports_update_approved
     and (
       auth.uid() = created_by
       or auth.uid() = mechanic_id
+      or mechanic_ids ? auth.uid()::text
       or private.is_admin()
     )
   );

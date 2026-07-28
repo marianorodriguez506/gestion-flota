@@ -196,13 +196,15 @@
     return `${prefix}-${match[2]}`;
   }
   function normalizeReport(row) {
+    const mechanicIds = normalizeMechanicIds(row.mechanic_ids, row.mechanic_id);
     return {
       id: row.id,
       equipment: normalizeEquipment(row.equipment),
       location: row.location || "",
       deviation: row.deviation || "",
       status: row.status || "Pendiente",
-      mechanicId: row.mechanic_id || null,
+      mechanicId: mechanicIds[0] || row.mechanic_id || null,
+      mechanicIds,
       planDate: row.plan_date || "",
       hourmeter: row.hourmeter || "",
       previousStatus: row.previous_status || "",
@@ -358,6 +360,32 @@
     return state.users.find((user) => user.id === workerId)?.name || "Sin asignar";
   }
 
+  function uniqueIds(ids) {
+    return [...new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  }
+
+  function normalizeMechanicIds(value, primaryId = null) {
+    const raw = Array.isArray(value) ? value : safeJson(value, []);
+    return uniqueIds([...(Array.isArray(raw) ? raw : []), primaryId]);
+  }
+
+  function reportMechanicIds(report) {
+    return normalizeMechanicIds(report.mechanicIds, report.mechanicId);
+  }
+
+  function reportPlanMechanicIds(report) {
+    return isReportInSelectedPlan(report) ? reportMechanicIds(report) : [];
+  }
+
+  function reportHasWorker(report, workerId) {
+    return reportMechanicIds(report).includes(String(workerId || ""));
+  }
+
+  function reportAssignedNames(report, options = {}) {
+    const ids = options.onlySelectedPlan ? reportPlanMechanicIds(report) : reportMechanicIds(report);
+    return ids.map(workerName).filter((name) => name && name !== "Sin asignar").join(", ") || "Sin asignar";
+  }
+
   function userName(userId) {
     return state.users.find((user) => user.id === userId)?.name || "Sin dato";
   }
@@ -382,9 +410,11 @@
     const draft = ensurePlanDraft();
     const change = draft.assignments[report.id];
     if (!change) return report;
+    const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
     return {
       ...report,
-      mechanicId: change.mechanicId || null,
+      mechanicId: mechanicIds[0] || null,
+      mechanicIds,
       planDate: change.planDate || ""
     };
   }
@@ -393,7 +423,7 @@
     const draft = ensurePlanDraft();
     const rows = activeReports()
       .map(applyPlanDraft)
-      .filter((report) => report.mechanicId && isReportInSelectedPlan(report));
+      .filter((report) => reportMechanicIds(report).length && isReportInSelectedPlan(report));
     return uniqueReports([...rows, ...draft.manualItems]);
   }
 
@@ -407,7 +437,7 @@
 
   function myReports() {
     if (!state.currentUser) return [];
-    return activeReports().filter((report) => report.mechanicId === state.currentUser.id && !isOperativeInformedStatus(report.status));
+    return activeReports().filter((report) => isReportInSelectedPlan(report) && reportHasWorker(report, state.currentUser.id) && !isOperativeInformedStatus(report.status));
   }
 
   function visibleActiveReports() {
@@ -706,7 +736,7 @@
     showToast("Ubicacion eliminada.");
   }
   function reportLine(report) {
-    const mechanic = workerName(report.mechanicId);
+    const mechanic = reportAssignedNames(report);
     const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
     const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
     return `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
@@ -932,7 +962,7 @@
       { label: "Ubicacion", value: report.location },
       { label: "Falla", value: report.deviation },
       { label: "Horometro / km", value: report.hourmeter },
-      { label: "Lo hace", value: workerName(report.mechanicId) },
+      { label: "Lo hacen", value: reportAssignedNames(report) },
       { label: "Reparaciones parciales", value: report.repairNote },
       { label: "Informado por", value: report.repairedBy || report.operatedBy },
       { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) }
@@ -1005,7 +1035,6 @@
   }
 
   function compactReportRow(report, actions, quickActions) {
-    const mechanic = state.users.find((user) => user.id === report.mechanicId);
     const days = reportAgeDays(report);
     const row = document.createElement("article");
     row.className = `report-row ${reportStatusClass(report)}`;
@@ -1029,7 +1058,7 @@
     age.textContent = `${days} d`;
     age.classList.add(reportAgeClass(days));
     row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
-    row.querySelector(".report-mechanic").textContent = mechanic ? mechanic.name : "Sin asignar";
+    row.querySelector(".report-mechanic").textContent = reportAssignedNames(report, { onlySelectedPlan: true });
     const actionBox = row.querySelector(".report-row-actions");
     (quickActions || []).forEach((action) => actionBox.appendChild(action));
     let longPressTimer = null;
@@ -1344,17 +1373,20 @@
     const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     if (options.defer) {
       const draft = ensurePlanDraft();
-      draft.assignments[report.id] = { mechanicId: worker.id, planDate };
+      draft.assignments[report.id] = { mechanicId: worker.id, mechanicIds: [worker.id], planDate };
       renderTomorrow();
       showToast(`${report.equipment} queda pendiente para guardar.`);
       return;
     }
     let updated = null;
     try {
-      updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: null });
+      updated = await updateReport(report.id, { mechanic_id: worker.id, mechanic_ids: [worker.id], plan_date: planDate });
     } catch (error) {
-      if (!String(error.message || "").includes("plan_date")) throw error;
-      updated = await updateReport(report.id, { mechanic_id: worker.id });
+      if (String(error.message || "").includes("mechanic_ids")) {
+        showToast("Falta aplicar la migracion mechanic_ids en Supabase para asignar varios mecanicos.");
+        updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
+      } else if (!String(error.message || "").includes("plan_date")) throw error;
+      updated = await updateReport(report.id, { mechanic_id: worker.id, plan_date: planDate });
     }
 
     if (!updated || String(updated.mechanic_id || "") !== String(worker.id)) {
@@ -1362,12 +1394,89 @@
       return;
     }
 
-    mergeReportUpdate(report.id, updated, { mechanicId: worker.id, planDate: "" });
+    mergeReportUpdate(report.id, updated, { mechanicId: worker.id, mechanicIds: [worker.id], planDate });
     renderImmediate();
     renderTomorrow();
     renderMyJobs();
     await createNotification(`${report.equipment} asignado a ${worker.name}`);
     showToast(`${report.equipment} asignado a ${worker.name}`);
+    await refreshAllData();
+  }
+
+  function openWorkersMultiModal(title, selectedIds = []) {
+    return new Promise((resolve) => {
+      const workers = availableWorkers();
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      if (!workers.length) {
+        el.modalBody.appendChild(empty("No hay mecanicos disponibles. Revisa los francos del plan."));
+      } else {
+        const list = document.createElement("div");
+        list.className = "choice-list";
+        workers.forEach((worker) => {
+          const label = document.createElement("label");
+          label.className = "choice-btn checkbox-row";
+          label.innerHTML = `<input type="checkbox"><span><strong></strong><small></small></span>`;
+          const input = label.querySelector("input");
+          input.value = worker.id;
+          input.checked = selectedIds.includes(worker.id);
+          label.querySelector("strong").textContent = worker.name;
+          label.querySelector("small").textContent = `${specialtyLabel(worker.specialty)} - Disponible`;
+          list.appendChild(label);
+        });
+        el.modalBody.appendChild(list);
+      }
+
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar asignacion", "primary", () => {
+        const ids = [...el.modalBody.querySelectorAll("input[type='checkbox']:checked")].map((input) => input.value);
+        closeModal();
+        resolve(workers.filter((worker) => ids.includes(worker.id)));
+      }));
+    });
+  }
+
+  async function assignReportToWorkers(report, workers, options = {}) {
+    const selectedWorkers = (Array.isArray(workers) ? workers : [workers]).filter(Boolean);
+    if (!selectedWorkers.length) return;
+    const unavailable = selectedWorkers.find((worker) => workerAvailability(worker.id) === "franco");
+    if (unavailable) {
+      showToast(`${unavailable.name} esta de franco en este plan.`);
+      return;
+    }
+    const planDate = state.planDate || new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const mechanicIds = uniqueIds([...(options.append ? reportMechanicIds(report) : []), ...selectedWorkers.map((worker) => worker.id)]);
+    const primaryId = mechanicIds[0] || null;
+    if (options.defer) {
+      const draft = ensurePlanDraft();
+      draft.assignments[report.id] = { mechanicId: primaryId, mechanicIds, planDate };
+      renderTomorrow();
+      showToast(`${report.equipment} queda pendiente para guardar.`);
+      return;
+    }
+
+    let updated = null;
+    try {
+      updated = await updateReport(report.id, { mechanic_id: primaryId, mechanic_ids: mechanicIds, plan_date: planDate });
+    } catch (error) {
+      if (!String(error.message || "").includes("mechanic_ids")) throw error;
+      showToast("Falta aplicar la migracion mechanic_ids en Supabase para asignar varios mecanicos.");
+      updated = await updateReport(report.id, { mechanic_id: primaryId, plan_date: planDate });
+    }
+    mergeReportUpdate(report.id, updated, { mechanicId: primaryId, mechanicIds, planDate });
+    renderImmediate();
+    renderTomorrow();
+    renderMyJobs();
+    const names = selectedWorkers.map((worker) => worker.name).join(", ");
+    await createNotification(`${report.equipment} asignado a ${names}`);
+    showToast(`${report.equipment} asignado a ${names}`);
     await refreshAllData();
   }
 
@@ -1386,7 +1495,9 @@
 
   async function chooseReportForWorker(worker) {
     const assignedIds = new Set(planReports().map((report) => report.id));
-    const rows = activeReports().filter((report) => !assignedIds.has(report.id));
+    const rows = activeReports()
+      .map(applyPlanDraft)
+      .filter((report) => !reportHasWorker(report, worker.id));
     const selected = await openChoiceModal(
       `Agregar equipo a ${worker.name}`,
       rows,
@@ -1396,7 +1507,7 @@
       `,
       "No hay reportes activos para asignar."
     );
-    if (selected) await assignReportToWorker(selected, worker, { defer: true });
+    if (selected) await assignReportToWorkers(selected, [worker], { defer: true, append: true });
   }
 
   function openManualPlanModal(worker) {
@@ -1462,6 +1573,7 @@
       deviation: manual.detail || "Carga manual del Plan Manana",
       status: "Pendiente",
       mechanicId: worker.id,
+      mechanicIds: [worker.id],
       planDate: state.planDate,
       createdAt: new Date().toISOString(),
       createdBy: state.currentUser.id,
@@ -1693,7 +1805,7 @@
     node.querySelector("p").textContent = report.deviation || "Sin falla";
     const meta = node.querySelectorAll(".desktop-report-meta span");
     meta[0].textContent = report.hourmeter ? `${report.hourmeter} h` : "Sin horometro";
-    meta[1].textContent = report.mechanicId ? workerName(report.mechanicId) : "Sin asignar";
+    meta[1].textContent = reportAssignedNames(report, { onlySelectedPlan: true });
     node.querySelector("button").addEventListener("click", () => setScreen("immediate"));
     return node;
   }
@@ -1818,6 +1930,10 @@
       const quickActions = [];
       if (isAdmin()) {
         actions.push(menuAction("Asignar", "primary", async () => chooseMechanicForReport(report)));
+        actions.push(menuAction("Asignar varios", "primary", async () => {
+          const selected = await openWorkersMultiModal("Asignar mecanicos", reportPlanMechanicIds(report));
+          if (selected) await assignReportToWorkers(report, selected);
+        }));
         actions.push(menuAction("Editar", "secondary", async () => editReport(report)));
         actions.push(menuAction("Enviar a Plan Mañana", "secondary", async () => {
           await updateReport(report.id, { plan_date: state.planDate });
@@ -1831,7 +1947,7 @@
           actions.push(menuAction("Validar operativo", "ok", async () => validateReport(report)));
         }
         actions.push(menuAction("Quitar asignación", "secondary", async () => {
-          await updateReport(report.id, { mechanic_id: null, plan_date: null });
+          await updateReport(report.id, { mechanic_id: null, mechanic_ids: [], plan_date: null });
           await refreshAllData();
         }));
         actions.push(menuAction("Eliminar", "danger", async () => deleteReport(report, "Esta accion quita el reporte activo.")));
@@ -1873,7 +1989,7 @@
     }
 
     workers.forEach((worker) => {
-      const workerRows = rows.filter((report) => report.mechanicId === worker.id);
+      const workerRows = rows.filter((report) => reportHasWorker(report, worker.id));
       const available = workerAvailability(worker.id);
       const actions = [];
       if (isAdmin()) {
@@ -1906,7 +2022,7 @@
             button("Ver info", "secondary", () => showReportDetails(report)),
             button("Historial", "secondary", () => showReportHistory(report))
           ];
-          if (!report.draftManual && (isAdmin() || report.mechanicId === state.currentUser.id)) {
+          if (!report.draftManual && (isAdmin() || reportHasWorker(report, state.currentUser.id))) {
             reportActions.push(button("Marcar reparacion realizada", "ok", async () => markRepairDone(report)));
             if (!isOperativeInformedStatus(report.status)) {
               reportActions.push(button("Informar reparacion parcial", "secondary", async () => reportWorkAndKeepActive(report)));
@@ -1942,12 +2058,15 @@
     }
 
     for (const [reportId, change] of assignmentEntries) {
-      const updates = change.mechanicId
-        ? { mechanic_id: change.mechanicId, plan_date: change.planDate || state.planDate }
+      const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
+      const primaryId = mechanicIds[0] || null;
+      const updates = primaryId
+        ? { mechanic_id: primaryId, mechanic_ids: mechanicIds, plan_date: change.planDate || state.planDate }
         : { mechanic_id: null, plan_date: null };
       const updated = await updateReport(reportId, updates);
       mergeReportUpdate(reportId, updated, {
-        mechanicId: change.mechanicId || null,
+        mechanicId: primaryId,
+        mechanicIds,
         planDate: change.planDate || ""
       });
     }
@@ -1960,6 +2079,7 @@
         deviation: item.deviation || "Carga manual del Plan Manana",
         status: item.status || "Pendiente",
         mechanic_id: item.mechanicId,
+        mechanic_ids: normalizeMechanicIds(item.mechanicIds, item.mechanicId),
         plan_date: state.planDate,
         created_at: new Date().toISOString(),
         created_by: state.currentUser.id
@@ -1986,7 +2106,7 @@
     if (report.draftManual) {
       draft.manualItems = draft.manualItems.filter((item) => item.id !== report.id);
     } else {
-      draft.assignments[report.id] = { mechanicId: null, planDate: "" };
+      draft.assignments[report.id] = { mechanicId: null, mechanicIds: [], planDate: "" };
     }
     renderTomorrow();
     showToast("Asignacion pendiente de guardar.");
@@ -2007,7 +2127,7 @@
       if (report.draftManual) {
         draft.manualItems = draft.manualItems.filter((item) => item.id !== report.id);
       } else {
-        draft.assignments[report.id] = { mechanicId: null, planDate: "" };
+        draft.assignments[report.id] = { mechanicId: null, mechanicIds: [], planDate: "" };
       }
     }
     renderTomorrow();
@@ -2156,6 +2276,7 @@
       status: nextStatus,
       previous_status: nextStatus,
       mechanic_id: null,
+      mechanic_ids: [],
       plan_date: null,
       repair_note: appendRepairNote(report, note),
       repaired_by: state.currentUser.name,
@@ -2209,6 +2330,7 @@
   const updates = {
     status: "Operativo validado",
     mechanic_id: null,
+    mechanic_ids: [],
     plan_date: null,
     validated_by: state.currentUser.name,
     validated_at: new Date().toISOString()
@@ -2251,7 +2373,7 @@
     const workers = workerId ? approvedWorkers().filter((worker) => worker.id === workerId) : approvedWorkers();
     const lines = [`PLAN MAÑANA - ${state.planDate}`, ""];
     workers.forEach((worker) => {
-      const reports = planReports().filter((report) => report.mechanicId === worker.id);
+      const reports = planReports().filter((report) => reportHasWorker(report, worker.id));
       lines.push(worker.name.toUpperCase());
       if (workerAvailability(worker.id) === "franco") lines.push("FRANCO");
       if (!reports.length) {
@@ -3552,6 +3674,7 @@
       deviation: fallaCompleta,
       status: form.get("status") || "Pendiente",
       mechanic_id: form.get("mechanic") || null,
+      mechanic_ids: form.get("mechanic") ? [form.get("mechanic")] : [],
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
       // Fijate que acá borramos por completo la línea de "hourmeter"
