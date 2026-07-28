@@ -8,6 +8,7 @@
 
   const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
   const OFFLINE_CACHE_KEY = "gestion-flota:last-data";
+  const OFFLINE_QUEUE_KEY = "gestion-flota:pending-writes";
 
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
@@ -1255,6 +1256,95 @@
     if (span) span.textContent = detail;
   }
 
+  function shouldQueueOfflineWrite() {
+    return state.offlineMode || navigator.onLine === false;
+  }
+
+  function offlineQueue() {
+    try {
+      const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]");
+      return Array.isArray(queue) ? queue : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveOfflineQueue(queue) {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  }
+
+  function enqueueOfflineWrite(operation) {
+    const queue = offlineQueue();
+    queue.push({
+      id: uid(),
+      createdAt: new Date().toISOString(),
+      ...operation
+    });
+    saveOfflineQueue(queue);
+    showToast(`Guardado sin conexion. Pendientes por sincronizar: ${queue.length}.`);
+  }
+
+  function reportFallbackFromUpdates(updates = {}) {
+    return Object.fromEntries(Object.entries({
+      status: updates.status,
+      previousStatus: updates.previous_status,
+      mechanicId: updates.mechanic_id,
+      mechanicIds: updates.mechanic_ids,
+      planDate: updates.plan_date,
+      repairNote: updates.repair_note,
+      repairedBy: updates.repaired_by,
+      repairedAt: updates.repaired_at,
+      operationNote: updates.operation_note,
+      operatedBy: updates.operated_by
+    }).filter(([, value]) => value !== undefined));
+  }
+
+  function applyOfflineReportUpdate(report, updates) {
+    mergeReportUpdate(report.id, null, reportFallbackFromUpdates(updates));
+    saveOfflineSnapshot();
+    render();
+  }
+
+  function addOfflineReports(payload) {
+    const rows = Array.isArray(payload) ? payload : [payload];
+    state.reports = [...rows.map(normalizeReport), ...state.reports];
+    saveOfflineSnapshot();
+    render();
+  }
+
+  async function syncOfflineQueue() {
+    if (!supabase || navigator.onLine === false) return;
+    let queue = offlineQueue();
+    if (!queue.length) return;
+
+    const remaining = [];
+    let synced = 0;
+    for (const operation of queue) {
+      try {
+        if (operation.type === "insertReports") {
+          const { error } = await supabase.from("reports").insert(operation.payload);
+          if (error) throw error;
+        } else if (operation.type === "updateReport") {
+          await updateReport(operation.reportId, operation.updates);
+        } else if (operation.type === "createNotification") {
+          const { error } = await supabase.from("notifications").insert(operation.payload);
+          if (error) throw error;
+        }
+        synced += 1;
+      } catch (error) {
+        console.info("Operacion offline pendiente:", error);
+        remaining.push(operation);
+      }
+    }
+
+    saveOfflineQueue(remaining);
+    if (synced) {
+      showToast(`Sincronizado: ${synced} carga${synced === 1 ? "" : "s"}.`);
+      await refreshAllData();
+    }
+    if (remaining.length) showToast(`Quedaron ${remaining.length} carga${remaining.length === 1 ? "" : "s"} pendiente${remaining.length === 1 ? "" : "s"}.`);
+  }
+
   function closeModal() {
     if (!el.modalRoot) return;
     modalCancelHandler = null;
@@ -2353,8 +2443,7 @@
       showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
       return;
     }
-    await saveCurrentLocationForReport(report);
-    await updateReport(report.id, {
+    const updates = {
       status: "PV",
       previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
       repair_note: note,
@@ -2362,7 +2451,15 @@
       repaired_at: new Date().toISOString(),
       operation_note: note,
       operated_by: state.currentUser.name
-    });
+    };
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "updateReport", reportId: report.id, updates });
+      applyOfflineReportUpdate(report, updates);
+      await createNotification(`${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
+      return;
+    }
+    await saveCurrentLocationForReport(report);
+    await updateReport(report.id, updates);
     await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
     await refreshAllData();
   }
@@ -2390,8 +2487,7 @@
       return;
     }
     const nextStatus = reportActiveStatusAfterWork(report);
-    await saveCurrentLocationForReport(report);
-    await updateReport(report.id, {
+    const updates = {
       status: nextStatus,
       previous_status: nextStatus,
       mechanic_id: null,
@@ -2400,7 +2496,16 @@
       repair_note: appendRepairNote(report, note),
       repaired_by: state.currentUser.name,
       repaired_at: new Date().toISOString()
-    });
+    };
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "updateReport", reportId: report.id, updates });
+      applyOfflineReportUpdate(report, updates);
+      await createNotification(`${report.equipment} vuelve a reportes activos. ${state.currentUser.name} informo: ${note}`);
+      showToast("Trabajo guardado sin conexion y pendiente de sincronizar.");
+      return;
+    }
+    await saveCurrentLocationForReport(report);
+    await updateReport(report.id, updates);
     await createNotification(`${report.equipment} vuelve a reportes activos. ${state.currentUser.name} informo: ${note}`);
     await refreshAllData();
     showToast("Trabajo informado y equipo devuelto a reportes activos.");
@@ -3711,14 +3816,19 @@
 
   async function createNotification(text, type = "info", targetUserId = null) {
     if (!supabase || !state.currentUser) return;
-    await supabase.from("notifications").insert({
+    const payload = {
       id: uid(),
       text,
       is_read: false,
       created_by: state.currentUser.id,
       type: type,
       target_user_id: targetUserId
-    });
+    };
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "createNotification", payload });
+      return;
+    }
+    await supabase.from("notifications").insert(payload);
   }
 
   async function updateReport(id, updates) {
@@ -3773,6 +3883,7 @@
       loadOfflineSnapshot();
     }
     await refreshAllData();
+    await syncOfflineQueue();
     setScreen(state.currentUser ? "home" : "auth", { replaceHistory: true });
 
     realtimeChannel = supabase.channel("fleet-realtime");
@@ -3859,7 +3970,8 @@
     showToast("App instalada.");
   });
   window.addEventListener("online", async () => {
-    showToast("Conexion recuperada. Actualizando datos.");
+    showToast("Conexion recuperada. Sincronizando datos.");
+    await syncOfflineQueue();
     await refreshAllData();
   });
   window.addEventListener("offline", () => {
@@ -4056,6 +4168,14 @@
       created_at: createdAt,
       created_by: state.currentUser.id
     }));
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "insertReports", payload });
+      addOfflineReports(payload);
+      await createNotification(`${deviations.length} movimiento${deviations.length === 1 ? "" : "s"} tecnico${deviations.length === 1 ? "" : "s"} en ${equipment}`);
+      el.mechanicForm.reset();
+      renderMechanicEquipmentHistory();
+      return;
+    }
     const { error } = await supabase.from("reports").insert(payload);
     if (error) {
       showToast("No se pudo guardar el reporte: " + error.message);
@@ -4078,7 +4198,7 @@
       return;
     }
     const equipment = normalizeEquipment(target) || target;
-    const { error } = await supabase.from("reports").insert({
+    const payload = {
       id: uid(),
       equipment,
       location: "",
@@ -4089,7 +4209,15 @@
       repaired_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
-    });
+    };
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "insertReports", payload });
+      addOfflineReports(payload);
+      await createNotification(`${state.currentUser.name} cargo tarea realizada en ${target}: ${task}`);
+      el.doneTaskForm.reset();
+      return;
+    }
+    const { error } = await supabase.from("reports").insert(payload);
     if (error) {
       showToast("No se pudo guardar la tarea: " + error.message);
       return;
