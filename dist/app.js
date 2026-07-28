@@ -2405,8 +2405,7 @@
         const reports = planReports().filter((report) => reportHasWorker(report, worker.id));
         if (!reports.length) return "";
         const equipment = reports.map((report) => formatPlanEquipment(report.equipment)).join(" + ");
-        const locations = uniqueTexts(reports.map((report) => shortPlanLocation(report.location))).join(" / ");
-        return `${planWorkerName(worker.name)} ${equipment}${locations ? ` ${locations}` : ""}`;
+        return `${planWorkerName(worker.name)} ${equipment}`;
       })
       .filter(Boolean);
     if (!taskLines.length) return "";
@@ -2427,14 +2426,6 @@
       .toUpperCase()
       .replace(/[-_]+/g, " ")
       .replace(/\s+/g, " ");
-  }
-
-  function shortPlanLocation(location) {
-    return String(location || "").trim().toUpperCase();
-  }
-
-  function uniqueTexts(values) {
-    return [...new Set(values.filter(Boolean))];
   }
 
   function formatPlanDateForWhatsApp(value) {
