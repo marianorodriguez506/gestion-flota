@@ -233,6 +233,29 @@ label {
   margin-bottom: 12px;
 }
 
+.offline-banner {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(250, 204, 21, .34);
+  border-radius: 12px;
+  background: rgba(250, 204, 21, .10);
+  padding: 10px 12px;
+  color: var(--text);
+}
+
+.offline-banner strong {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.offline-banner span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .screen {
   display: none;
 }

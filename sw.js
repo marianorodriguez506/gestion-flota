@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gestion-flota-pwa-v2";
+const CACHE_VERSION = "gestion-flota-pwa-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "/assets/icons/icon-192.png",
   "/assets/icons/icon-512.png"
 ];
+const STATIC_HOSTS = new Set(["cdn.jsdelivr.net", "unpkg.com"]);
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -42,7 +43,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (isSameOrigin) {
+  if (isSameOrigin || STATIC_HOSTS.has(requestUrl.hostname)) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });

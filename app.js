@@ -7,6 +7,7 @@
   ];
 
   const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
+  const OFFLINE_CACHE_KEY = "gestion-flota:last-data";
 
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
@@ -45,7 +46,9 @@
     savedLocations: [],
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
     planDraft: null,
-    orderDraft: null
+    orderDraft: null,
+    offlineMode: false,
+    offlineSavedAt: ""
   };
 
   // PEDIR PERMISO PARA NOTIFICACIONES NATIVAS (BARRA DEL CELULAR)
@@ -79,6 +82,7 @@
     desktopUserRole: document.getElementById("desktopUserRole"),
     loginError: document.getElementById("loginError"),
     rolePill: document.getElementById("rolePill"),
+    offlineBanner: document.getElementById("offlineBanner"),
     welcomeText: document.getElementById("welcomeText"),
     desktopStats: document.getElementById("desktopStats"),
     desktopReportPreview: document.getElementById("desktopReportPreview"),
@@ -1190,6 +1194,65 @@
       el.toast.classList.add("hidden");
       el.toast.textContent = "";
     }, 2600);
+  }
+
+  function saveOfflineSnapshot() {
+    try {
+      localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        currentUser: state.currentUser,
+        users: state.users,
+        reports: state.reports,
+        orders: state.orders,
+        fleet: state.fleet,
+        notifications: state.notifications,
+        availability: state.availability,
+        savedLocations: state.savedLocations,
+        planDate: state.planDate
+      }));
+    } catch (error) {
+      console.info("No se pudo guardar cache offline:", error);
+    }
+  }
+
+  function loadOfflineSnapshot() {
+    try {
+      const snapshot = JSON.parse(localStorage.getItem(OFFLINE_CACHE_KEY) || "null");
+      if (!snapshot) return false;
+      state.currentUser = state.currentUser || snapshot.currentUser || null;
+      state.users = Array.isArray(snapshot.users) ? snapshot.users : [];
+      state.reports = Array.isArray(snapshot.reports) ? snapshot.reports : [];
+      state.orders = Array.isArray(snapshot.orders) ? snapshot.orders : [];
+      state.fleet = Array.isArray(snapshot.fleet) ? snapshot.fleet : [];
+      state.notifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
+      state.availability = Array.isArray(snapshot.availability) ? snapshot.availability : [];
+      state.savedLocations = Array.isArray(snapshot.savedLocations) ? snapshot.savedLocations : [];
+      state.planDate = snapshot.planDate || state.planDate;
+      state.offlineSavedAt = snapshot.savedAt || "";
+      state.offlineMode = true;
+      renderOfflineBanner();
+      return true;
+    } catch (error) {
+      console.info("No se pudo leer cache offline:", error);
+      return false;
+    }
+  }
+
+  function setOfflineMode(enabled) {
+    state.offlineMode = Boolean(enabled);
+    if (!enabled) state.offlineSavedAt = "";
+    renderOfflineBanner();
+  }
+
+  function renderOfflineBanner() {
+    if (!el.offlineBanner) return;
+    el.offlineBanner.classList.toggle("hidden", !state.offlineMode);
+    const date = state.offlineSavedAt ? formatDateTime(state.offlineSavedAt) : "";
+    const detail = date
+      ? `Mostrando ultima informacion guardada: ${date}.`
+      : "Mostrando la ultima informacion guardada en este celular.";
+    const span = el.offlineBanner.querySelector("span");
+    if (span) span.textContent = detail;
   }
 
   function closeModal() {
@@ -3585,29 +3648,46 @@
   }
 
   async function refreshAllData() {
-    if (!supabase) return;
-    const [profiles, reports, orders, fleet, notifications, availability, savedLocations] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("reports").select("*").order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
-      supabase.from("notifications").select("*").order("created_at", { ascending: false }),
-      supabase.from("worker_availability").select("*").eq("date", state.planDate),
-      supabase.from("saved_locations").select("*").order("created_at", { ascending: false })
-    ]);
+    if (!supabase) {
+      if (loadOfflineSnapshot()) render();
+      return;
+    }
+    try {
+      const [profiles, reports, orders, fleet, notifications, availability, savedLocations] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("reports").select("*").order("created_at", { ascending: false }),
+        supabase.from("orders").select("*").order("created_at", { ascending: false }),
+        supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
+        supabase.from("notifications").select("*").order("created_at", { ascending: false }),
+        supabase.from("worker_availability").select("*").eq("date", state.planDate),
+        supabase.from("saved_locations").select("*").order("created_at", { ascending: false })
+      ]);
 
-    state.users = (profiles.data || []).map(normalizeUser);
-    state.reports = (reports.data || []).map(normalizeReport);
-    state.orders = (orders.data || []).map(normalizeOrder);
-    state.fleet = (fleet.data || []).map(normalizeFleet);
-    state.notifications = (notifications.data || []).map(normalizeNotification);
-    state.availability = (availability.data || []).map(normalizeAvailability);
-    state.savedLocations = (savedLocations.data || []).map(normalizeSavedLocation);
+      const queryError = [profiles, reports, orders, fleet, notifications, availability, savedLocations].find((result) => result.error)?.error;
+      if (queryError) throw queryError;
+
+      state.users = (profiles.data || []).map(normalizeUser);
+      state.reports = (reports.data || []).map(normalizeReport);
+      state.orders = (orders.data || []).map(normalizeOrder);
+      state.fleet = (fleet.data || []).map(normalizeFleet);
+      state.notifications = (notifications.data || []).map(normalizeNotification);
+      state.availability = (availability.data || []).map(normalizeAvailability);
+      state.savedLocations = (savedLocations.data || []).map(normalizeSavedLocation);
+      setOfflineMode(false);
+    } catch (error) {
+      console.info("Usando cache offline:", error);
+      if (!loadOfflineSnapshot()) {
+        showToast("Sin conexion y sin datos guardados en este celular.");
+        return;
+      }
+      showToast("Sin conexion: mostrando datos guardados.");
+    }
 
     if (state.currentUser) {
       const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
       if (freshProfile) state.currentUser = freshProfile;
     }
+    if (!state.offlineMode) saveOfflineSnapshot();
     render();
   }
 
@@ -3683,9 +3763,14 @@
       return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await loadCurrentUser(session.user.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadCurrentUser(session.user.id);
+      }
+    } catch (error) {
+      console.info("No se pudo recuperar sesion online:", error);
+      loadOfflineSnapshot();
     }
     await refreshAllData();
     setScreen(state.currentUser ? "home" : "auth", { replaceHistory: true });
@@ -3772,6 +3857,15 @@
     deferredInstallPrompt = null;
     updateInstallButton();
     showToast("App instalada.");
+  });
+  window.addEventListener("online", async () => {
+    showToast("Conexion recuperada. Actualizando datos.");
+    await refreshAllData();
+  });
+  window.addEventListener("offline", () => {
+    state.offlineMode = true;
+    renderOfflineBanner();
+    showToast("Sin conexion. Seguimos con datos guardados.");
   });
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
