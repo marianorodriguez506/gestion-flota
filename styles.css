@@ -526,6 +526,41 @@ label {
   font-size: 10px;
 }
 
+.active-map-leaflet-pin {
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .34);
+}
+
+.active-map-leaflet-pin span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 5px;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-map-leaflet-pin.status-fs {
+  background: #ef4444;
+}
+
+.active-map-leaflet-pin.status-obs {
+  background: #f59e0b;
+}
+
+.active-map-leaflet-pin.status-op {
+  background: #22c55e;
+}
+
 .active-map-popup {
   display: grid;
   gap: 5px;

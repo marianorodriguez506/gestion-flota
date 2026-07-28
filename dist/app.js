@@ -3363,6 +3363,11 @@
     return box;
   }
 
+  function activeMapMarkerLabel(reports) {
+    if (reports.length === 1) return reports[0].equipment || "1";
+    return String(reports.length);
+  }
+
   function renderLeafletActiveMap(groupedRows) {
     if (!window.L) return false;
     clearActiveMapInstance();
@@ -3382,14 +3387,15 @@
       const reports = items.map((item) => item.report);
       const latLng = [location.latitude, location.longitude];
       const tone = activeMapTone(reports);
-      const color = tone === "status-fs" ? "#ef4444" : tone === "status-obs" ? "#f59e0b" : "#22c55e";
+      const size = Math.min(54, Math.max(38, 34 + reports.length * 4));
       bounds.push(latLng);
-      window.L.circleMarker(latLng, {
-        radius: Math.min(22, 10 + reports.length * 2),
-        color: "#ffffff",
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.9
+      window.L.marker(latLng, {
+        icon: window.L.divIcon({
+          className: `active-map-leaflet-pin ${tone}`,
+          html: `<span>${activeMapMarkerLabel(reports)}</span>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2]
+        })
       })
         .addTo(map)
         .bindTooltip(`${location.name} (${reports.length})`, {
@@ -3432,7 +3438,7 @@
       pin.style.top = `${Number.isFinite(top) ? top : 50}%`;
       pin.title = `${location.name}: ${reports.map((report) => report.equipment).join(", ")}`;
       pin.innerHTML = `<strong></strong><span></span>`;
-      pin.querySelector("strong").textContent = reports.length;
+      pin.querySelector("strong").textContent = activeMapMarkerLabel(reports);
       pin.querySelector("span").textContent = location.name;
       pin.addEventListener("click", () => {
         openInfoModal(`Ubicacion ${location.name}`, reports.map((report) => ({
