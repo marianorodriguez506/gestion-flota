@@ -195,6 +195,17 @@ label {
   color: var(--text);
 }
 
+.push-btn {
+  margin-right: 8px;
+  color: var(--muted);
+}
+
+.push-btn.is-active {
+  border-color: rgba(255, 202, 40, 0.65);
+  background: rgba(255, 202, 40, 0.12);
+  color: var(--accent);
+}
+
 .notification-badge {
   position: absolute;
   top: -7px;

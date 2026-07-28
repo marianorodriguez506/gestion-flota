@@ -77,6 +77,21 @@ create table if not exists public.notifications (
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+alter table public.notifications add column if not exists type text not null default 'info';
+alter table public.notifications add column if not exists target_user_id uuid references public.profiles(id) on delete cascade;
+
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  endpoint text not null unique,
+  subscription jsonb not null,
+  user_agent text,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.saved_locations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -103,6 +118,9 @@ alter table public.orders add column if not exists updated_at timestamptz;
 create index if not exists orders_equipment_idx on public.orders(equipment);
 create index if not exists orders_destination_idx on public.orders(destination);
 create index if not exists notifications_created_by_idx on public.notifications(created_by);
+create index if not exists notifications_target_user_idx on public.notifications(target_user_id);
+create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
+create index if not exists push_subscriptions_active_idx on public.push_subscriptions(active);
 create index if not exists saved_locations_normalized_name_idx on public.saved_locations(normalized_name);
 create index if not exists worker_availability_worker_date_idx on public.worker_availability(worker_id, date);
 
@@ -111,6 +129,7 @@ alter table public.reports enable row level security;
 alter table public.orders enable row level security;
 alter table public.fleet_items enable row level security;
 alter table public.notifications enable row level security;
+alter table public.push_subscriptions enable row level security;
 alter table public.saved_locations enable row level security;
 alter table public.worker_availability enable row level security;
 
@@ -419,6 +438,48 @@ create policy notifications_delete_admin_or_self
     private.is_admin()
     or (
       private.is_approved_user() and created_by = auth.uid()
+    )
+  );
+
+drop policy if exists push_subscriptions_select_own_or_admin on public.push_subscriptions;
+drop policy if exists push_subscriptions_insert_own on public.push_subscriptions;
+drop policy if exists push_subscriptions_update_own_or_admin on public.push_subscriptions;
+drop policy if exists push_subscriptions_delete_own_or_admin on public.push_subscriptions;
+
+create policy push_subscriptions_select_own_or_admin
+  on public.push_subscriptions for select to authenticated
+  using (
+    private.is_admin()
+    or (
+      private.is_approved_user() and user_id = auth.uid()
+    )
+  );
+
+create policy push_subscriptions_insert_own
+  on public.push_subscriptions for insert to authenticated
+  with check (private.is_approved_user() and user_id = auth.uid());
+
+create policy push_subscriptions_update_own_or_admin
+  on public.push_subscriptions for update to authenticated
+  using (
+    private.is_admin()
+    or (
+      private.is_approved_user() and user_id = auth.uid()
+    )
+  )
+  with check (
+    private.is_admin()
+    or (
+      private.is_approved_user() and user_id = auth.uid()
+    )
+  );
+
+create policy push_subscriptions_delete_own_or_admin
+  on public.push_subscriptions for delete to authenticated
+  using (
+    private.is_admin()
+    or (
+      private.is_approved_user() and user_id = auth.uid()
     )
   );
 

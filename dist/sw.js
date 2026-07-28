@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gestion-flota-pwa-v3";
+const CACHE_VERSION = "gestion-flota-pwa-v4";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -46,6 +46,45 @@ self.addEventListener("fetch", (event) => {
   if (isSameOrigin || STATIC_HOSTS.has(requestUrl.hostname)) {
     event.respondWith(staleWhileRevalidate(request));
   }
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (_error) {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "Gestion de Flota";
+  const options = {
+    body: payload.body || "Nueva notificacion",
+    icon: payload.icon || "/assets/icons/icon-192.png",
+    badge: payload.badge || "/assets/icons/icon-192.png",
+    vibrate: payload.vibrate || [200, 100, 200],
+    tag: payload.tag || "gestion-flota",
+    data: {
+      url: payload.url || "/",
+      notificationId: payload.notificationId || null
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find((client) => "focus" in client);
+      if (existing) {
+        existing.navigate(url).catch(() => {});
+        return existing.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });
 
 async function networkFirstPage(request) {

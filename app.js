@@ -52,13 +52,6 @@
     offlineSavedAt: ""
   };
 
-  // PEDIR PERMISO PARA NOTIFICACIONES NATIVAS (BARRA DEL CELULAR)
-  if ("Notification" in window) {
-    Notification.requestPermission().then(permission => {
-      console.log("Permiso de notificaciones del sistema:", permission);
-    });
-  }
-
   let activeScreen = "auth";
   let realtimeChannel = null;
   let modalCancelHandler = null;
@@ -77,6 +70,7 @@
     registerFeedback: document.getElementById("registerFeedback"),
     logoutBtn: document.getElementById("logoutBtn"),
     notificationsBtn: document.getElementById("notificationsBtn"),
+    pushNotificationsBtn: document.getElementById("pushNotificationsBtn"),
     userInfoStrip: document.getElementById("userInfoStrip"),
     userNameDisplay: document.getElementById("userNameDisplay"),
     desktopUserName: document.getElementById("desktopUserName"),
@@ -1329,6 +1323,7 @@
         } else if (operation.type === "createNotification") {
           const { error } = await supabase.from("notifications").insert(operation.payload);
           if (error) throw error;
+          await sendPushNotification(operation.payload);
         }
         synced += 1;
       } catch (error) {
@@ -1821,6 +1816,7 @@
       document.body.classList.remove("logged-in");
       el.userInfoStrip.classList.add("hidden");
       el.logoutBtn.classList.add("hidden");
+      if (el.pushNotificationsBtn) el.pushNotificationsBtn.classList.add("hidden");
       return;
     }
 
@@ -1841,6 +1837,7 @@
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
     if (el.locationsBtn) el.locationsBtn.style.display = isLoggedIn() ? "block" : "none";
+    updatePushNotificationsButton();
 
   }
 
@@ -3828,13 +3825,129 @@
       enqueueOfflineWrite({ type: "createNotification", payload });
       return;
     }
-    await supabase.from("notifications").insert(payload);
+    const { error } = await supabase.from("notifications").insert(payload);
+    if (!error) await sendPushNotification(payload);
+  }
+
+  async function getSessionToken() {
+    if (!supabase) return "";
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData?.session?.access_token || "";
+  }
+
+  function supportsPushNotifications() {
+    return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  }
+
+  function updatePushNotificationsButton() {
+    if (!el.pushNotificationsBtn) return;
+    const show = isLoggedIn() && supportsPushNotifications() && navigator.onLine !== false;
+    el.pushNotificationsBtn.classList.toggle("hidden", !show);
+    if (!show) return;
+    const permission = Notification.permission;
+    el.pushNotificationsBtn.textContent = permission === "granted" ? "Alertas activas" : "Activar alertas";
+    el.pushNotificationsBtn.classList.toggle("is-active", permission === "granted");
+  }
+
+  function urlBase64ToUint8Array(value) {
+    const padding = "=".repeat((4 - value.length % 4) % 4);
+    const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+  }
+
+  async function fetchPushPublicKey() {
+    const response = await fetch("/api/push-public-key");
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.publicKey) {
+      throw new Error(result.error || "Faltan claves push en Vercel.");
+    }
+    return result.publicKey;
+  }
+
+  async function registerPushNotifications() {
+    try {
+      if (!supportsPushNotifications()) {
+        showToast("Este celular o navegador no permite notificaciones push.");
+        return;
+      }
+      if (navigator.onLine === false) {
+        showToast("Conectate a internet para activar alertas.");
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      updatePushNotificationsButton();
+      if (permission !== "granted") {
+        showToast("Permiso de notificaciones no habilitado en este celular.");
+        return;
+      }
+
+      const token = await getSessionToken();
+      if (!token) {
+        showToast("Volve a iniciar sesion para activar alertas.");
+        return;
+      }
+
+      const publicKey = await fetchPushPublicKey();
+      const registration = await navigator.serviceWorker.ready;
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
+      }
+
+      const response = await fetch("/api/register-push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+          userAgent: navigator.userAgent
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        showToast(result.error || "No se pudo activar este celular.");
+        return;
+      }
+      showToast("Alertas activadas en este dispositivo.");
+      updatePushNotificationsButton();
+    } catch (error) {
+      showToast(error.message || "No se pudieron activar las alertas.");
+    }
+  }
+
+  async function sendPushNotification(notification) {
+    if (!notification || shouldQueueOfflineWrite()) return;
+    try {
+      const token = await getSessionToken();
+      if (!token) return;
+      await fetch("/api/send-push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          notificationId: notification.id,
+          text: notification.text,
+          type: notification.type,
+          targetUserId: notification.target_user_id,
+          url: "/#notifications"
+        })
+      });
+    } catch (error) {
+      console.info("Push no enviado:", error);
+    }
   }
 
   async function updateReport(id, updates) {
     if (!supabase) return;
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
+    const token = await getSessionToken();
     if (!token) {
       const error = new Error("Sesion requerida.");
       showToast("Volvé a iniciar sesión.");
@@ -3973,11 +4086,13 @@
     showToast("Conexion recuperada. Sincronizando datos.");
     await syncOfflineQueue();
     await refreshAllData();
+    updatePushNotificationsButton();
   });
   window.addEventListener("offline", () => {
     state.offlineMode = true;
     renderOfflineBanner();
     showToast("Sin conexion. Seguimos con datos guardados.");
+    updatePushNotificationsButton();
   });
   document.querySelectorAll("[data-screen]").forEach((btn) => {
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
@@ -3999,6 +4114,7 @@
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.installAppBtn?.addEventListener("click", installApp);
+  el.pushNotificationsBtn?.addEventListener("click", registerPushNotifications);
   el.usersBtn.addEventListener("click", () => setScreen("users"));
   el.notificationsBtn?.addEventListener("click", () => window.showNotificationsHistory?.());
   el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
