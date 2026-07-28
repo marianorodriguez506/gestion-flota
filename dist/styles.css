@@ -745,6 +745,8 @@ label {
   grid-column: 1 / 2;
   color: var(--muted);
   font-size: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(72px, 132px);
 }
 
 .report-failure,
@@ -760,7 +762,13 @@ label {
 }
 
 .report-mechanic {
-  flex: 0 1 38%;
+  justify-self: end;
+  max-width: 132px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .12);
+  color: var(--accent);
+  font-weight: 800;
   text-align: right;
 }
 
@@ -2284,18 +2292,20 @@ label {
 
   .report-summary {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 112px);
     gap: 5px;
     font-size: 12px;
   }
 
   .report-failure,
   .report-mechanic {
-    white-space: normal;
+    white-space: nowrap;
   }
 
   .report-mechanic {
-    text-align: left;
+    justify-self: end;
+    max-width: 112px;
+    text-align: right;
     color: var(--accent);
     font-weight: 800;
   }

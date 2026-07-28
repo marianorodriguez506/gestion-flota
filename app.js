@@ -383,7 +383,15 @@
 
   function reportAssignedNames(report, options = {}) {
     const ids = options.onlySelectedPlan ? reportPlanMechanicIds(report) : reportMechanicIds(report);
-    return ids.map(workerName).filter((name) => name && name !== "Sin asignar").join(", ") || "Sin asignar";
+    const names = ids.map(workerName).filter((name) => name && name !== "Sin asignar");
+    const formattedNames = options.short ? names.map(shortPersonName) : names;
+    return formattedNames.join(", ") || "Sin asignar";
+  }
+
+  function shortPersonName(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) return parts[0] || "";
+    return `${parts[0]} ${parts[1].charAt(0)}.`;
   }
 
   function userName(userId) {
@@ -1058,7 +1066,7 @@
     age.textContent = `${days} d`;
     age.classList.add(reportAgeClass(days));
     row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
-    row.querySelector(".report-mechanic").textContent = reportAssignedNames(report, { onlySelectedPlan: true });
+    row.querySelector(".report-mechanic").textContent = reportAssignedNames(report, { onlySelectedPlan: true, short: true });
     const actionBox = row.querySelector(".report-row-actions");
     (quickActions || []).forEach((action) => actionBox.appendChild(action));
     let longPressTimer = null;
