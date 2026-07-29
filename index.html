@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-cholo-32.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-cholo.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=20260729-adminop">
+  <link rel="stylesheet" href="styles.css?v=20260729-formal-ui">
 </head>
 <body>
   <main class="app">
@@ -38,6 +38,7 @@
         <button data-screen="history" type="button">Historial</button>
         <button data-screen="fleet" type="button">Informacion Flota</button>
         <button data-screen="locations" type="button">Ubicaciones</button>
+        <button data-screen="settings" type="button">Configuracion</button>
         <button class="admin-only" data-screen="users" type="button">Mecanicos</button>
         <button class="admin-only" data-screen="panel" type="button">Panel</button>
         <button class="admin-only" data-screen="validations" type="button">Validaciones</button>
@@ -193,6 +194,7 @@
         <button class="module-btn" data-screen="mechanic">Reportes nuevos</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
+        <button class="module-btn" data-screen="settings">Configuración</button>
         <button class="module-btn admin-only" data-screen="panel">Panel</button>
         <button class="module-btn admin-only" data-screen="validations">Validaciones pendientes</button>
         <button class="module-btn admin-only" data-screen="operatives">Operativos</button>
@@ -462,6 +464,29 @@
       <section id="notificationsList" class="list"></section>
       <button id="clearNotifications" class="wide-btn" type="button">Limpiar notificaciones</button>
     </section>
+    <section id="settingsScreen" class="screen">
+      <section class="panel compact settings-hero">
+        <h2>Configuración</h2>
+        <p class="hint">Preferencias rápidas de la app y sesión.</p>
+      </section>
+      <section class="settings-grid">
+        <button id="settingsPushBtn" class="settings-tile" type="button">
+          <span>Notificaciones</span>
+          <strong>Activar alertas</strong>
+          <small>Recibir avisos importantes</small>
+        </button>
+        <button id="settingsInstallBtn" class="settings-tile" type="button">
+          <span>App</span>
+          <strong>Instalar acceso</strong>
+          <small>Usarla como aplicación</small>
+        </button>
+        <button id="settingsLogoutBtn" class="settings-tile danger" type="button">
+          <span>Sesión</span>
+          <strong>Salir</strong>
+          <small>Cerrar usuario actual</small>
+        </button>
+      </section>
+    </section>
     <button id="installAppBtn" class="install-app-btn hidden" type="button">Instalar app</button>
     <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
       <button data-screen="home" type="button"><span>Inicio</span></button>
@@ -483,7 +508,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260713-4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=20260729-adminop"></script>
+  <script src="app.js?v=20260729-formal-ui"></script>
   <dialog id="modal-eliminar-operativo" style="background-color: #1a1e23; color: white; border: 1px solid #444; border-radius: 12px; padding: 25px; text-align: center; max-width: 320px; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
   <h3 style="margin-top: 0; color: #ff4d4d; font-size: 22px;">⚠️ ¿Eliminar?</h3>
   <p style="color: #ccc; font-size: 16px;">El reporte de <strong><span id="equipo-modal"></span></strong> se borrará para siempre.</p>

@@ -29,7 +29,8 @@
     users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
     locations: { id: "locationsScreen", title: "Base de ubicaciones", label: "GPS" },
     activeMap: { id: "activeMapScreen", title: "Mapa de activos", label: "Mapa" },
-    notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" }
+    notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" },
+    settings: { id: "settingsScreen", title: "Configuracion", label: "Ajustes" }
   };
 
   const config = window.SUPABASE_CONFIG || {};
@@ -143,6 +144,9 @@
     notificationsList: document.getElementById("notificationsList"),
     clearNotifications: document.getElementById("clearNotifications"),
     installAppBtn: document.getElementById("installAppBtn"),
+    settingsPushBtn: document.getElementById("settingsPushBtn"),
+    settingsInstallBtn: document.getElementById("settingsInstallBtn"),
+    settingsLogoutBtn: document.getElementById("settingsLogoutBtn"),
     modalRoot: document.getElementById("modalRoot"),
     modalTitle: document.getElementById("modalTitle"),
     modalBody: document.getElementById("modalBody"),
@@ -4315,6 +4319,9 @@
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.installAppBtn?.addEventListener("click", installApp);
   el.pushNotificationsBtn?.addEventListener("click", registerPushNotifications);
+  el.settingsPushBtn?.addEventListener("click", registerPushNotifications);
+  el.settingsInstallBtn?.addEventListener("click", installApp);
+  el.settingsLogoutBtn?.addEventListener("click", () => el.logoutBtn?.click());
   el.usersBtn.addEventListener("click", () => setScreen("users"));
   el.notificationsBtn?.addEventListener("click", () => window.showNotificationsHistory?.());
   el.locationsBtn?.addEventListener("click", () => setScreen("locations"));
