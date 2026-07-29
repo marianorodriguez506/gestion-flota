@@ -9,6 +9,7 @@
   const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
   const OFFLINE_CACHE_KEY = "gestion-flota:last-data";
   const OFFLINE_QUEUE_KEY = "gestion-flota:pending-writes";
+  const PLAN_DRAFT_KEY = "gestion-flota:plan-drafts";
 
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
@@ -403,12 +404,54 @@
   }
 
   function emptyPlanDraft(date = state.planDate) {
-    return { date, assignments: {}, manualItems: [] };
+    return { date, assignments: {}, manualItems: [], clearRequested: false };
+  }
+
+  function allPlanDrafts() {
+    try {
+      const drafts = JSON.parse(localStorage.getItem(PLAN_DRAFT_KEY) || "{}");
+      return drafts && typeof drafts === "object" && !Array.isArray(drafts) ? drafts : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function savePlanDraft() {
+    if (!state.planDraft) return;
+    const drafts = allPlanDrafts();
+    const draft = {
+      ...emptyPlanDraft(state.planDraft.date || state.planDate),
+      ...state.planDraft,
+      assignments: state.planDraft.assignments || {},
+      manualItems: state.planDraft.manualItems || [],
+      clearRequested: Boolean(state.planDraft.clearRequested)
+    };
+    drafts[draft.date] = draft;
+    localStorage.setItem(PLAN_DRAFT_KEY, JSON.stringify(drafts));
+  }
+
+  function clearStoredPlanDraft(date = state.planDate) {
+    const drafts = allPlanDrafts();
+    delete drafts[date];
+    localStorage.setItem(PLAN_DRAFT_KEY, JSON.stringify(drafts));
+  }
+
+  function loadPlanDraft(date = state.planDate) {
+    const stored = allPlanDrafts()[date];
+    if (!stored || typeof stored !== "object") return emptyPlanDraft(date);
+    return {
+      ...emptyPlanDraft(date),
+      ...stored,
+      date,
+      assignments: stored.assignments && typeof stored.assignments === "object" ? stored.assignments : {},
+      manualItems: Array.isArray(stored.manualItems) ? stored.manualItems : [],
+      clearRequested: Boolean(stored.clearRequested)
+    };
   }
 
   function ensurePlanDraft() {
     if (!state.planDraft || state.planDraft.date !== state.planDate) {
-      state.planDraft = emptyPlanDraft();
+      state.planDraft = loadPlanDraft(state.planDate);
     }
     return state.planDraft;
   }
@@ -1535,6 +1578,8 @@
     if (options.defer) {
       const draft = ensurePlanDraft();
       draft.assignments[report.id] = { mechanicId: worker.id, mechanicIds: [worker.id], planDate };
+      draft.clearRequested = false;
+      savePlanDraft();
       renderTomorrow();
       showToast(`${report.equipment} queda pendiente para guardar.`);
       return;
@@ -1618,6 +1663,8 @@
     if (options.defer) {
       const draft = ensurePlanDraft();
       draft.assignments[report.id] = { mechanicId: primaryId, mechanicIds, planDate };
+      draft.clearRequested = false;
+      savePlanDraft();
       renderTomorrow();
       showToast(`${report.equipment} queda pendiente para guardar.`);
       return;
@@ -1741,7 +1788,10 @@
       draftManual: true
     };
 
-    ensurePlanDraft().manualItems.push(report);
+    const draft = ensurePlanDraft();
+    draft.manualItems.push(report);
+    draft.clearRequested = false;
+    savePlanDraft();
     renderTomorrow();
     showToast("Carga manual pendiente para guardar.");
   }
@@ -2263,6 +2313,13 @@
       return;
     }
 
+    const savedPlanRows = activeReports().filter((report) => reportMechanicIds(report).length && isReportInSelectedPlan(report));
+    const removals = assignmentEntries.filter(([, change]) => !normalizeMechanicIds(change.mechanicIds, change.mechanicId).length);
+    if (removals.length > 1 && savedPlanRows.length && removals.length >= savedPlanRows.length && !draft.clearRequested) {
+      showToast("Bloqueado: para limpiar toda la hoja tenes que usar el boton Limpiar hoja.");
+      return;
+    }
+
     for (const [reportId, change] of assignmentEntries) {
       const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
       const primaryId = mechanicIds[0] || null;
@@ -2297,6 +2354,7 @@
       }
     }
 
+    clearStoredPlanDraft(state.planDate);
     state.planDraft = emptyPlanDraft();
     await createNotification(`Plan Manana ${state.planDate} guardado por ${state.currentUser.name}`);
     await refreshAllData();
@@ -2314,6 +2372,8 @@
     } else {
       draft.assignments[report.id] = { mechanicId: null, mechanicIds: [], planDate: "" };
     }
+    draft.clearRequested = false;
+    savePlanDraft();
     renderTomorrow();
     showToast("Asignacion pendiente de guardar.");
     return;
@@ -2325,7 +2385,7 @@
       showToast("No hay asignaciones para limpiar en este plan.");
       return;
     }
-    const ok = await openConfirmModal("Limpiar asignaciones", `Limpiar ${rows.length} asignaciones del Plan Ma\u00f1ana? Los reportes quedan activos pero sin mec\u00e1nico.`, "Limpiar");
+    const ok = await openConfirmModal("Limpiar hoja de Plan Ma\u00f1ana", `Esta accion va a limpiar ${rows.length} asignaciones del Plan Ma\u00f1ana. Los reportes quedan activos pero sin mecanico. Seguro queres limpiar la hoja?`, "Si, limpiar");
     if (!ok) return;
 
     const draft = ensurePlanDraft();
@@ -2336,6 +2396,8 @@
         draft.assignments[report.id] = { mechanicId: null, mechanicIds: [], planDate: "" };
       }
     }
+    draft.clearRequested = true;
+    savePlanDraft();
     renderTomorrow();
     showToast("Limpieza pendiente de guardar.");
     return;
@@ -4128,7 +4190,7 @@
 
   el.planDate?.addEventListener("change", async () => {
     state.planDate = el.planDate.value || state.planDate;
-    state.planDraft = emptyPlanDraft();
+    state.planDraft = loadPlanDraft(state.planDate);
     await refreshAllData();
   });
 
