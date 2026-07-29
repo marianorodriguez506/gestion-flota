@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gestion-flota-pwa-v7";
+const CACHE_VERSION = "gestion-flota-pwa-v8";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -7,8 +7,10 @@ const APP_SHELL = [
   "/app.js",
   "/supabase-config.js",
   "/manifest.webmanifest",
-  "/assets/icons/icon-192.png",
-  "/assets/icons/icon-512.png"
+  "/assets/icons/favicon-cholo-32.png",
+  "/assets/icons/apple-touch-icon-cholo.png",
+  "/assets/icons/icon-cholo-192.png",
+  "/assets/icons/icon-cholo-512.png"
 ];
 const STATIC_HOSTS = new Set(["cdn.jsdelivr.net", "unpkg.com"]);
 
@@ -59,8 +61,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Gestion de Flota";
   const options = {
     body: payload.body || "Nueva notificacion",
-    icon: payload.icon || "/assets/icons/icon-192.png",
-    badge: payload.badge || "/assets/icons/icon-192.png",
+    icon: payload.icon || "/assets/icons/icon-cholo-192.png",
+    badge: payload.badge || "/assets/icons/icon-cholo-192.png",
     vibrate: payload.vibrate || [200, 100, 200],
     tag: payload.tag || "gestion-flota",
     data: {

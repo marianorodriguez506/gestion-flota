@@ -4847,7 +4847,7 @@ supabase
         const titulo = "Gestión de Flota";
         const opciones = {
           body: noti.text,
-          icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png",
+          icon: "/assets/icons/icon-cholo-192.png",
           vibrate: [200, 100, 200] // Hace que el celu vibre
         };
 
