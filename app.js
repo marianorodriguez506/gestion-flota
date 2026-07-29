@@ -2600,8 +2600,9 @@
       showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
       return;
     }
+    const adminDirectValidation = isAdmin();
     const updates = {
-      status: "PV",
+      status: adminDirectValidation ? "Operativo validado" : "PV",
       previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
       repair_note: note,
       repaired_by: state.currentUser.name,
@@ -2609,15 +2610,26 @@
       operation_note: note,
       operated_by: state.currentUser.name
     };
+    if (adminDirectValidation) {
+      updates.mechanic_id = null;
+      updates.mechanic_ids = [];
+      updates.plan_date = null;
+      updates.validated_by = state.currentUser.name;
+      updates.validated_at = new Date().toISOString();
+    }
     if (shouldQueueOfflineWrite()) {
       enqueueOfflineWrite({ type: "updateReport", reportId: report.id, updates });
       applyOfflineReportUpdate(report, updates);
-      await createNotification(`${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
+      await createNotification(adminDirectValidation
+        ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
+        : `${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
       return;
     }
     await saveCurrentLocationForReport(report);
     await updateReport(report.id, updates);
-    await createNotification(`${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
+    await createNotification(adminDirectValidation
+      ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
+      : `${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
     await refreshAllData();
   }
 
