@@ -3921,6 +3921,47 @@
     });
   }
 
+  function settingsTile(id, label, title, detail, className = "") {
+    return `
+      <button id="${id}" class="settings-tile ${className}" type="button">
+        <span>${label}</span>
+        <strong>${title}</strong>
+        <small>${detail}</small>
+      </button>
+    `;
+  }
+
+  function renderSettings() {
+    const screen = document.getElementById("settingsScreen");
+    if (!screen) return;
+    let grid = screen.querySelector(".settings-grid");
+    if (!grid) {
+      grid = document.createElement("section");
+      grid.className = "settings-grid";
+      screen.appendChild(grid);
+    }
+    const permission = supportsPushNotifications() ? Notification.permission : "unsupported";
+    const standalone = window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone;
+    const pushDetail = permission === "granted"
+      ? "Alertas activas en este dispositivo"
+      : permission === "denied"
+        ? "Permiso bloqueado en el navegador"
+        : "Recibir avisos importantes";
+    const installDetail = standalone
+      ? "Ya estas usando la app instalada"
+      : deferredInstallPrompt
+        ? "Instalar acceso directo"
+        : "Abrir menu del navegador para instalar";
+    grid.innerHTML = [
+      settingsTile("settingsPushBtn", "Notificaciones", permission === "granted" ? "Alertas activas" : "Activar alertas", pushDetail),
+      settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
+      settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
+    ].join("");
+    grid.querySelector("#settingsPushBtn")?.addEventListener("click", registerPushNotifications);
+    grid.querySelector("#settingsInstallBtn")?.addEventListener("click", installApp);
+    grid.querySelector("#settingsLogoutBtn")?.addEventListener("click", () => el.logoutBtn?.click());
+  }
+
   function render() {
     renderUserControls();
     if (!isLoggedIn()) {
@@ -3946,6 +3987,7 @@
     renderLocations();
     renderActiveMap();
     renderNotifications();
+    renderSettings();
   }
 
   function populateUserFilter() {
