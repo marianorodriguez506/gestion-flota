@@ -25,6 +25,53 @@ body {
   color: var(--text);
 }
 
+body.theme-light {
+  color-scheme: light;
+  --bg: #edf2f7;
+  --panel: #ffffff;
+  --panel-soft: #f1f5f9;
+  --text: #0f172a;
+  --muted: #526173;
+  --line: #cbd5e1;
+  --accent: #ca8a04;
+  --accent-dark: #a16207;
+  --danger: #dc2626;
+  --ok: #15803d;
+  --warn: #d97706;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(250, 204, 21, .16), transparent 18rem),
+    linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+body.theme-light .user-strip,
+body.theme-light .feed-hero,
+body.theme-light .panel,
+body.theme-light .card,
+body.theme-light .module-btn,
+body.theme-light .quick-btn,
+body.theme-light .wide-btn,
+body.theme-light .settings-tile {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(241, 245, 249, .98));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .11);
+}
+
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+body.theme-light .modal-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .99), rgba(241, 245, 249, .99));
+}
+
+body.theme-light .modal-panel h2,
+body.theme-light .detail-row span,
+body.theme-light .settings-tile {
+  color: #0f172a;
+}
+
 .app {
   width: min(100%, 820px);
   margin: 0 auto;
@@ -1312,12 +1359,33 @@ label {
   font-weight: 700;
 }
 
+.settings-select-tile {
+  cursor: default;
+}
+
+.settings-select-tile select {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 7px;
+  border-radius: 12px;
+  font-weight: 850;
+}
+
 .settings-tile.danger {
   border-color: rgba(239, 68, 68, .26);
 }
 
 .settings-tile.danger span {
   color: #fca5a5;
+}
+
+body.theme-light .settings-tile small {
+  color: #64748b;
+}
+
+body.theme-light .settings-tile span,
+body.theme-light .detail-row strong {
+  color: #a16207;
 }
 
 .admin-disabled {

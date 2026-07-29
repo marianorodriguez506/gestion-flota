@@ -10,6 +10,7 @@
   const OFFLINE_CACHE_KEY = "gestion-flota:last-data";
   const OFFLINE_QUEUE_KEY = "gestion-flota:pending-writes";
   const PLAN_DRAFT_KEY = "gestion-flota:plan-drafts";
+  const PREFERENCES_KEY = "gestion-flota:preferences";
 
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
@@ -51,6 +52,7 @@
     planDraft: null,
     orderDraft: null,
     orderDraftReadOnly: false,
+    preferences: loadPreferences(),
     offlineMode: false,
     offlineSavedAt: ""
   };
@@ -153,9 +155,36 @@
     modalActions: document.getElementById("modalActions"),
     toast: document.getElementById("toast")
   };
+  applyPreferences();
 
   function uid() {
     return globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function loadPreferences() {
+    try {
+      return {
+        theme: "dark",
+        language: "es",
+        ...(JSON.parse(localStorage.getItem(PREFERENCES_KEY) || "{}") || {})
+      };
+    } catch (_error) {
+      return { theme: "dark", language: "es" };
+    }
+  }
+
+  function savePreferences(nextPreferences) {
+    state.preferences = { ...state.preferences, ...nextPreferences };
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(state.preferences));
+    applyPreferences();
+  }
+
+  function applyPreferences() {
+    const theme = state.preferences?.theme || "dark";
+    document.body.classList.toggle("theme-light", theme === "light");
+    document.body.classList.toggle("theme-dark", theme !== "light");
+    document.documentElement.lang = state.preferences?.language || "es";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f8fafc" : "#020b14");
   }
 
   function specialtyLabel(value) {
@@ -3952,11 +3981,35 @@
       : deferredInstallPrompt
         ? "Instalar acceso directo"
         : "Abrir menu del navegador para instalar";
+    const theme = state.preferences?.theme || "dark";
+    const language = state.preferences?.language || "es";
     grid.innerHTML = [
+      settingsTile("settingsThemeBtn", "Apariencia", theme === "light" ? "Modo claro" : "Modo oscuro", "Toca para cambiar claro / oscuro"),
+      `
+        <label class="settings-tile settings-select-tile" for="settingsLanguageSelect">
+          <span>Idioma</span>
+          <strong>${language === "en" ? "English" : "Español"}</strong>
+          <small>Base preparada para traducir la app</small>
+          <select id="settingsLanguageSelect">
+            <option value="es"${language === "es" ? " selected" : ""}>Español</option>
+            <option value="en"${language === "en" ? " selected" : ""}>English</option>
+          </select>
+        </label>
+      `,
       settingsTile("settingsPushBtn", "Notificaciones", permission === "granted" ? "Alertas activas" : "Activar alertas", pushDetail),
       settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
       settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
     ].join("");
+    grid.querySelector("#settingsThemeBtn")?.addEventListener("click", () => {
+      savePreferences({ theme: theme === "light" ? "dark" : "light" });
+      renderSettings();
+      showToast(state.preferences.theme === "light" ? "Modo claro activado." : "Modo oscuro activado.");
+    });
+    grid.querySelector("#settingsLanguageSelect")?.addEventListener("change", (event) => {
+      savePreferences({ language: event.target.value });
+      renderSettings();
+      showToast(event.target.value === "en" ? "Idioma guardado: English." : "Idioma guardado: Español.");
+    });
     grid.querySelector("#settingsPushBtn")?.addEventListener("click", registerPushNotifications);
     grid.querySelector("#settingsInstallBtn")?.addEventListener("click", installApp);
     grid.querySelector("#settingsLogoutBtn")?.addEventListener("click", () => el.logoutBtn?.click());
