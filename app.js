@@ -74,6 +74,7 @@
     pushNotificationsBtn: document.getElementById("pushNotificationsBtn"),
     mobileReportsNavBtn: document.getElementById("mobileReportsNavBtn"),
     mobileReportsNavLabel: document.getElementById("mobileReportsNavLabel"),
+    mobileWorkNavBtn: document.querySelector(".mobile-bottom-nav [data-screen='tomorrow']"),
     userInfoStrip: document.getElementById("userInfoStrip"),
     userNameDisplay: document.getElementById("userNameDisplay"),
     desktopUserName: document.getElementById("desktopUserName"),
@@ -1970,6 +1971,11 @@
       el.mobileReportsNavBtn.dataset.screen = isAdmin() ? "immediate" : "mechanic";
       el.mobileReportsNavLabel.textContent = isAdmin() ? "Reportes" : "Reportes nuevos";
     }
+    if (el.mobileWorkNavBtn) {
+      el.mobileWorkNavBtn.dataset.screen = isAdmin() ? "tomorrow" : "myJobs";
+      const label = el.mobileWorkNavBtn.querySelector("span");
+      if (label) label.textContent = isAdmin() ? "Plan Mañana" : "Mis trabajos";
+    }
     updatePushNotificationsButton();
 
   }
@@ -2107,6 +2113,14 @@
     return "status-fs";
   }
 
+  function reportStatusBucket(report) {
+    const raw = `${report.status || ""} ${displayStatus(report.status)}`.toLowerCase();
+    if (/obs|observ/.test(raw)) return "OBS";
+    if (/op|operativo/.test(raw)) return "OP";
+    if (/fs|fuera|servicio|asignado|pendiente/.test(raw)) return "FS";
+    return "FS";
+  }
+
   function desktopReportCard(report) {
     const machineType = equipmentMachineType(report.equipment);
     const node = document.createElement("article");
@@ -2155,8 +2169,8 @@
 
   function renderHome() {
     const active = activeReports();
-    const fs = active.filter((report) => /^FS$/i.test(displayStatus(report.status)));
-    const obs = active.filter((report) => /^OBS$/i.test(displayStatus(report.status)));
+    const fs = active.filter((report) => reportStatusBucket(report) === "FS");
+    const obs = active.filter((report) => reportStatusBucket(report) === "OBS");
     const operative = state.reports.filter((report) => isOperativeInformedStatus(report.status) || report.status === "Operativo validado");
     const workers = approvedWorkers();
     const own = myReports();
@@ -2170,8 +2184,8 @@
       ]
       : [
         ["Mis asignados", own.length, "Trabajos para hoy", "info", "user"],
-        ["FS", own.filter((report) => /^FS$/i.test(displayStatus(report.status))).length, "Fuera de servicio", "danger", "tools"],
-        ["OBS", own.filter((report) => /^OBS$/i.test(displayStatus(report.status))).length, "Observaciones", "warn", "eye"],
+        ["FS", own.filter((report) => reportStatusBucket(report) === "FS").length, "Fuera de servicio", "danger", "tools"],
+        ["OBS", own.filter((report) => reportStatusBucket(report) === "OBS").length, "Observaciones", "warn", "eye"],
         ["Plan", planReports().length, "Equipos del dia", "ok", "check"]
       ];
 
