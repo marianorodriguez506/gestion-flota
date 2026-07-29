@@ -3148,3 +3148,183 @@ body.theme-light dialog[style] {
     grid-template-columns: 1fr 1fr 1fr 1fr;
   }
 }
+
+/* Fallback final para Chrome viejo: colores planos y reglas al final del archivo. */
+body.theme-light {
+  background: #edf2f7 !important;
+  color: #0f172a !important;
+}
+
+body.theme-light .app,
+body.theme-light .app-shell,
+body.theme-light .screen,
+body.theme-light .topbar,
+body.theme-light .desktop-sidebar,
+body.theme-light .mobile-bottom-nav,
+body.theme-light .mobile-tools-panel,
+body.theme-light .modal-panel,
+body.theme-light .modal-root,
+body.theme-light .notification-panel,
+body.theme-light .bottom-sheet,
+body.theme-light .sheet-panel,
+body.theme-light .drawer-panel,
+body.theme-light .panel,
+body.theme-light .card,
+body.theme-light .module-btn,
+body.theme-light .quick-btn,
+body.theme-light .wide-btn,
+body.theme-light .settings-tile,
+body.theme-light .settings-grid,
+body.theme-light .settings-screen,
+body.theme-light .user-strip,
+body.theme-light .feed-hero,
+body.theme-light .mobile-stat,
+body.theme-light .mobile-highlight,
+body.theme-light .mobile-assigned-card,
+body.theme-light .desktop-stat-card,
+body.theme-light .desktop-report-card,
+body.theme-light .desktop-panel,
+body.theme-light .desktop-activity-row,
+body.theme-light .activity-card,
+body.theme-light .due-card,
+body.theme-light .report-group,
+body.theme-light .report-group-head,
+body.theme-light .report-row,
+body.theme-light .plan-report-card,
+body.theme-light .active-map-canvas,
+body.theme-light .active-map-card,
+body.theme-light .active-map-list,
+body.theme-light .active-map-missing,
+body.theme-light .detail-row,
+body.theme-light .choice-btn,
+body.theme-light .notification-item,
+body.theme-light .empty,
+body.theme-light .order-sheet,
+body.theme-light .history-row,
+body.theme-light .order-card,
+body.theme-light .parts-history-card,
+body.theme-light .validation-card,
+body.theme-light .task-card,
+body.theme-light .base-equipment-card,
+body.theme-light .location-card,
+body.theme-light .toast {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .10) !important;
+}
+
+body.theme-light .mobile-stat.danger,
+body.theme-light .report-row.status-fs,
+body.theme-light .desktop-report-card.status-fs {
+  background: #fff7f7 !important;
+  border-color: #fecaca !important;
+}
+
+body.theme-light .mobile-stat.warn,
+body.theme-light .report-row.status-obs,
+body.theme-light .desktop-report-card.status-obs {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+body.theme-light .mobile-stat.ok,
+body.theme-light .report-row.status-op,
+body.theme-light .desktop-report-card.status-op {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+}
+
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea,
+body.theme-light .fleet-search-input,
+body.theme-light #activeReportSearch,
+body.theme-light #days-search-input {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  -webkit-text-fill-color: #0f172a;
+}
+
+body.theme-light input::placeholder,
+body.theme-light textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b;
+}
+
+body.theme-light h1,
+body.theme-light h2,
+body.theme-light h3,
+body.theme-light strong,
+body.theme-light .mobile-stat strong,
+body.theme-light .mobile-highlight small,
+body.theme-light .mobile-assigned-card span,
+body.theme-light .desktop-report-card strong,
+body.theme-light .report-main strong,
+body.theme-light .card-head h2,
+body.theme-light .modal-panel h2,
+body.theme-light .modal-panel h3,
+body.theme-light .notification-title {
+  color: #0f172a !important;
+}
+
+body.theme-light p,
+body.theme-light span,
+body.theme-light small,
+body.theme-light label,
+body.theme-light .meta,
+body.theme-light .hint,
+body.theme-light .report-failure,
+body.theme-light .report-mechanic,
+body.theme-light .desktop-report-card p,
+body.theme-light .desktop-report-card small,
+body.theme-light .notification-body {
+  color: #475569 !important;
+}
+
+body.theme-light .eyebrow,
+body.theme-light .mobile-brand span,
+body.theme-light .mobile-brand em,
+body.theme-light .desktop-brand em,
+body.theme-light .tag,
+body.theme-light .status-pill,
+body.theme-light .mobile-highlight strong,
+body.theme-light .settings-tile span,
+body.theme-light .detail-row strong {
+  color: #a16207 !important;
+}
+
+body.theme-light button,
+body.theme-light .icon-btn,
+body.theme-light .text-btn,
+body.theme-light .sidebar-nav button,
+body.theme-light .mobile-bottom-nav button,
+body.theme-light .mobile-tools-panel button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.theme-light button.primary,
+body.theme-light .primary,
+body.theme-light .sidebar-nav button.active,
+body.theme-light .mobile-bottom-nav button.active {
+  background: #facc15 !important;
+  color: #06111f !important;
+  border-color: #eab308 !important;
+}
+
+body.theme-light button.danger,
+body.theme-light .danger {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border-color: #fecaca !important;
+}
+
+body.theme-light button.ok,
+body.theme-light .ok {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border-color: #bbf7d0 !important;
+}
