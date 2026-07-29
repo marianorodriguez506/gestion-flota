@@ -4418,24 +4418,24 @@
     if (!state.currentUser) return;
     const form = new FormData(el.mechanicForm);
     const equipment = normalizeEquipment(form.get("equipment"));
-    const deviations = String(form.get("deviation") || "")
+    const description = String(form.get("description") || form.get("deviation") || "")
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
     const note = String(form.get("notes") || "").trim();
-    if (!equipment || !deviations.length) {
-      showToast("Carga el interno y al menos un desvio.");
+    if (!equipment || !description.length) {
+      showToast("Carga el interno y el detalle del reporte.");
       return;
     }
 
     const createdAt = new Date().toISOString();
     const photos = await reportPhotosFromInput(el.mechanicForm.elements.photos);
-    const payload = deviations.map((deviation) => ({
+    const payload = description.map((deviation) => ({
       id: uid(),
       equipment,
       location: "Reporte mecanico",
       deviation,
-      operation_note: note,
+      operation_note: note || `Cargado por ${state.currentUser.name}`,
       status: "Observacion tecnica",
       photos,
       created_at: createdAt,
@@ -4444,7 +4444,7 @@
     if (shouldQueueOfflineWrite()) {
       enqueueOfflineWrite({ type: "insertReports", payload });
       addOfflineReports(payload);
-      await createNotification(`${deviations.length} movimiento${deviations.length === 1 ? "" : "s"} tecnico${deviations.length === 1 ? "" : "s"} en ${equipment}`);
+      await createNotification(`${description.length} reporte${description.length === 1 ? "" : "s"} nuevo${description.length === 1 ? "" : "s"} en ${equipment}`);
       el.mechanicForm.reset();
       renderMechanicEquipmentHistory();
       return;
@@ -4454,7 +4454,7 @@
       showToast("No se pudo guardar el reporte: " + error.message);
       return;
     }
-    await createNotification(`${deviations.length} movimiento${deviations.length === 1 ? "" : "s"} tecnico${deviations.length === 1 ? "" : "s"} en ${equipment}`);
+    await createNotification(`${description.length} reporte${description.length === 1 ? "" : "s"} nuevo${description.length === 1 ? "" : "s"} en ${equipment}`);
     await refreshAllData();
     el.mechanicForm.reset();
     renderMechanicEquipmentHistory();
