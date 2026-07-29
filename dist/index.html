@@ -33,7 +33,7 @@
         <button data-screen="orders" type="button">Repuestos</button>
         <button data-screen="doneTasks" type="button">Tareas realizadas</button>
         <button data-screen="baseEquipment" type="button">Equipos en base</button>
-        <button data-screen="mechanic" type="button">Reporte mecanico</button>
+        <button data-screen="mechanic" type="button">Reportes nuevos</button>
         <button data-screen="history" type="button">Historial</button>
         <button data-screen="fleet" type="button">Informacion Flota</button>
         <button data-screen="locations" type="button">Ubicaciones</button>
@@ -176,7 +176,7 @@
         <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
         <button class="quick-btn" data-screen="orders">Repuestos</button>
         <button class="quick-btn admin-only" data-screen="validations">Validaciones</button>
-        <button class="quick-btn mechanic-only" data-screen="mechanic">Reporte mecánico</button>
+        <button class="quick-btn mechanic-only" data-screen="mechanic">Reportes nuevos</button>
       </div>
 
       <details id="mobileToolsPanel" class="mobile-tools-panel" open>
@@ -189,7 +189,7 @@
         <button class="module-btn" data-screen="activeMap">Mapa activos</button>
         <button class="module-btn" data-screen="doneTasks">Tareas realizadas</button>
         <button class="module-btn" data-screen="baseEquipment">Equipos en base</button>
-        <button class="module-btn" data-screen="mechanic">Reporte mecánico</button>
+        <button class="module-btn" data-screen="mechanic">Reportes nuevos</button>
         <button class="module-btn" data-screen="history">Historial de pedidos</button>
         <button class="module-btn" data-screen="fleet">Información de flota</button>
         <button class="module-btn admin-only" data-screen="panel">Panel</button>
@@ -285,13 +285,17 @@
 
     <section id="mechanicScreen" class="screen">
       <form id="mechanicForm" class="panel form-grid">
-        <h3>Crear reporte del equipo</h3>
+        <h3>Crear reporte nuevo</h3>
         <input name="equipment" placeholder="Interno" required>
         <textarea name="deviation" placeholder="Desvios / observaciones, uno por linea" required></textarea>
         <textarea name="notes" placeholder="Detalle del mecanico"></textarea>
-        <button class="primary" type="submit">Guardar reporte del equipo</button>
+        <label>
+          Fotos
+          <input name="photos" type="file" accept="image/*" multiple>
+        </label>
+        <button class="primary" type="submit">Guardar reporte nuevo</button>
       </form>
-      <h3>Monitor de movimientos</h3>
+      <h3>Reportes nuevos</h3>
       <section id="mechanicList" class="list"></section>
     </section>
 
@@ -461,7 +465,7 @@
     <button id="installAppBtn" class="install-app-btn hidden" type="button">Instalar app</button>
     <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
       <button data-screen="home" type="button"><span>Inicio</span></button>
-      <button data-screen="immediate" type="button"><span>Reportes</span></button>
+      <button id="mobileReportsNavBtn" data-screen="immediate" type="button"><span id="mobileReportsNavLabel">Reportes</span></button>
       <button data-screen="tomorrow" type="button"><span>Plan Mañana</span></button>
       <button data-mobile-more type="button"><span>Más</span></button>
     </nav>

@@ -224,6 +224,36 @@ label {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
+.report-photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.report-photo-link {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.report-photo-link img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.report-photo-link span {
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .status-pill {
   align-self: end;
   justify-self: end;

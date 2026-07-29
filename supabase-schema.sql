@@ -42,6 +42,7 @@ alter table public.reports add column if not exists validated_at timestamptz;
 alter table public.reports add column if not exists plan_date date;
 alter table public.reports add column if not exists hourmeter text;
 alter table public.reports add column if not exists mechanic_ids jsonb not null default '[]'::jsonb;
+alter table public.reports add column if not exists photos jsonb not null default '[]'::jsonb;
 
 create table if not exists public.worker_availability (
   id uuid primary key default gen_random_uuid(),

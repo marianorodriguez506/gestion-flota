@@ -17,7 +17,7 @@
     immediate: { id: "immediateScreen", title: "Reporte inmediato", label: "Tablero" },
     myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
     tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
-    mechanic: { id: "mechanicScreen", title: "Reporte mecánico", label: "Observaciones" },
+    mechanic: { id: "mechanicScreen", title: "Reportes nuevos", label: "Carga mecánica" },
     doneTasks: { id: "doneTasksScreen", title: "Tareas realizadas", label: "Realizado" },
     baseEquipment: { id: "baseEquipmentScreen", title: "Equipos en base", label: "Base" },
     orders: { id: "ordersScreen", title: "Repuestos", label: "Pedidos" },
@@ -72,6 +72,8 @@
     logoutBtn: document.getElementById("logoutBtn"),
     notificationsBtn: document.getElementById("notificationsBtn"),
     pushNotificationsBtn: document.getElementById("pushNotificationsBtn"),
+    mobileReportsNavBtn: document.getElementById("mobileReportsNavBtn"),
+    mobileReportsNavLabel: document.getElementById("mobileReportsNavLabel"),
     userInfoStrip: document.getElementById("userInfoStrip"),
     userNameDisplay: document.getElementById("userNameDisplay"),
     desktopUserName: document.getElementById("desktopUserName"),
@@ -221,8 +223,23 @@
       validatedBy: row.validated_by || "",
       validatedAt: row.validated_at || "",
       operationNote: row.operation_note || "",
-      operatedBy: row.operated_by || ""
+      operatedBy: row.operated_by || "",
+      photos: normalizeReportPhotos(row.photos)
     };
+  }
+
+  function normalizeReportPhotos(value) {
+    if (!value) return [];
+    const rows = Array.isArray(value) ? value : [];
+    return rows
+      .filter((item) => item && item.dataUrl)
+      .map((item, index) => ({
+        id: item.id || uid(),
+        name: item.name || `foto-${index + 1}.jpg`,
+        type: item.type || "image/jpeg",
+        dataUrl: item.dataUrl,
+        createdAt: item.createdAt || ""
+      }));
   }
 
   function mergeReportUpdate(reportId, row, fallback = {}) {
@@ -831,6 +848,64 @@
       .filter((report) => !isBaseChecklistReport(report));
   }
 
+  function reportPhotoFileName(report, photo, index) {
+    const extension = photo.type === "image/png" ? "png" : "jpg";
+    const base = `${report.equipment || "reporte"}-foto-${index + 1}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    return `${base}.${extension}`;
+  }
+
+  async function imageFileToReportPhoto(file, index) {
+    const bitmapUrl = URL.createObjectURL(file);
+    try {
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = bitmapUrl;
+      });
+      const maxSide = 1200;
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return {
+        id: uid(),
+        name: file.name || `foto-${index + 1}.jpg`,
+        type: "image/jpeg",
+        dataUrl: canvas.toDataURL("image/jpeg", 0.78),
+        createdAt: new Date().toISOString()
+      };
+    } finally {
+      URL.revokeObjectURL(bitmapUrl);
+    }
+  }
+
+  async function reportPhotosFromInput(input) {
+    const files = [...(input?.files || [])].filter((file) => /^image\//i.test(file.type));
+    if (!files.length) return [];
+    const selected = files.slice(0, 6);
+    return Promise.all(selected.map((file, index) => imageFileToReportPhoto(file, index)));
+  }
+
+  function photoGallery(report) {
+    const photos = normalizeReportPhotos(report.photos);
+    if (!photos.length) return null;
+    const gallery = document.createElement("div");
+    gallery.className = "report-photo-gallery";
+    photos.forEach((photo, index) => {
+      const item = document.createElement("a");
+      item.href = photo.dataUrl;
+      item.download = reportPhotoFileName(report, photo, index);
+      item.className = "report-photo-link";
+      item.innerHTML = `<img alt=""><span>Descargar</span>`;
+      item.querySelector("img").src = photo.dataUrl;
+      gallery.appendChild(item);
+    });
+    return gallery;
+  }
+
   function fleetItem(equipment) {
     return state.fleet.find((item) => normalizeEquipment(item.equipment) === normalizeEquipment(equipment));
   }
@@ -1011,6 +1086,7 @@
 
   function showReportDetails(report) {
     const fleet = fleetItem(report.equipment);
+    const photos = normalizeReportPhotos(report.photos);
     openInfoModal(`Detalle ${report.equipment}`, [
       { label: "Interno", value: report.equipment },
       { label: "Tipo", value: fleet?.parts },
@@ -1020,8 +1096,11 @@
       { label: "Lo hacen", value: reportAssignedNames(report) },
       { label: "Reparaciones parciales", value: report.repairNote },
       { label: "Informado por", value: report.repairedBy || report.operatedBy },
-      { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) }
+      { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) },
+      { label: "Fotos", value: photos.length ? `${photos.length} adjunta${photos.length === 1 ? "" : "s"}` : "" }
     ]);
+    const gallery = photoGallery(report);
+    if (gallery) el.modalBody.appendChild(gallery);
   }
 
   function orderedReportActions(actions) {
@@ -1887,6 +1966,10 @@
     });
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
     if (el.locationsBtn) el.locationsBtn.style.display = isLoggedIn() ? "block" : "none";
+    if (el.mobileReportsNavBtn && el.mobileReportsNavLabel) {
+      el.mobileReportsNavBtn.dataset.screen = isAdmin() ? "immediate" : "mechanic";
+      el.mobileReportsNavLabel.textContent = isAdmin() ? "Reportes" : "Reportes nuevos";
+    }
     updatePushNotificationsButton();
 
   }
@@ -2731,6 +2814,13 @@
     return rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
+  async function promoteNewReportToActive(row) {
+    if (!isAdmin()) return;
+    await updateReport(row.id, { status: "FS", location: "" });
+    await createNotification(`${row.equipment} convertido a reporte activo por ${state.currentUser.name}`);
+    await refreshAllData();
+  }
+
   function renderMechanicEquipmentHistory() {
     if (!el.mechanicEquipmentHistory || !el.mechanicForm) return;
     el.mechanicEquipmentHistory.innerHTML = "";
@@ -2764,7 +2854,10 @@
     }
     rows.forEach((row) => {
       const actions = [button("Ver detalles", "secondary", () => showReportDetails(row))];
-      if (isAdmin() && isTechnicalObservation(row)) {
+      if (isAdmin()) {
+        actions.push(button("Pasar a reporte activo", "primary", () => promoteNewReportToActive(row)));
+      }
+      if (false && isAdmin() && isTechnicalObservation(row)) {
         actions.push(button("Crear reporte activo", "primary", async () => {
           await updateReport(row.id, { status: "FS" });
           await createNotification(`${row.equipment} convertido a reporte activo por ${state.currentUser.name}`);
@@ -4336,6 +4429,7 @@
     }
 
     const createdAt = new Date().toISOString();
+    const photos = await reportPhotosFromInput(el.mechanicForm.elements.photos);
     const payload = deviations.map((deviation) => ({
       id: uid(),
       equipment,
@@ -4343,6 +4437,7 @@
       deviation,
       operation_note: note,
       status: "Observacion tecnica",
+      photos,
       created_at: createdAt,
       created_by: state.currentUser.id
     }));
