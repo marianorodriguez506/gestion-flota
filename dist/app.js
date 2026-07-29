@@ -49,6 +49,7 @@
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
     planDraft: null,
     orderDraft: null,
+    orderDraftReadOnly: false,
     offlineMode: false,
     offlineSavedAt: ""
   };
@@ -1002,7 +1003,7 @@
   function filteredOrderHistory(query) {
     const text = String(query || "").trim().toLowerCase();
     const rows = orderHistoryItems();
-    if (!text) return rows.slice(0, 20);
+    if (!text) return rows.slice(0, 5);
     return rows.filter((item) => `${item.code} ${item.description} ${item.reference}`.toLowerCase().includes(text)).slice(0, 20);
   }
 
@@ -3159,19 +3160,26 @@
       const traffic = orderTraffic(order);
       const items = filledOrderItems(order);
       const actions = [
-        button(orderEditable(order) ? "Ver / editar hoja" : "Ver hoja", "secondary", () => {
+        button("Ver hoja", "secondary", () => {
           state.orderDraft = orderDraftFromOrder(order);
+          state.orderDraftReadOnly = true;
           renderOrders();
-        }),
-        button("Copiar WhatsApp", "secondary", async () => copyOrder(order))
+        })
       ];
 
       if (orderEditable(order)) {
+        actions.push(button("Editar", "primary", () => {
+          state.orderDraft = orderDraftFromOrder(order);
+          state.orderDraftReadOnly = false;
+          renderOrders();
+        }));
         actions.push(button("Marcar pedido", "ok", async () => {
           await supabase.from("orders").update({ status: "Pedido" }).eq("id", order.id);
           await refreshAllData();
         }));
       }
+
+      actions.push(button("Copiar WhatsApp", "secondary", async () => copyOrder(order)));
 
       if (isAdmin()) {
         actions.push(button("Marcar recibido", "ok", async () => {
@@ -3200,14 +3208,14 @@
   function renderOrderEditor() {
     const draft = state.orderDraft;
     if (!draft) return null;
-    const canEdit = !draft.id || orderEditable(draft);
+    const canEdit = !state.orderDraftReadOnly && (!draft.id || orderEditable(draft));
     const section = document.createElement("section");
     section.className = "panel order-editor";
     section.innerHTML = `
       <div class="order-editor-head">
         <div>
           <p class="eyebrow">Hoja de repuestos</p>
-          <h2>${draft.id ? "Editar pedido" : "Pedido nuevo"}</h2>
+          <h2>${state.orderDraftReadOnly ? "Ver pedido" : draft.id ? "Editar pedido" : "Pedido nuevo"}</h2>
         </div>
         <button type="button" class="secondary" data-order-cancel>Cerrar</button>
       </div>
@@ -3228,6 +3236,7 @@
           <h3>Historial</h3>
           <input data-history-filter type="text" placeholder="Filtrar por palabra clave o código">
         </div>
+        <p class="hint" data-history-help></p>
         <div class="order-history-results"></div>
       </section>
       <div class="card-actions">
@@ -3243,7 +3252,11 @@
     const equipmentInput = section.querySelector('[data-order-field="equipment"]');
     equipmentInput.disabled = !canEdit;
     equipmentInput.addEventListener("input", (event) => { draft.equipment = normalizeEquipment(event.target.value); });
-    section.querySelector("[data-order-cancel]").addEventListener("click", () => { state.orderDraft = null; renderOrders(); });
+    section.querySelector("[data-order-cancel]").addEventListener("click", () => {
+      state.orderDraft = null;
+      state.orderDraftReadOnly = false;
+      renderOrders();
+    });
     section.querySelector("[data-order-save]")?.addEventListener("click", saveOrderDraft);
     section.querySelector("[data-order-copy]").addEventListener("click", async () => copyOrder(draft));
 
@@ -3265,8 +3278,13 @@
 
     const filter = section.querySelector("[data-history-filter]");
     const results = section.querySelector(".order-history-results");
+    const historyHelp = section.querySelector("[data-history-help]");
     const drawHistory = () => {
       results.innerHTML = "";
+      const hasFilter = Boolean(String(filter.value || "").trim());
+      historyHelp.textContent = hasFilter
+        ? "Buscando en todo el historial de repuestos."
+        : "Mostrando los ultimos 5 repuestos pedidos. Usa el filtro para buscar en todo el historial.";
       const rows = filteredOrderHistory(filter.value);
       if (!rows.length) {
         results.appendChild(empty("No hay repuestos previos para ese filtro."));
@@ -3355,6 +3373,7 @@
     }
     await createNotification(`Pedido de repuestos guardado para ${payload.equipment}`);
     state.orderDraft = null;
+    state.orderDraftReadOnly = false;
     await refreshAllData();
   }
 
@@ -4572,7 +4591,11 @@
     el.orderForm.reset();
   });
 
-  el.newOrderBtn?.addEventListener("click", () => { state.orderDraft = orderDraftFromOrder(); renderOrders(); });
+  el.newOrderBtn?.addEventListener("click", () => {
+    state.orderDraft = orderDraftFromOrder();
+    state.orderDraftReadOnly = false;
+    renderOrders();
+  });
   el.orderFilter.addEventListener("change", renderOrders);
   el.orderEquipmentFilter?.addEventListener("input", renderOrders);
   el.orderDestinationFilter?.addEventListener("change", renderOrders);
