@@ -250,7 +250,7 @@
       planDate: row.plan_date || "",
       hourmeter: row.hourmeter || "",
       previousStatus: row.previous_status || "",
-      repairNote: row.repair_note || row.operation_note || "",
+      repairNote: row.repair_note || (String(row.operation_note || "").includes(ACTIVE_DEVIATIONS_MARKER) ? "" : row.operation_note || ""),
       repairedBy: row.repaired_by || row.operated_by || "",
       repairedAt: row.repaired_at || "",
       createdAt: row.created_at || "",
@@ -384,14 +384,8 @@
     };
   }
   function activeReports() {
-  return state.reports.filter(
-    (report) =>
-      report.status !== "Operativo validado" &&
-      report.status !== "Tarea realizada" &&
-      !isTechnicalObservation(report) &&
-      !isMechanicSheetReport(report)
-  );
-}
+    return consolidateActiveReports(rawActiveReports());
+  }
 
   function isTechnicalObservation(report) {
     return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
@@ -403,6 +397,161 @@
     if (/^FS$/i.test(status) || /fuera/i.test(status)) return "FS";
     if (/asignado/i.test(status)) return "FS";
     return status || "FS";
+  }
+
+  const ACTIVE_DEVIATIONS_MARKER = "[[ACTIVE_DEVIATIONS]]";
+
+  function reportPlainOperationNote(report) {
+    return String(report?.operationNote || "").split(ACTIVE_DEVIATIONS_MARKER)[0].trim();
+  }
+
+  function storedDeviationPayload(report) {
+    const text = String(report?.operationNote || "");
+    const index = text.indexOf(ACTIVE_DEVIATIONS_MARKER);
+    if (index === -1) return { active: [], resolved: [] };
+    try {
+      const parsed = JSON.parse(text.slice(index + ACTIVE_DEVIATIONS_MARKER.length).trim());
+      return {
+        active: Array.isArray(parsed.active) ? parsed.active : [],
+        resolved: Array.isArray(parsed.resolved) ? parsed.resolved : []
+      };
+    } catch (_) {
+      return { active: [], resolved: [] };
+    }
+  }
+
+  function normalizeDeviationItem(item, fallback = {}) {
+    return {
+      id: item?.id || fallback.id || uid(),
+      deviation: String(item?.deviation || fallback.deviation || "").trim(),
+      status: item?.status || fallback.status || "FS",
+      location: item?.location || fallback.location || "",
+      hourmeter: item?.hourmeter || fallback.hourmeter || "",
+      createdAt: item?.createdAt || fallback.createdAt || new Date().toISOString(),
+      createdBy: item?.createdBy || fallback.createdBy || "",
+      resolvedAt: item?.resolvedAt || "",
+      resolvedBy: item?.resolvedBy || "",
+      repairNote: item?.repairNote || ""
+    };
+  }
+
+  function activeReportDeviations(report) {
+    const payload = storedDeviationPayload(report);
+    const primary = normalizeDeviationItem(null, {
+      id: `primary-${report.id}`,
+      deviation: report.deviation || "Sin falla",
+      status: displayStatus(report.status),
+      location: report.location,
+      hourmeter: report.hourmeter,
+      createdAt: report.createdAt,
+      createdBy: report.createdBy
+    });
+    return [primary, ...payload.active.map((item) => normalizeDeviationItem(item))]
+      .filter((item) => item.deviation);
+  }
+
+  function resolvedReportDeviations(report) {
+    return storedDeviationPayload(report).resolved.map((item) => normalizeDeviationItem(item));
+  }
+
+  function deviationAgeDays(item) {
+    return reportAgeDays({ createdAt: item?.createdAt });
+  }
+
+  function strongestDeviationStatus(items) {
+    const statuses = items.map((item) => displayStatus(item.status));
+    if (statuses.some((status) => /^FS$/i.test(status))) return "FS";
+    if (statuses.some((status) => /^OBS$/i.test(status))) return "OBS";
+    return statuses[0] || "FS";
+  }
+
+  function buildDeviationOperationNote(report, activeItems, resolvedItems) {
+    const plain = reportPlainOperationNote(report);
+    const payload = {
+      active: activeItems.map((item) => normalizeDeviationItem(item)),
+      resolved: resolvedItems.map((item) => normalizeDeviationItem(item))
+    };
+    return `${plain ? plain + "\n" : ""}${ACTIVE_DEVIATIONS_MARKER}${JSON.stringify(payload)}`;
+  }
+
+  function findExistingActiveReport(equipment) {
+    const normalized = normalizeEquipment(equipment);
+    return rawActiveReports()
+      .filter((report) => normalizeEquipment(report.equipment) === normalized)
+      .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))[0] || null;
+  }
+
+  async function addDeviationToExistingReport(existing, source) {
+    const nextItem = normalizeDeviationItem(null, {
+      id: uid(),
+      deviation: source.deviation || "Sin falla",
+      status: source.status || "FS",
+      location: source.location || existing.location,
+      hourmeter: source.hourmeter || "",
+      createdAt: source.created_at || source.createdAt || new Date().toISOString(),
+      createdBy: source.created_by || source.createdBy || state.currentUser?.id || ""
+    });
+    const activeItems = activeReportDeviations(existing);
+    const duplicate = activeItems.some((item) =>
+      normalizeLocationText(item.deviation) === normalizeLocationText(nextItem.deviation) &&
+      displayStatus(item.status) === displayStatus(nextItem.status)
+    );
+    if (duplicate) {
+      showToast(`${existing.equipment} ya tenia ese desvio activo.`);
+      return existing;
+    }
+    const extraItems = [...activeItems.slice(1), nextItem];
+    const allActive = [activeItems[0], ...extraItems];
+    const updates = {
+      status: strongestDeviationStatus(allActive),
+      operation_note: buildDeviationOperationNote(existing, extraItems, resolvedReportDeviations(existing))
+    };
+    if ((!existing.location || /sin ubic/i.test(existing.location)) && source.location) updates.location = source.location;
+    const updated = await updateReport(existing.id, updates);
+    mergeReportUpdate(existing.id, updated, reportFallbackFromUpdates(updates));
+    await createNotification(`${existing.equipment} sumo otro desvio activo: ${nextItem.deviation}`);
+    showToast(`${existing.equipment}: desvio agregado al reporte activo.`);
+    return updated;
+  }
+
+  function reportDeviationSummary(report) {
+    const items = activeReportDeviations(report);
+    if (items.length <= 1) return report.deviation || "Sin falla";
+    return `${items.length} desvios activos: ${items.map((item) => `${displayStatus(item.status)} ${deviationAgeDays(item)}d - ${item.deviation}`).join(" | ")}`;
+  }
+
+  function rawActiveReports() {
+    return state.reports.filter(
+      (report) =>
+        report.status !== "Operativo validado" &&
+        report.status !== "Tarea realizada" &&
+        !isTechnicalObservation(report) &&
+        !isMechanicSheetReport(report)
+    );
+  }
+
+  function consolidateActiveReports(rows) {
+    const groups = new Map();
+    rows.forEach((report) => {
+      const key = normalizeEquipment(report.equipment);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(report);
+    });
+    return [...groups.values()].map((group) => {
+      const sorted = [...group].sort((a, b) => {
+        const priority = (report) => reportStatusBucket(report) === "FS" ? 2 : reportStatusBucket(report) === "OBS" ? 1 : 0;
+        return priority(b) - priority(a) || new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      });
+      const base = sorted[0];
+      if (sorted.length === 1) return base;
+      const current = activeReportDeviations(base);
+      const extras = sorted.slice(1).flatMap((report) => activeReportDeviations(report));
+      return {
+        ...base,
+        operationNote: buildDeviationOperationNote(base, [...current.slice(1), ...extras], resolvedReportDeviations(base)),
+        status: strongestDeviationStatus([...current, ...extras])
+      };
+    });
   }
 
   function isOperativeInformedStatus(status) {
@@ -846,7 +995,7 @@
     const mechanic = reportAssignedNames(report);
     const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
     const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
-    return `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
+    return `${report.location || "Sin ubicación"} · ${reportDeviationSummary(report)} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
   }
 
   function reportMeta(report) {
@@ -1122,14 +1271,17 @@
   function showReportDetails(report) {
     const fleet = fleetItem(report.equipment);
     const photos = normalizeReportPhotos(report.photos);
+    const activeItems = activeReportDeviations(report);
+    const resolvedItems = resolvedReportDeviations(report);
     openInfoModal(`Detalle ${report.equipment}`, [
       { label: "Interno", value: report.equipment },
       { label: "Tipo", value: fleet?.parts },
       { label: "Ubicacion", value: report.location },
-      { label: "Falla", value: report.deviation },
+      { label: "Desvios activos", value: activeItems.map((item) => `${displayStatus(item.status)} - ${deviationAgeDays(item)} d - ${item.deviation}`).join("\n") },
       { label: "Horometro / km", value: report.hourmeter },
       { label: "Lo hacen", value: reportAssignedNames(report) },
       { label: "Reparaciones parciales", value: report.repairNote },
+      { label: "Desvios levantados", value: resolvedItems.map((item) => `${formatDateTime(item.resolvedAt)} - ${item.deviation} - ${item.repairNote || "Sin detalle"}`).join("\n") },
       { label: "Informado por", value: report.repairedBy || report.operatedBy },
       { label: "Fecha del trabajo", value: formatDateTime(report.repairedAt) },
       { label: "Fotos", value: photos.length ? `${photos.length} adjunta${photos.length === 1 ? "" : "s"}` : "" }
@@ -1226,7 +1378,7 @@
     const age = row.querySelector(".age-pill");
     age.textContent = `${days} d`;
     age.classList.add(reportAgeClass(days));
-    row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} · ${report.deviation || "Sin falla"}`;
+    row.querySelector(".report-failure").textContent = `${formatShortDate(report.createdAt)} - ${reportDeviationSummary(report)}`;
     row.querySelector(".report-mechanic").textContent = reportAssignedNames(report, { onlySelectedPlan: true, short: true });
     const actionBox = row.querySelector(".report-row-actions");
     (quickActions || []).forEach((action) => actionBox.appendChild(action));
@@ -2183,7 +2335,7 @@
     node.querySelector(".desktop-status").textContent = displayStatus(report.status);
     node.querySelector("strong").textContent = report.equipment;
     node.querySelector("small").textContent = `${equipmentTypeLabel(report.equipment)} - ${report.location || "Sin ubicacion"}`;
-    node.querySelector("p").textContent = report.deviation || "Sin falla";
+    node.querySelector("p").textContent = reportDeviationSummary(report);
     const meta = node.querySelectorAll(".desktop-report-meta span");
     meta[0].textContent = report.hourmeter ? `${report.hourmeter} h` : "Sin horometro";
     meta[1].textContent = reportAssignedNames(report, { onlySelectedPlan: true });
@@ -2294,7 +2446,7 @@
       if (search) {
         matchText = report.equipment?.toLowerCase().includes(search) ||
                     report.location?.toLowerCase().includes(search) ||
-                    report.deviation?.toLowerCase().includes(search);
+                    reportDeviationSummary(report).toLowerCase().includes(search);
       }
 
       // Chequeo matemático (Días de antigüedad)
@@ -2626,6 +2778,8 @@
     showToast("Disponibilidad guardada.");
   }
   async function markRepairDone(report) {
+    const resolvedItem = await chooseDeviationToResolve(report);
+    if (!resolvedItem) return;
     const description = await openTextModal("Informar equipo operativo", "Qué reparación se realizó, repuestos usados, observaciones y horómetro final");
     if (description === null) return;
     const note = description.trim();
@@ -2643,6 +2797,8 @@
       operation_note: note,
       operated_by: state.currentUser.name
     };
+    const partialResolved = await resolveSingleDeviation(report, resolvedItem, note, updates);
+    if (partialResolved) return;
     if (adminDirectValidation) {
       updates.mechanic_id = null;
       updates.mechanic_ids = [];
@@ -2678,6 +2834,51 @@
   function appendRepairNote(report, note) {
     const entry = `${state.currentUser.name} realizo: ${note}. Sigue activo / queda probar.`;
     return report.repairNote ? `${report.repairNote} | ${entry}` : entry;
+  }
+
+  async function chooseDeviationToResolve(report) {
+    const items = activeReportDeviations(report);
+    if (items.length <= 1) return items[0] || null;
+    return openChoiceModal(
+      `Que desvio levantamos de ${report.equipment}?`,
+      items,
+      (item) => `<strong>${displayStatus(item.status)} - ${deviationAgeDays(item)} d</strong><span>${item.deviation}</span>`,
+      "No hay desvios activos."
+    );
+  }
+
+  async function resolveSingleDeviation(report, resolvedItem, note, baseUpdates) {
+    const activeItems = activeReportDeviations(report);
+    const resolved = {
+      ...normalizeDeviationItem(resolvedItem),
+      resolvedAt: new Date().toISOString(),
+      resolvedBy: state.currentUser.name,
+      repairNote: note
+    };
+    const remaining = activeItems.filter((item) => item.id !== resolvedItem.id);
+    if (!remaining.length) return false;
+
+    const primary = remaining[0];
+    const extraItems = remaining.slice(1);
+    const updates = {
+      ...baseUpdates,
+      status: strongestDeviationStatus(remaining),
+      previous_status: strongestDeviationStatus(remaining),
+      location: primary.location || report.location,
+      deviation: primary.deviation || report.deviation,
+      operation_note: buildDeviationOperationNote(report, extraItems, [...resolvedReportDeviations(report), resolved]),
+      repair_note: appendRepairNote(report, `Se levanto desvio: ${resolved.deviation}. ${note}`)
+    };
+    delete updates.mechanic_id;
+    delete updates.mechanic_ids;
+    delete updates.plan_date;
+    delete updates.validated_by;
+    delete updates.validated_at;
+    await updateReport(report.id, updates);
+    await createNotification(`${report.equipment}: ${state.currentUser.name} levanto un desvio, quedan ${remaining.length} activo${remaining.length === 1 ? "" : "s"}.`);
+    await refreshAllData();
+    showToast("Desvio levantado. El equipo sigue activo por otros desvios.");
+    return true;
   }
 
   async function reportWorkAndKeepActive(report) {
@@ -2876,6 +3077,20 @@
 
   async function promoteNewReportToActive(row) {
     if (!isAdmin()) return;
+    const existing = findExistingActiveReport(row.equipment);
+    if (existing && existing.id !== row.id) {
+      await addDeviationToExistingReport(existing, {
+        deviation: row.deviation,
+        status: "FS",
+        location: row.location,
+        hourmeter: row.hourmeter,
+        createdAt: row.createdAt,
+        createdBy: row.createdBy
+      });
+      await updateReport(row.id, { status: "Reporte mecanico fusionado", location: "Fusionado" });
+      await refreshAllData();
+      return;
+    }
     await updateReport(row.id, { status: "FS", location: "" });
     await createNotification(`${row.equipment} convertido a reporte activo por ${state.currentUser.name}`);
     await refreshAllData();
@@ -2951,7 +3166,8 @@
       .filter((report) => normalizeEquipment(report.equipment) === normalized)
       .filter((report) => !isBaseEquipmentReport(report))
       .filter((report) => report.status !== "Tarea realizada")
-      .filter((report) => report.deviation);
+      .flatMap((report) => activeReportDeviations(report).map((item) => item.deviation))
+      .filter(Boolean);
   }
 
   function uniqueChecklistLines(lines) {
@@ -3757,7 +3973,7 @@
     box.appendChild(title);
     reports.forEach((report) => {
       const row = document.createElement("span");
-      row.textContent = `${report.equipment} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
+      row.textContent = `${report.equipment} - ${displayStatus(report.status)} - ${reportDeviationSummary(report)}`;
       box.appendChild(row);
     });
     return box;
@@ -3843,7 +4059,7 @@
       pin.addEventListener("click", () => {
         openInfoModal(`Ubicacion ${location.name}`, reports.map((report) => ({
           label: report.equipment,
-          value: `${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`
+          value: `${displayStatus(report.status)} - ${reportDeviationSummary(report)}`
         })));
       });
       el.activeMapCanvas.appendChild(pin);
@@ -3878,7 +4094,7 @@
 
     rows.forEach(({ report, location }) => {
       const coords = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-      const details = `${location.name} - GPS usado: ${coords} - ${displayStatus(report.status)} - ${report.deviation || "Sin falla"}`;
+      const details = `${location.name} - GPS usado: ${coords} - ${displayStatus(report.status)} - ${reportDeviationSummary(report)}`;
       const actions = [
         mapsButton(report),
         button("Ver detalles", "secondary", () => showReportDetails(report))
@@ -4469,6 +4685,15 @@
     };
 
     try {
+      const existing = findExistingActiveReport(report.equipment);
+      if (existing) {
+        await addDeviationToExistingReport(existing, report);
+        await refreshAllData();
+        el.immediateForm.reset();
+        if (el.reportPaste) el.reportPaste.value = "";
+        return;
+      }
+
       const { error } = await supabase.from("reports").insert(report);
       
       if (error) {

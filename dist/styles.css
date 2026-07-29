@@ -1053,6 +1053,7 @@ label {
   color: #f8fafc;
   line-height: 1.35;
   font-weight: 720;
+  white-space: pre-line;
 }
 
 .empty {
