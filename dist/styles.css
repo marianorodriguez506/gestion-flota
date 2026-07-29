@@ -1388,6 +1388,17 @@ body.theme-light .detail-row strong {
   color: #a16207;
 }
 
+body.theme-light .fleet-search-input {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 16px;
+}
+
 .admin-disabled {
   display: none;
 }
@@ -2806,6 +2817,121 @@ body.theme-light .detail-row strong {
     padding: 6px 10px;
     font-size: 12px;
   }
+}
+
+body.theme-light.logged-in .desktop-sidebar,
+body.theme-light .topbar,
+body.theme-light .mobile-bottom-nav,
+body.theme-light .mobile-tools-panel,
+body.theme-light .notification-panel,
+body.theme-light .modal-panel,
+body.theme-light .bottom-sheet,
+body.theme-light .sheet-panel,
+body.theme-light .drawer-panel,
+body.theme-light .toast,
+body.theme-light .active-map-card,
+body.theme-light .active-map-panel,
+body.theme-light .active-map-list,
+body.theme-light .timeline-item,
+body.theme-light .settings-screen,
+body.theme-light .settings-grid {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(241, 245, 249, .98)) !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, .34) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .12) !important;
+}
+
+body.theme-light .mobile-stat,
+body.theme-light .mobile-assigned-card,
+body.theme-light .mobile-highlight,
+body.theme-light .mobile-section-title button,
+body.theme-light .desktop-stat-card,
+body.theme-light .desktop-report-card,
+body.theme-light .desktop-panel,
+body.theme-light .activity-card,
+body.theme-light .due-card,
+body.theme-light .report-card,
+body.theme-light .job-card,
+body.theme-light .base-equipment-card,
+body.theme-light .task-card,
+body.theme-light .validation-card,
+body.theme-light .parts-history-card,
+body.theme-light .location-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(248, 250, 252, .98)) !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, .34) !important;
+}
+
+body.theme-light .mobile-stat.danger {
+  background:
+    linear-gradient(90deg, rgba(239, 68, 68, .14), transparent 54%),
+    linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(248, 250, 252, .98)) !important;
+}
+
+body.theme-light .mobile-stat.warn {
+  background:
+    linear-gradient(90deg, rgba(250, 204, 21, .18), transparent 54%),
+    linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(248, 250, 252, .98)) !important;
+}
+
+body.theme-light .mobile-stat.ok {
+  background:
+    linear-gradient(90deg, rgba(34, 197, 94, .14), transparent 54%),
+    linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(248, 250, 252, .98)) !important;
+}
+
+body.theme-light .mobile-stat.info {
+  background:
+    linear-gradient(90deg, rgba(168, 85, 247, .14), transparent 54%),
+    linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(248, 250, 252, .98)) !important;
+}
+
+body.theme-light .feed-hero {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(250, 204, 21, .22), transparent 82px),
+    linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(241, 245, 249, .99)) !important;
+}
+
+body.theme-light .icon-btn,
+body.theme-light .text-btn,
+body.theme-light .sidebar-link,
+body.theme-light .mobile-bottom-nav button,
+body.theme-light .mobile-tools-panel button {
+  background: rgba(255, 255, 255, .92) !important;
+  color: #0f172a !important;
+  border-color: rgba(148, 163, 184, .38) !important;
+}
+
+body.theme-light .mobile-stat strong,
+body.theme-light .mobile-stat span,
+body.theme-light .mobile-highlight small,
+body.theme-light .mobile-assigned-card span,
+body.theme-light .mobile-section-title,
+body.theme-light .notification-title,
+body.theme-light .sheet-panel h3,
+body.theme-light .modal-panel h3,
+body.theme-light .desktop-report-card strong,
+body.theme-light .desktop-panel h2 {
+  color: #0f172a !important;
+}
+
+body.theme-light .mobile-highlight span,
+body.theme-light .mobile-assigned-card small,
+body.theme-light .notification-body,
+body.theme-light .desktop-report-card span,
+body.theme-light .activity-card small,
+body.theme-light .due-card small {
+  color: #526173 !important;
+}
+
+body.theme-light dialog[style],
+body.theme-light dialog[style] button {
+  color: #0f172a !important;
+}
+
+body.theme-light dialog[style] {
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, .45) !important;
 }
 
 @media (max-width: 520px) {

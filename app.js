@@ -3480,7 +3480,7 @@
         searchContainer = document.createElement("div");
         searchContainer.id = "fleet-search-container";
         // Le damos estilo oscuro para que combine con tu panel
-        searchContainer.innerHTML = `<input type="text" id="fleet-search-input" placeholder="🔍 Buscar por interno, pieza o nota..." style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; background-color: #1e1e1e; color: white; font-size: 16px;">`;
+        searchContainer.innerHTML = `<input type="text" id="fleet-search-input" class="fleet-search-input" placeholder="🔍 Buscar por interno, pieza o nota...">`;
         
         // Lo insertamos justo arriba de la lista de flota
         el.fleetList.parentNode.insertBefore(searchContainer, el.fleetList);
