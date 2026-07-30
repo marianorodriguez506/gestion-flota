@@ -4085,3 +4085,394 @@ body.theme-cholo-light #usersBtn {
     box-shadow: 0 0 12px rgba(255, 193, 7, .44);
   }
 }
+
+@media (min-width: 900px) {
+  body.theme-cholo.logged-in,
+  body.theme-cholo-light.logged-in {
+    min-height: 100vh;
+  }
+
+  body.theme-cholo.logged-in {
+    background:
+      radial-gradient(circle at 82% 8%, rgba(255, 193, 7, .12), transparent 280px),
+      linear-gradient(135deg, #020711 0%, #031421 46%, #020711 100%) !important;
+  }
+
+  body.theme-cholo-light.logged-in {
+    background:
+      radial-gradient(circle at 86% 10%, rgba(14, 165, 168, .14), transparent 320px),
+      linear-gradient(135deg, #f6f9fd 0%, #eef6fb 48%, #ffffff 100%) !important;
+  }
+
+  body.theme-cholo.logged-in .app,
+  body.theme-cholo-light.logged-in .app {
+    grid-template-columns: 304px minmax(0, 1fr);
+  }
+
+  body.theme-cholo.logged-in .desktop-sidebar,
+  body.theme-cholo-light.logged-in .desktop-sidebar {
+    padding: 24px 22px;
+  }
+
+  body.theme-cholo.logged-in .desktop-sidebar {
+    background:
+      linear-gradient(180deg, rgba(5, 18, 30, .98), rgba(2, 9, 16, .98)),
+      url("assets/theme/hero-cholo-pro.jpg") 38% 100% / auto 34% no-repeat !important;
+    border-color: rgba(255, 193, 7, .16) !important;
+    box-shadow: 20px 0 44px rgba(0, 0, 0, .32) !important;
+  }
+
+  body.theme-cholo-light.logged-in .desktop-sidebar {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(246, 249, 253, .98)),
+      url("assets/theme/hero-cholo-light.jpg") 42% 100% / auto 34% no-repeat !important;
+    border-color: rgba(14, 165, 168, .14) !important;
+  }
+
+  body.theme-cholo.logged-in .app-shell,
+  body.theme-cholo-light.logged-in .app-shell {
+    width: min(100%, 1660px);
+    padding: 28px 34px 42px;
+  }
+
+  body.theme-cholo .brand-mark,
+  body.theme-cholo-light .brand-mark {
+    width: 62px;
+    height: 62px;
+    border-radius: 18px;
+    font-size: 0;
+    background:
+      linear-gradient(135deg, rgba(255, 193, 7, .94), rgba(245, 158, 11, .94)),
+      url("assets/theme/tool-fleet.jpg") center / 96px 54px no-repeat !important;
+    box-shadow: 0 16px 34px rgba(255, 193, 7, .24) !important;
+  }
+
+  body.theme-cholo .brand-mark::after,
+  body.theme-cholo-light .brand-mark::after {
+    content: "GF";
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: #06111f;
+    font-size: 18px;
+    font-weight: 1000;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, .28);
+  }
+
+  body.theme-cholo .sidebar-brand,
+  body.theme-cholo-light .sidebar-brand {
+    grid-template-columns: 62px 1fr;
+    margin-bottom: 34px;
+  }
+
+  body.theme-cholo .sidebar-brand strong,
+  body.theme-cholo-light .sidebar-brand strong {
+    font-size: 21px;
+    letter-spacing: .01em;
+  }
+
+  body.theme-cholo .sidebar-nav,
+  body.theme-cholo-light .sidebar-nav {
+    gap: 9px;
+  }
+
+  body.theme-cholo .sidebar-nav button,
+  body.theme-cholo-light .sidebar-nav button {
+    min-height: 52px;
+    border-radius: 14px !important;
+    font-size: 15px;
+    font-weight: 850;
+  }
+
+  body.theme-cholo .sidebar-nav button.active,
+  body.theme-cholo-light .sidebar-nav button.active {
+    background: linear-gradient(135deg, #ffd21a, #f59e0b) !important;
+    color: #06111f !important;
+    box-shadow: 0 16px 30px rgba(255, 193, 7, .20) !important;
+  }
+
+  body.theme-cholo .sidebar-user,
+  body.theme-cholo-light .sidebar-user {
+    min-height: 88px;
+    border-radius: 18px;
+  }
+
+  body.theme-cholo.logged-in .topbar,
+  body.theme-cholo-light.logged-in .topbar {
+    min-height: 58px;
+    margin-bottom: 18px;
+    padding: 0;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.theme-cholo.logged-in .topbar-title h1,
+  body.theme-cholo-light.logged-in .topbar-title h1 {
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  body.theme-cholo.logged-in .feed-hero,
+  body.theme-cholo-light.logged-in .feed-hero {
+    position: relative;
+    min-height: 210px;
+    display: grid;
+    align-content: end;
+    overflow: hidden;
+    margin-bottom: 22px;
+    border-radius: 24px !important;
+    padding: 34px 36px !important;
+  }
+
+  body.theme-cholo.logged-in .feed-hero {
+    border: 1px solid rgba(255, 193, 7, .18) !important;
+    background:
+      linear-gradient(90deg, rgba(2, 8, 15, .92) 0%, rgba(2, 8, 15, .68) 45%, rgba(2, 8, 15, .08) 100%),
+      url("assets/theme/hero-cholo-pro.jpg") center / cover no-repeat !important;
+    box-shadow: 0 28px 62px rgba(0, 0, 0, .34) !important;
+  }
+
+  body.theme-cholo-light.logged-in .feed-hero {
+    border: 1px solid rgba(14, 165, 168, .12) !important;
+    background:
+      linear-gradient(90deg, rgba(6, 31, 51, .78) 0%, rgba(6, 31, 51, .42) 46%, rgba(6, 31, 51, .04) 100%),
+      url("assets/theme/hero-cholo-light.jpg") center / cover no-repeat !important;
+    box-shadow: 0 24px 52px rgba(20, 32, 51, .14) !important;
+  }
+
+  body.theme-cholo.logged-in .feed-hero strong,
+  body.theme-cholo-light.logged-in .feed-hero strong {
+    max-width: 620px;
+    color: #ffffff !important;
+    font-size: 42px !important;
+    text-shadow: 0 8px 28px rgba(0, 0, 0, .42);
+  }
+
+  body.theme-cholo.logged-in .feed-hero p,
+  body.theme-cholo-light.logged-in .feed-hero p {
+    max-width: 560px;
+    color: rgba(255, 255, 255, .82) !important;
+    font-size: 18px !important;
+    text-shadow: 0 6px 18px rgba(0, 0, 0, .34);
+  }
+
+  body.theme-cholo .desktop-stats,
+  body.theme-cholo-light .desktop-stats {
+    grid-template-columns: repeat(4, minmax(190px, 1fr));
+    gap: 18px;
+  }
+
+  body.theme-cholo .desktop-stat,
+  body.theme-cholo-light .desktop-stat {
+    min-height: 150px;
+    border-radius: 22px !important;
+    padding: 24px 24px 22px 126px;
+    isolation: isolate;
+  }
+
+  body.theme-cholo .desktop-stat {
+    background:
+      radial-gradient(circle at 92% 12%, rgba(255, 255, 255, .07), transparent 110px),
+      linear-gradient(145deg, rgba(8, 29, 42, .98), rgba(3, 13, 22, .98)) !important;
+    border-color: rgba(255, 193, 7, .13) !important;
+    box-shadow: 0 24px 54px rgba(0, 0, 0, .28) !important;
+  }
+
+  body.theme-cholo-light .desktop-stat {
+    background: #ffffff !important;
+    border-color: rgba(14, 165, 168, .11) !important;
+    box-shadow: 0 20px 44px rgba(20, 32, 51, .10) !important;
+  }
+
+  body.theme-cholo .desktop-stat::before,
+  body.theme-cholo-light .desktop-stat::before {
+    left: 24px;
+    width: 78px;
+    height: 78px;
+    border-radius: 24px;
+    opacity: 1;
+    background-color: #020712;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 118px 66px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 16px 28px rgba(0, 0, 0, .20);
+  }
+
+  body.theme-cholo .desktop-stat.danger::before,
+  body.theme-cholo-light .desktop-stat.danger::before {
+    background-image: url("assets/theme/status-fs.jpg");
+  }
+
+  body.theme-cholo .desktop-stat.warn::before,
+  body.theme-cholo-light .desktop-stat.warn::before {
+    background-image: url("assets/theme/status-obs.jpg");
+  }
+
+  body.theme-cholo .desktop-stat.ok::before,
+  body.theme-cholo-light .desktop-stat.ok::before {
+    background-image: url("assets/theme/status-op.jpg");
+  }
+
+  body.theme-cholo .desktop-stat.info::before,
+  body.theme-cholo-light .desktop-stat.info::before {
+    background-image: url("assets/theme/tool-mechanics.jpg");
+  }
+
+  body.theme-cholo .desktop-stat-icon,
+  body.theme-cholo-light .desktop-stat-icon {
+    display: none;
+  }
+
+  body.theme-cholo .desktop-stat strong,
+  body.theme-cholo-light .desktop-stat strong {
+    font-size: 48px;
+  }
+
+  body.theme-cholo .desktop-home-grid,
+  body.theme-cholo-light .desktop-home-grid {
+    grid-template-columns: minmax(0, 1.75fr) minmax(360px, .85fr);
+    gap: 20px;
+  }
+
+  body.theme-cholo .desktop-panel,
+  body.theme-cholo-light .desktop-panel {
+    border-radius: 24px !important;
+    padding: 22px;
+  }
+
+  body.theme-cholo .desktop-panel {
+    background:
+      radial-gradient(circle at 94% 2%, rgba(255, 193, 7, .10), transparent 170px),
+      linear-gradient(145deg, rgba(8, 29, 42, .98), rgba(3, 13, 22, .98)) !important;
+    border-color: rgba(255, 193, 7, .13) !important;
+    box-shadow: 0 24px 54px rgba(0, 0, 0, .28) !important;
+  }
+
+  body.theme-cholo-light .desktop-panel {
+    background: #ffffff !important;
+    border-color: rgba(14, 165, 168, .11) !important;
+    box-shadow: 0 20px 44px rgba(20, 32, 51, .10) !important;
+  }
+
+  body.theme-cholo .desktop-panel-head,
+  body.theme-cholo-light .desktop-panel-head {
+    margin-bottom: 18px;
+  }
+
+  body.theme-cholo .desktop-panel-head h2,
+  body.theme-cholo-light .desktop-panel-head h2 {
+    font-size: 19px;
+    letter-spacing: .02em;
+  }
+
+  body.theme-cholo .desktop-panel-head button,
+  body.theme-cholo-light .desktop-panel-head button {
+    border-radius: 999px !important;
+    font-weight: 900;
+  }
+
+  body.theme-cholo .desktop-report-preview,
+  body.theme-cholo-light .desktop-report-preview {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  body.theme-cholo .desktop-report-card,
+  body.theme-cholo-light .desktop-report-card {
+    min-height: 326px;
+    grid-template-rows: auto 132px auto auto minmax(40px, auto) auto;
+    gap: 10px;
+    border-radius: 20px !important;
+    padding: 16px;
+  }
+
+  body.theme-cholo .desktop-report-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .045), transparent 42%),
+      radial-gradient(circle at 88% 12%, rgba(255, 193, 7, .18), transparent 86px),
+      rgba(5, 21, 33, .92) !important;
+    border-color: rgba(255, 193, 7, .15) !important;
+  }
+
+  body.theme-cholo-light .desktop-report-card {
+    background:
+      linear-gradient(180deg, rgba(14, 165, 168, .035), transparent 44%),
+      #ffffff !important;
+    border-color: rgba(14, 165, 168, .13) !important;
+  }
+
+  body.theme-cholo .desktop-machine-art,
+  body.theme-cholo-light .desktop-machine-art {
+    min-height: 132px;
+    border-radius: 18px;
+  }
+
+  body.theme-cholo .desktop-machine-art {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, .05), transparent),
+      radial-gradient(circle at 50% 98%, rgba(255, 193, 7, .28), transparent 62%),
+      rgba(2, 8, 15, .72);
+  }
+
+  body.theme-cholo-light .desktop-machine-art {
+    background:
+      radial-gradient(circle at 50% 100%, rgba(14, 165, 168, .12), transparent 64%),
+      #f5f8fb;
+  }
+
+  body.theme-cholo .desktop-machine-art img,
+  body.theme-cholo-light .desktop-machine-art img {
+    padding: 8px 12px;
+  }
+
+  body.theme-cholo .desktop-report-card strong,
+  body.theme-cholo-light .desktop-report-card strong {
+    font-size: 28px;
+  }
+
+  body.theme-cholo .desktop-report-card button,
+  body.theme-cholo-light .desktop-report-card button {
+    min-height: 34px;
+    border-radius: 999px !important;
+    font-weight: 900;
+  }
+
+  body.theme-cholo .desktop-activity-row,
+  body.theme-cholo-light .desktop-activity-row {
+    position: relative;
+    min-height: 70px;
+    padding: 13px 0 13px 58px;
+  }
+
+  body.theme-cholo .desktop-activity-row::before,
+  body.theme-cholo-light .desktop-activity-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: #020712 url("assets/theme/tool-new-report.jpg") center / 76px 42px no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10), 0 10px 18px rgba(0, 0, 0, .14);
+  }
+
+  body.theme-cholo .quick-actions,
+  body.theme-cholo .home-grid,
+  body.theme-cholo-light .quick-actions,
+  body.theme-cholo-light .home-grid {
+    gap: 14px !important;
+  }
+
+  body.theme-cholo .quick-btn,
+  body.theme-cholo .module-btn,
+  body.theme-cholo-light .quick-btn,
+  body.theme-cholo-light .module-btn {
+    min-height: 96px;
+    border-radius: 20px !important;
+    font-size: 16px;
+    font-weight: 950;
+  }
+}
