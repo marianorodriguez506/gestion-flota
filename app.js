@@ -1249,6 +1249,19 @@
     showToast("Tarea eliminada.");
   }
 
+  async function deleteMechanicReport(report) {
+    if (!isAdmin() || !report?.id) return;
+    const ok = await openConfirmModal("Eliminar reporte nuevo", `Eliminar el reporte nuevo de ${report.equipment || "sin interno"}?`, "Eliminar");
+    if (!ok) return;
+    const { error } = await supabase.from("reports").delete().eq("id", report.id);
+    if (error) {
+      showToast("No se pudo eliminar el reporte nuevo: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Reporte nuevo eliminado.");
+  }
+
   function showDoneTaskPhotos(report) {
     const photos = normalizeReportPhotos(report.photos);
     if (!photos.length) {
@@ -3233,6 +3246,7 @@
       const actions = [button("Ver detalles", "secondary", () => showReportDetails(row))];
       if (isAdmin()) {
         actions.push(button("Pasar a reporte activo", "primary", () => promoteNewReportToActive(row)));
+        actions.push(button("Eliminar", "danger", () => deleteMechanicReport(row)));
       }
       if (false && isAdmin() && isTechnicalObservation(row)) {
         actions.push(button("Crear reporte activo", "primary", async () => {
