@@ -32,6 +32,7 @@
         <button data-screen="immediate" type="button">Reportes Activos</button>
         <button data-screen="activeMap" type="button">Mapa activos</button>
         <button data-screen="orders" type="button">Repuestos</button>
+        <button data-screen="batteries" type="button">Baterías</button>
         <button data-screen="doneTasks" type="button">Tareas realizadas</button>
         <button data-screen="baseEquipment" type="button">Equipos en base</button>
         <button data-screen="mechanic" type="button">Reportes nuevos</button>
@@ -177,6 +178,7 @@
 
         <button class="quick-btn" data-screen="tomorrow">Plan Mañana</button>
         <button class="quick-btn" data-screen="orders">Repuestos</button>
+        <button class="quick-btn" data-screen="batteries">Baterías</button>
         <button class="quick-btn mechanic-only" data-screen="doneTasks">Tareas realizadas</button>
         <button class="quick-btn admin-only" data-screen="validations">Validaciones</button>
         <button class="quick-btn mechanic-only" data-screen="mechanic">Reportes nuevos</button>
@@ -190,6 +192,7 @@
         <div class="mobile-tools-body">
       <div class="home-grid">
         <button class="module-btn" data-screen="activeMap">Mapa activos</button>
+        <button class="module-btn" data-screen="batteries">Baterías</button>
         <button class="module-btn" data-screen="doneTasks">Tareas realizadas</button>
         <button class="module-btn" data-screen="baseEquipment">Equipos en base</button>
         <button class="module-btn" data-screen="mechanic">Reportes nuevos</button>
@@ -383,6 +386,40 @@
       <section id="historyList" class="list"></section>
     </section>
 
+    <section id="batteriesScreen" class="screen">
+      <form id="batteryForm" class="panel form-grid admin-only">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <select name="mechanic" required></select>
+        <input name="batteries" placeholder="Baterías colocadas" required>
+        <input name="quantity" type="number" min="1" step="1" value="1" placeholder="Cantidad" required>
+        <select name="condition" required>
+          <option value="Nueva">Nueva</option>
+          <option value="Usada">Usada</option>
+        </select>
+        <input name="date" type="date">
+        <button class="primary" type="submit">Guardar batería</button>
+      </form>
+      <section class="panel compact order-toolbar">
+        <label>
+          Filtrar por interno
+          <input id="batteryEquipmentFilter" type="text" placeholder="Ej.: CF-38">
+        </label>
+        <label>
+          Filtrar por mecánico
+          <select id="batteryMechanicFilter"></select>
+        </label>
+        <label>
+          Desde
+          <input id="batteryDateFromFilter" type="date">
+        </label>
+        <label>
+          Hasta
+          <input id="batteryDateToFilter" type="date">
+        </label>
+      </section>
+      <section id="batteriesList" class="list"></section>
+    </section>
+
     <section id="fleetScreen" class="screen">
       <form id="fleetForm" class="panel form-grid admin-only">
         <input name="equipment" placeholder="Interno / equipo" required>
@@ -513,7 +550,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260713-4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=20260730-plan-save"></script>
+  <script src="app.js?v=20260730-batteries"></script>
   <dialog id="modal-eliminar-operativo" style="background-color: #1a1e23; color: white; border: 1px solid #444; border-radius: 12px; padding: 25px; text-align: center; max-width: 320px; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
   <h3 style="margin-top: 0; color: #ff4d4d; font-size: 22px;">⚠️ ¿Eliminar?</h3>
   <p style="color: #ccc; font-size: 16px;">El reporte de <strong><span id="equipo-modal"></span></strong> se borrará para siempre.</p>

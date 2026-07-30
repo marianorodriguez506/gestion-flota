@@ -22,6 +22,7 @@
     doneTasks: { id: "doneTasksScreen", title: "Tareas realizadas", label: "Realizado" },
     baseEquipment: { id: "baseEquipmentScreen", title: "Equipos en base", label: "Base" },
     orders: { id: "ordersScreen", title: "Repuestos", label: "Pedidos" },
+    batteries: { id: "batteriesScreen", title: "Baterías", label: "Registro" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
     fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
     operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
@@ -44,6 +45,7 @@
     users: [],
     reports: [],
     orders: [],
+    batteries: [],
     fleet: [],
     notifications: [],
     availability: [],
@@ -54,7 +56,8 @@
     orderDraftReadOnly: false,
     preferences: loadPreferences(),
     offlineMode: false,
-    offlineSavedAt: ""
+    offlineSavedAt: "",
+    batteriesLoadError: ""
   };
 
   let activeScreen = "auth";
@@ -125,6 +128,12 @@
     newOrderBtn: document.getElementById("newOrderBtn"),
     ordersList: document.getElementById("ordersList"),
     historyList: document.getElementById("historyList"),
+    batteryForm: document.getElementById("batteryForm"),
+    batteryEquipmentFilter: document.getElementById("batteryEquipmentFilter"),
+    batteryMechanicFilter: document.getElementById("batteryMechanicFilter"),
+    batteryDateFromFilter: document.getElementById("batteryDateFromFilter"),
+    batteryDateToFilter: document.getElementById("batteryDateToFilter"),
+    batteriesList: document.getElementById("batteriesList"),
     fleetForm: document.getElementById("fleetForm"),
     fleetList: document.getElementById("fleetList"),
     operativesList: document.getElementById("operativesList"),
@@ -349,6 +358,21 @@
       equipment: normalizeEquipment(row.equipment),
       parts: row.parts || "",
       notes: row.notes || ""
+    };
+  }
+
+  function normalizeBatteryRecord(row) {
+    return {
+      id: row.id,
+      equipment: normalizeEquipment(row.equipment),
+      mechanicId: row.mechanic_id || null,
+      mechanicName: row.mechanic_name || "",
+      batteries: row.batteries || "",
+      quantity: Number(row.quantity || 0) || 1,
+      condition: row.condition || "Nueva",
+      installedAt: row.installed_at || "",
+      createdAt: row.created_at || "",
+      updatedAt: row.updated_at || ""
     };
   }
 
@@ -1623,6 +1647,7 @@
         users: state.users,
         reports: state.reports,
         orders: state.orders,
+        batteries: state.batteries,
         fleet: state.fleet,
         notifications: state.notifications,
         availability: state.availability,
@@ -1642,6 +1667,8 @@
       state.users = Array.isArray(snapshot.users) ? snapshot.users : [];
       state.reports = Array.isArray(snapshot.reports) ? snapshot.reports : [];
       state.orders = Array.isArray(snapshot.orders) ? snapshot.orders : [];
+      state.batteries = Array.isArray(snapshot.batteries) ? snapshot.batteries : [];
+      state.batteriesLoadError = "";
       state.fleet = Array.isArray(snapshot.fleet) ? snapshot.fleet : [];
       state.notifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
       state.availability = Array.isArray(snapshot.availability) ? snapshot.availability : [];
@@ -3828,6 +3855,148 @@
     });
   }
 
+  function batteryMechanicName(record) {
+    return record.mechanicName || workerName(record.mechanicId) || "Sin mecánico";
+  }
+
+  function populateBatteryMechanics() {
+    const workers = approvedWorkers();
+    fillSelect(el.batteryForm?.elements.mechanic, workers, { placeholder: "Mecánico que la coloca" });
+    fillSelect(el.batteryMechanicFilter, workers, { all: true });
+  }
+
+  function batteryPayloadFromForm(formElement) {
+    const form = new FormData(formElement);
+    const mechanicId = form.get("mechanic") || "";
+    const mechanic = state.users.find((user) => user.id === mechanicId);
+    return {
+      equipment: normalizeEquipment(form.get("equipment")),
+      mechanic_id: mechanicId || null,
+      mechanic_name: mechanic?.name || "",
+      batteries: String(form.get("batteries") || "").trim(),
+      quantity: Math.max(1, Number(form.get("quantity") || 1)),
+      condition: form.get("condition") || "Nueva",
+      installed_at: form.get("date") || new Date().toISOString().slice(0, 10)
+    };
+  }
+
+  async function editBatteryRecord(record) {
+    if (!isAdmin()) return;
+    el.modalTitle.textContent = `Editar batería ${record.equipment}`;
+    el.modalBody.innerHTML = `
+      <form id="batteryEditForm" class="form-grid">
+        <input name="equipment" placeholder="Interno / equipo" required>
+        <select name="mechanic" required></select>
+        <input name="batteries" placeholder="Baterías colocadas" required>
+        <input name="quantity" type="number" min="1" step="1" required>
+        <select name="condition" required>
+          <option value="Nueva">Nueva</option>
+          <option value="Usada">Usada</option>
+        </select>
+        <input name="date" type="date">
+      </form>
+    `;
+    el.modalActions.innerHTML = "";
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+
+    const form = el.modalBody.querySelector("#batteryEditForm");
+    fillSelect(form.elements.mechanic, approvedWorkers(), { placeholder: "Mecánico que la coloca" });
+    form.elements.equipment.value = record.equipment || "";
+    form.elements.mechanic.value = record.mechanicId || "";
+    form.elements.batteries.value = record.batteries || "";
+    form.elements.quantity.value = record.quantity || 1;
+    form.elements.condition.value = record.condition || "Nueva";
+    form.elements.date.value = record.installedAt || new Date().toISOString().slice(0, 10);
+
+    el.modalActions.appendChild(button("Cancelar", "secondary", closeModal));
+    el.modalActions.appendChild(button("Guardar", "primary", async () => {
+      const payload = batteryPayloadFromForm(form);
+      const { error } = await supabase.from("battery_records").update({
+        ...payload,
+        updated_at: new Date().toISOString()
+      }).eq("id", record.id);
+      if (error) {
+        showToast("No se pudo editar batería: " + error.message);
+        return;
+      }
+      closeModal();
+      await refreshAllData();
+      showToast("Registro de batería actualizado.");
+    }));
+  }
+
+  async function deleteBatteryRecord(record) {
+    if (!isAdmin()) return;
+    const ok = await openConfirmModal("Eliminar registro de batería", `Eliminar el registro de ${record.equipment}?`, "Eliminar");
+    if (!ok) return;
+    const { error } = await supabase.from("battery_records").delete().eq("id", record.id);
+    if (error) {
+      showToast("No se pudo eliminar batería: " + error.message);
+      return;
+    }
+    await refreshAllData();
+    showToast("Registro eliminado.");
+  }
+
+  function renderBatteries() {
+    if (!el.batteriesList) return;
+    populateBatteryMechanics();
+    if (el.batteryForm?.elements.date && !el.batteryForm.elements.date.value) {
+      el.batteryForm.elements.date.value = new Date().toISOString().slice(0, 10);
+    }
+
+    el.batteriesList.innerHTML = "";
+    if (state.batteriesLoadError) {
+      el.batteriesList.appendChild(empty("Falta preparar la tabla battery_records en Supabase para usar esta hoja."));
+      return;
+    }
+
+    const equipmentQuery = normalizeEquipment(el.batteryEquipmentFilter?.value || "");
+    const mechanicFilter = el.batteryMechanicFilter?.value || "all";
+    const from = el.batteryDateFromFilter?.value || "";
+    const to = el.batteryDateToFilter?.value || "";
+
+    const rows = [...state.batteries]
+      .filter((record) => {
+        const date = record.installedAt || "";
+        return (!equipmentQuery || record.equipment.includes(equipmentQuery))
+          && (mechanicFilter === "all" || record.mechanicId === mechanicFilter)
+          && (!from || date >= from)
+          && (!to || date <= to);
+      })
+      .sort((a, b) => String(b.installedAt || b.createdAt).localeCompare(String(a.installedAt || a.createdAt)));
+
+    if (!rows.length) {
+      el.batteriesList.appendChild(empty("No hay registros de baterías con esos filtros."));
+      return;
+    }
+
+    rows.forEach((record) => {
+      const actions = [
+        button("Ver detalle", "secondary", () => openInfoModal(`Baterías ${record.equipment}`, [
+          { label: "Interno", value: record.equipment },
+          { label: "Mecánico", value: batteryMechanicName(record) },
+          { label: "Baterías", value: record.batteries },
+          { label: "Cantidad", value: record.quantity },
+          { label: "Estado", value: record.condition },
+          { label: "Fecha", value: record.installedAt || "Sin fecha" },
+          { label: "Cargado", value: formatDateTime(record.createdAt) }
+        ]))
+      ];
+      if (isAdmin()) {
+        actions.push(button("Editar", "primary", () => editBatteryRecord(record)));
+        actions.push(button("Eliminar", "danger", () => deleteBatteryRecord(record)));
+      }
+      el.batteriesList.appendChild(card(
+        record.equipment || "Sin interno",
+        `${record.condition} · ${record.quantity} batería${record.quantity === 1 ? "" : "s"}`,
+        `${batteryMechanicName(record)} · ${record.batteries} · ${record.installedAt || "Sin fecha"}`,
+        actions
+      ));
+    });
+  }
+
  function renderFleet() {
     // 1. Nos aseguramos de que exista el buscador antes de la lista
     let searchContainer = document.getElementById("fleet-search-container");
@@ -4400,6 +4569,7 @@
     renderDoneTasks();
     renderBaseEquipment();
     renderOrders();
+    renderBatteries();
     renderHistory();
     renderFleet();
     renderOperatives();
@@ -4423,10 +4593,11 @@
       return;
     }
     try {
-      const [profiles, reports, orders, fleet, notifications, availability, savedLocations] = await Promise.all([
+      const [profiles, reports, orders, batteries, fleet, notifications, availability, savedLocations] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("reports").select("*").order("created_at", { ascending: false }),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
+        supabase.from("battery_records").select("*").order("installed_at", { ascending: false }),
         supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
         supabase.from("notifications").select("*").order("created_at", { ascending: false }),
         supabase.from("worker_availability").select("*").eq("date", state.planDate),
@@ -4439,6 +4610,8 @@
       state.users = (profiles.data || []).map(normalizeUser);
       state.reports = (reports.data || []).map(normalizeReport);
       state.orders = (orders.data || []).map(normalizeOrder);
+      state.batteriesLoadError = batteries.error ? batteries.error.message || "No se pudo cargar battery_records." : "";
+      state.batteries = batteries.error ? [] : (batteries.data || []).map(normalizeBatteryRecord);
       state.fleet = (fleet.data || []).map(normalizeFleet);
       state.notifications = (notifications.data || []).map(normalizeNotification);
       state.availability = (availability.data || []).map(normalizeAvailability);
@@ -4672,6 +4845,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "battery_records" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
@@ -5093,7 +5267,35 @@
   el.orderFilter.addEventListener("change", renderOrders);
   el.orderEquipmentFilter?.addEventListener("input", renderOrders);
   el.orderDestinationFilter?.addEventListener("change", renderOrders);
+  el.batteryEquipmentFilter?.addEventListener("input", renderBatteries);
+  el.batteryMechanicFilter?.addEventListener("change", renderBatteries);
+  el.batteryDateFromFilter?.addEventListener("change", renderBatteries);
+  el.batteryDateToFilter?.addEventListener("change", renderBatteries);
   el.userFilter.addEventListener("change", renderUsers);
+
+  el.batteryForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!isAdmin()) return;
+    const payload = batteryPayloadFromForm(el.batteryForm);
+    if (!payload.equipment || !payload.batteries || !payload.mechanic_id) {
+      showToast("Completa interno, mecánico y baterías.");
+      return;
+    }
+    const { error } = await supabase.from("battery_records").insert({
+      id: uid(),
+      ...payload,
+      created_by: state.currentUser.id,
+      created_at: new Date().toISOString()
+    });
+    if (error) {
+      showToast("No se pudo guardar batería: " + error.message);
+      return;
+    }
+    el.batteryForm.reset();
+    if (el.batteryForm.elements.date) el.batteryForm.elements.date.value = new Date().toISOString().slice(0, 10);
+    await refreshAllData();
+    showToast("Registro de batería guardado.");
+  });
 
   el.fleetForm.addEventListener("submit", async (event) => {
     event.preventDefault();

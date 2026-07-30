@@ -63,6 +63,20 @@ create table if not exists public.orders (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.battery_records (
+  id uuid primary key default gen_random_uuid(),
+  equipment text not null,
+  mechanic_id uuid references public.profiles(id) on delete set null,
+  mechanic_name text,
+  batteries text not null,
+  quantity integer not null default 1 check (quantity > 0),
+  condition text not null default 'Nueva' check (condition in ('Nueva', 'Usada')),
+  installed_at date not null default current_date,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
 create table if not exists public.fleet_items (
   id uuid primary key default gen_random_uuid(),
   equipment text not null,
@@ -118,6 +132,9 @@ alter table public.orders add column if not exists whatsapp_text text;
 alter table public.orders add column if not exists updated_at timestamptz;
 create index if not exists orders_equipment_idx on public.orders(equipment);
 create index if not exists orders_destination_idx on public.orders(destination);
+create index if not exists battery_records_equipment_idx on public.battery_records(equipment);
+create index if not exists battery_records_mechanic_idx on public.battery_records(mechanic_id);
+create index if not exists battery_records_installed_at_idx on public.battery_records(installed_at);
 create index if not exists notifications_created_by_idx on public.notifications(created_by);
 create index if not exists notifications_target_user_idx on public.notifications(target_user_id);
 create index if not exists push_subscriptions_user_idx on public.push_subscriptions(user_id);
@@ -128,6 +145,7 @@ create index if not exists worker_availability_worker_date_idx on public.worker_
 alter table public.profiles enable row level security;
 alter table public.reports enable row level security;
 alter table public.orders enable row level security;
+alter table public.battery_records enable row level security;
 alter table public.fleet_items enable row level security;
 alter table public.notifications enable row level security;
 alter table public.push_subscriptions enable row level security;
@@ -375,6 +393,28 @@ create policy orders_update_approved
 
 create policy orders_delete_admin
   on public.orders for delete to authenticated
+  using (private.is_admin());
+
+drop policy if exists battery_records_select_approved on public.battery_records;
+drop policy if exists battery_records_insert_admin on public.battery_records;
+drop policy if exists battery_records_update_admin on public.battery_records;
+drop policy if exists battery_records_delete_admin on public.battery_records;
+
+create policy battery_records_select_approved
+  on public.battery_records for select to authenticated
+  using (private.is_approved_user());
+
+create policy battery_records_insert_admin
+  on public.battery_records for insert to authenticated
+  with check (private.is_admin());
+
+create policy battery_records_update_admin
+  on public.battery_records for update to authenticated
+  using (private.is_admin())
+  with check (private.is_admin());
+
+create policy battery_records_delete_admin
+  on public.battery_records for delete to authenticated
   using (private.is_admin());
 
 drop policy if exists fleet_select_authenticated on public.fleet_items;
