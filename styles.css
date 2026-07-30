@@ -3997,3 +3997,91 @@ body.theme-cholo-light #usersBtn {
     background-size: 96px 54px;
   }
 }
+
+@media (max-width: 899px) {
+  body.theme-cholo .mobile-bottom-nav,
+  body.theme-cholo-light .mobile-bottom-nav {
+    left: 10px;
+    right: 10px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    border-radius: 20px !important;
+    backdrop-filter: blur(18px);
+  }
+
+  body.theme-cholo .mobile-bottom-nav {
+    background: rgba(3, 14, 22, .92) !important;
+    border: 1px solid rgba(255, 193, 7, .14) !important;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .42) !important;
+  }
+
+  body.theme-cholo-light .mobile-bottom-nav {
+    background: rgba(255, 255, 255, .96) !important;
+    border: 1px solid rgba(14, 165, 168, .14) !important;
+    box-shadow: 0 18px 42px rgba(20, 32, 51, .16) !important;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button,
+  body.theme-cholo-light .mobile-bottom-nav button {
+    position: relative;
+    min-height: 58px;
+    padding: 7px 4px 10px;
+    border: 0 !important;
+    border-radius: 14px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button {
+    color: #8496a5 !important;
+  }
+
+  body.theme-cholo-light .mobile-bottom-nav button {
+    color: #7c8795 !important;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button::before,
+  body.theme-cholo-light .mobile-bottom-nav button::before {
+    margin-bottom: 4px;
+    font-size: 19px;
+    color: currentColor !important;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button::after,
+  body.theme-cholo-light .mobile-bottom-nav button::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 3px;
+    width: 0;
+    height: 3px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    transition: width .16s ease;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button.active,
+  body.theme-cholo-light .mobile-bottom-nav button.active {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button.active,
+  body.theme-cholo .mobile-bottom-nav button.active::before,
+  body.theme-cholo .mobile-bottom-nav button.active span,
+  body.theme-cholo-light .mobile-bottom-nav button.active,
+  body.theme-cholo-light .mobile-bottom-nav button.active::before,
+  body.theme-cholo-light .mobile-bottom-nav button.active span {
+    color: #ffc107 !important;
+  }
+
+  body.theme-cholo .mobile-bottom-nav button.active::after,
+  body.theme-cholo-light .mobile-bottom-nav button.active::after {
+    width: 28px;
+    background: #ffc107;
+    box-shadow: 0 0 12px rgba(255, 193, 7, .44);
+  }
+}
