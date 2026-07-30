@@ -3861,13 +3861,23 @@
 
   function populateBatteryMechanics() {
     const workers = approvedWorkers();
-    fillSelect(el.batteryForm?.elements.mechanic, workers, { placeholder: "Mecánico que la coloca" });
+    const formMechanic = el.batteryForm?.elements.mechanic;
+    if (formMechanic) {
+      if (isAdmin()) {
+        formMechanic.disabled = false;
+        fillSelect(formMechanic, workers, { placeholder: "Mecánico que la coloca" });
+      } else {
+        fillSelect(formMechanic, state.currentUser ? [state.currentUser] : [], {});
+        formMechanic.value = state.currentUser?.id || "";
+        formMechanic.disabled = true;
+      }
+    }
     fillSelect(el.batteryMechanicFilter, workers, { all: true });
   }
 
   function batteryPayloadFromForm(formElement) {
     const form = new FormData(formElement);
-    const mechanicId = form.get("mechanic") || "";
+    const mechanicId = isAdmin() ? form.get("mechanic") || "" : state.currentUser?.id || "";
     const mechanic = state.users.find((user) => user.id === mechanicId);
     return {
       equipment: normalizeEquipment(form.get("equipment")),

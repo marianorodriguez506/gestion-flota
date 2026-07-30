@@ -407,7 +407,14 @@ create policy battery_records_select_approved
 
 create policy battery_records_insert_approved
   on public.battery_records for insert to authenticated
-  with check (private.is_approved_user() and created_by = auth.uid());
+  with check (
+    private.is_approved_user()
+    and created_by = auth.uid()
+    and (
+      private.is_admin()
+      or mechanic_id = auth.uid()
+    )
+  );
 
 create policy battery_records_update_admin
   on public.battery_records for update to authenticated
