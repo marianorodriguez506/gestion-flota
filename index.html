@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-cholo-32.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-cholo.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=20260730-desktop-cholo">
+  <link rel="stylesheet" href="styles.css?v=20260730-done-task-photos">
 </head>
 <body>
   <main class="app">
@@ -306,6 +306,10 @@
         <h3>Cargar tarea realizada</h3>
         <input name="target" placeholder="Interno, grupo o lugar" required>
         <textarea name="task" placeholder="Que hizo el mecanico" required></textarea>
+        <label>
+          Fotos
+          <input name="photos" type="file" accept="image/*" multiple>
+        </label>
         <button class="primary" type="submit">Guardar tarea realizada</button>
       </form>
       <section class="panel compact">

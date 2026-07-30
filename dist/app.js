@@ -1249,6 +1249,106 @@
     showToast("Tarea eliminada.");
   }
 
+  function showDoneTaskPhotos(report) {
+    const photos = normalizeReportPhotos(report.photos);
+    if (!photos.length) {
+      showToast("Esta tarea no tiene fotos.");
+      return;
+    }
+    el.modalTitle.textContent = `Fotos ${report.equipment || "Tarea"}`;
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+    el.modalBody.appendChild(photoGallery(report));
+    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+  }
+
+  function openDoneTaskEditor(report) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = "Editar tarea realizada";
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const targetLabel = document.createElement("label");
+      targetLabel.textContent = "Interno, grupo o lugar";
+      const targetInput = document.createElement("input");
+      targetInput.value = report.equipment || "";
+      targetLabel.appendChild(targetInput);
+
+      const taskLabel = document.createElement("label");
+      taskLabel.textContent = "Que se hizo";
+      const taskInput = document.createElement("textarea");
+      taskInput.value = report.deviation || "";
+      taskLabel.appendChild(taskInput);
+
+      const mechanicLabel = document.createElement("label");
+      mechanicLabel.textContent = "Mecanico que figura";
+      const mechanicInput = document.createElement("input");
+      mechanicInput.value = report.repairedBy || userName(report.createdBy) || state.currentUser?.name || "";
+      mechanicLabel.appendChild(mechanicInput);
+
+      const photoLabel = document.createElement("label");
+      photoLabel.textContent = "Agregar fotos";
+      const photoInput = document.createElement("input");
+      photoInput.type = "file";
+      photoInput.accept = "image/*";
+      photoInput.multiple = true;
+      photoLabel.appendChild(photoInput);
+
+      const currentPhotos = normalizeReportPhotos(report.photos);
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = currentPhotos.length ? `Fotos actuales: ${currentPhotos.length}. Las nuevas se suman.` : "Sin fotos cargadas.";
+
+      el.modalBody.appendChild(targetLabel);
+      el.modalBody.appendChild(taskLabel);
+      el.modalBody.appendChild(mechanicLabel);
+      el.modalBody.appendChild(photoLabel);
+      el.modalBody.appendChild(hint);
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", async () => {
+        const target = targetInput.value.trim();
+        const task = taskInput.value.trim();
+        const mechanic = mechanicInput.value.trim();
+        const newPhotos = await reportPhotosFromInput(photoInput);
+        closeModal();
+        resolve({ target, task, mechanic, newPhotos });
+      }));
+      targetInput.focus();
+    });
+  }
+
+  async function editDoneTask(report) {
+    if (!isAdmin() || !report?.id) return;
+    if (shouldQueueOfflineWrite()) {
+      showToast("Para editar tareas necesitas conexion.");
+      return;
+    }
+    const result = await openDoneTaskEditor(report);
+    if (!result) return;
+    if (!result.target || !result.task) {
+      showToast("Carga el destino y lo que se hizo.");
+      return;
+    }
+    const photos = [...normalizeReportPhotos(report.photos), ...result.newPhotos].slice(0, 12);
+    await updateReport(report.id, {
+      equipment: normalizeEquipment(result.target) || result.target,
+      deviation: result.task,
+      repaired_by: result.mechanic || report.repairedBy || userName(report.createdBy) || state.currentUser?.name || "",
+      operation_note: `Tarea realizada por ${result.mechanic || report.repairedBy || userName(report.createdBy) || state.currentUser?.name || ""}`,
+      photos,
+      updated_at: new Date().toISOString()
+    });
+    await refreshAllData();
+    showToast("Tarea actualizada.");
+  }
+
   function openInfoModal(title, rows) {
     el.modalTitle.textContent = title;
     el.modalBody.innerHTML = "";
@@ -3364,13 +3464,20 @@
       heading.textContent = day === "Sin fecha" ? day : new Date(`${day}T00:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
       el.doneTasksList.appendChild(heading);
       items.forEach((report) => {
+        const photoCount = normalizeReportPhotos(report.photos).length;
+        const worker = report.repairedBy || userName(report.createdBy);
         const actions = [
           button("Ver detalles", "secondary", () => showReportDetails(report))
         ];
+        if (photoCount) {
+          actions.push(button(`Fotos (${photoCount})`, "secondary", () => showDoneTaskPhotos(report)));
+        }
         if (isAdmin()) {
+          actions.push(button("Editar", "primary", async () => editDoneTask(report)));
           actions.push(button("Eliminar", "danger", async () => deleteDoneTask(report)));
         }
-        el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${userName(report.createdBy)} - ${report.deviation || "Sin detalle"}`, actions));
+        const photoLabel = photoCount ? ` - Fotos: ${photoCount}` : "";
+        el.doneTasksList.appendChild(card(report.equipment || "Sin interno", "Tarea realizada", `${formatDateTime(report.createdAt)} - Hizo: ${worker} - ${report.deviation || "Sin detalle"}${photoLabel}`, actions));
       });
     });
   }
@@ -4859,6 +4966,7 @@
       return;
     }
     const equipment = normalizeEquipment(target) || target;
+    const photos = await reportPhotosFromInput(el.doneTaskForm.elements.photos);
     const payload = {
       id: uid(),
       equipment,
@@ -4866,6 +4974,7 @@
       deviation: task,
       operation_note: `Tarea realizada por ${state.currentUser.name}`,
       status: "Tarea realizada",
+      photos,
       repaired_by: state.currentUser.name,
       repaired_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
