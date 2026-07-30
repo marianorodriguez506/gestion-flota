@@ -128,6 +128,7 @@ create index if not exists reports_created_by_idx on public.reports(created_by);
 create index if not exists orders_requester_idx on public.orders(requester_id);
 alter table public.orders add column if not exists destination text;
 alter table public.orders add column if not exists items jsonb not null default '[]'::jsonb;
+alter table public.orders add column if not exists photos jsonb not null default '[]'::jsonb;
 alter table public.orders add column if not exists whatsapp_text text;
 alter table public.orders add column if not exists updated_at timestamptz;
 create index if not exists orders_equipment_idx on public.orders(equipment);

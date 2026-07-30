@@ -347,6 +347,7 @@
       status: row.status || "Pedido",
       destination: row.destination || "",
       items,
+      photos: normalizeReportPhotos(row.photos),
       whatsappText: row.whatsapp_text || "",
       createdAt: row.created_at || "",
       updatedAt: row.updated_at || ""
@@ -1116,6 +1117,69 @@
     return gallery;
   }
 
+  function showPhotoModal(title, entity) {
+    const gallery = photoGallery(entity);
+    if (!gallery) {
+      showToast("No hay fotos cargadas.");
+      return;
+    }
+    el.modalTitle.textContent = title;
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+    el.modalBody.appendChild(gallery);
+    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+  }
+
+  function openRepairDoneModal(title, placeholder, initialValue = "", options = {}) {
+    return new Promise((resolve) => {
+      el.modalTitle.textContent = title;
+      el.modalBody.innerHTML = "";
+      el.modalActions.innerHTML = "";
+      el.modalRoot.classList.remove("hidden");
+      el.modalRoot.setAttribute("aria-hidden", "false");
+
+      const noteLabel = document.createElement("label");
+      noteLabel.textContent = "Trabajo realizado";
+      const noteInput = document.createElement("textarea");
+      noteInput.placeholder = placeholder;
+      noteInput.value = initialValue || "";
+      noteLabel.appendChild(noteInput);
+
+      const photoLabel = document.createElement("label");
+      photoLabel.textContent = "Fotos opcionales";
+      const photoInput = document.createElement("input");
+      photoInput.type = "file";
+      photoInput.accept = "image/*";
+      photoInput.multiple = true;
+      photoLabel.appendChild(photoInput);
+
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = "Podés agregar fotos de referencia. No es obligatorio.";
+
+      el.modalBody.appendChild(noteLabel);
+      el.modalBody.appendChild(photoLabel);
+      el.modalBody.appendChild(hint);
+      el.modalActions.appendChild(button("Cancelar", "secondary", () => {
+        closeModal();
+        resolve(null);
+      }));
+      el.modalActions.appendChild(button("Guardar", "primary", async () => {
+        const note = noteInput.value.trim();
+        if (!note && !options.allowEmptyNote) {
+          showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
+          return;
+        }
+        const photos = await reportPhotosFromInput(photoInput);
+        closeModal();
+        resolve({ note, photos });
+      }));
+      noteInput.focus();
+    });
+  }
+
   function fleetItem(equipment) {
     return state.fleet.find((item) => normalizeEquipment(item.equipment) === normalizeEquipment(equipment));
   }
@@ -1191,6 +1255,7 @@
       destination: order?.destination || "Añelo",
       status: order?.status || "Incompleto",
       createdAt: order?.createdAt || new Date().toISOString(),
+      photos: normalizeReportPhotos(order?.photos),
       items
     };
   }
@@ -1287,18 +1352,7 @@
   }
 
   function showDoneTaskPhotos(report) {
-    const photos = normalizeReportPhotos(report.photos);
-    if (!photos.length) {
-      showToast("Esta tarea no tiene fotos.");
-      return;
-    }
-    el.modalTitle.textContent = `Fotos ${report.equipment || "Tarea"}`;
-    el.modalBody.innerHTML = "";
-    el.modalActions.innerHTML = "";
-    el.modalRoot.classList.remove("hidden");
-    el.modalRoot.setAttribute("aria-hidden", "false");
-    el.modalBody.appendChild(photoGallery(report));
-    el.modalActions.appendChild(button("Cerrar", "secondary", closeModal));
+    showPhotoModal(`Fotos ${report.equipment || "Tarea"}`, report);
   }
 
   function openDoneTaskEditor(report) {
@@ -3072,6 +3126,49 @@
     showToast("Trabajo informado y equipo devuelto a reportes activos.");
   }
 
+  async function markRepairDone(report) {
+    const resolvedItem = await chooseDeviationToResolve(report);
+    if (!resolvedItem) return;
+    const result = await openRepairDoneModal("Informar equipo operativo", "Que reparacion se realizo, repuestos usados, observaciones y horometro final");
+    if (!result) return;
+    const note = result.note;
+    const photos = [...normalizeReportPhotos(report.photos), ...result.photos].slice(0, 12);
+    const adminDirectValidation = isAdmin();
+    const updates = {
+      status: adminDirectValidation ? "Operativo validado" : "PV",
+      previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
+      repair_note: note,
+      repaired_by: state.currentUser.name,
+      repaired_at: new Date().toISOString(),
+      operation_note: note,
+      operated_by: state.currentUser.name,
+      photos
+    };
+    const partialResolved = await resolveSingleDeviation(report, resolvedItem, note, updates);
+    if (partialResolved) return;
+    if (adminDirectValidation) {
+      updates.mechanic_id = null;
+      updates.mechanic_ids = [];
+      updates.plan_date = null;
+      updates.validated_by = state.currentUser.name;
+      updates.validated_at = new Date().toISOString();
+    }
+    if (shouldQueueOfflineWrite()) {
+      enqueueOfflineWrite({ type: "updateReport", reportId: report.id, updates });
+      applyOfflineReportUpdate(report, updates);
+      await createNotification(adminDirectValidation
+        ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
+        : `${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
+      return;
+    }
+    await saveCurrentLocationForReport(report);
+    await updateReport(report.id, updates);
+    await createNotification(adminDirectValidation
+      ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
+      : `${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
+    await refreshAllData();
+  }
+
   function showReportHistory(report) {
     const history = regularEquipmentReports(report.equipment)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
@@ -3586,6 +3683,7 @@
     rows.forEach((order) => {
       const traffic = orderTraffic(order);
       const items = filledOrderItems(order);
+      const photoCount = normalizeReportPhotos(order.photos).length;
       const actions = [
         button("Ver hoja", "secondary", () => {
           state.orderDraft = orderDraftFromOrder(order);
@@ -3607,6 +3705,9 @@
       }
 
       actions.push(button("Copiar WhatsApp", "secondary", async () => copyOrder(order)));
+      if (photoCount) {
+        actions.push(button(`Fotos (${photoCount})`, "secondary", () => showPhotoModal(`Fotos pedido ${order.equipment}`, order)));
+      }
 
       if (isAdmin()) {
         actions.push(button("Marcar recibido", "ok", async () => {
@@ -3652,6 +3753,11 @@
         <label>Fecha<input value="${formatDateTime(draft.createdAt)}" disabled></label>
         <label>Destino<select data-order-field="destination"><option>Añelo</option><option>Plottier</option></select></label>
       </div>
+      <label class="order-photo-input ${canEdit ? "" : "hidden"}">
+        Fotos de referencia opcionales
+        <input data-order-photos type="file" accept="image/*" multiple>
+      </label>
+      <p class="hint">${normalizeReportPhotos(draft.photos).length ? `Fotos actuales: ${normalizeReportPhotos(draft.photos).length}. Las nuevas se suman.` : "Podes adjuntar fotos del repuesto como referencia."}</p>
       <div class="sheet-wrap">
         <table class="order-sheet">
           <thead><tr><th>Pag.</th><th>Referencia</th><th>Código</th><th>Descripción</th><th>Cant. urgente</th><th>Cant. stock</th></tr></thead>
@@ -3672,6 +3778,9 @@
       </div>
     `;
 
+    const existingGallery = photoGallery(draft);
+    if (existingGallery) section.appendChild(existingGallery);
+
     const destination = section.querySelector('[data-order-field="destination"]');
     destination.value = draft.destination || "Añelo";
     destination.disabled = !canEdit;
@@ -3684,7 +3793,7 @@
       state.orderDraftReadOnly = false;
       renderOrders();
     });
-    section.querySelector("[data-order-save]")?.addEventListener("click", saveOrderDraft);
+    section.querySelector("[data-order-save]")?.addEventListener("click", () => saveOrderDraft(section));
     section.querySelector("[data-order-copy]").addEventListener("click", async () => copyOrder(draft));
 
     const tbody = section.querySelector("tbody");
@@ -3765,7 +3874,7 @@
     return section;
   }
 
-  async function saveOrderDraft() {
+  async function saveOrderDraft(section = null) {
     const draft = state.orderDraft;
     if (!draft || !state.currentUser) return;
     if (draft.id && !orderEditable(draft)) {
@@ -3776,6 +3885,8 @@
     const filledItems = items.filter((item) => item.page || item.reference || item.code || item.description || item.urgentQty || item.stockQty);
     const orderLike = { ...draft, items: filledItems };
     const traffic = orderTraffic(orderLike);
+    const newPhotos = await reportPhotosFromInput(section?.querySelector("[data-order-photos]"));
+    const photos = [...normalizeReportPhotos(draft.photos), ...newPhotos].slice(0, 12);
     const payload = {
       equipment: normalizeEquipment(draft.equipment),
       requester_id: draft.requesterId || state.currentUser.id,
@@ -3784,6 +3895,7 @@
       status: traffic.status,
       destination: draft.destination || "Añelo",
       items: filledItems,
+      photos,
       whatsapp_text: generateOrderWhatsAppText({ ...draft, items: filledItems, status: traffic.status }),
       updated_at: new Date().toISOString()
     };
@@ -3794,9 +3906,37 @@
     }
 
     if (draft.id) {
-      await supabase.from("orders").update(payload).eq("id", draft.id);
+      const { error } = await supabase.from("orders").update(payload).eq("id", draft.id);
+      if (error) {
+        if (String(error.message || "").includes("photos")) {
+          delete payload.photos;
+          const retry = await supabase.from("orders").update(payload).eq("id", draft.id);
+          if (retry.error) {
+            showToast("No se pudo guardar el pedido: " + retry.error.message);
+            return;
+          }
+          showToast("Pedido guardado sin fotos. Falta agregar photos en Supabase.");
+        } else {
+          showToast("No se pudo guardar el pedido: " + error.message);
+          return;
+        }
+      }
     } else {
-      await supabase.from("orders").insert({ id: uid(), ...payload, created_at: new Date().toISOString() });
+      const { error } = await supabase.from("orders").insert({ id: uid(), ...payload, created_at: new Date().toISOString() });
+      if (error) {
+        if (String(error.message || "").includes("photos")) {
+          delete payload.photos;
+          const retry = await supabase.from("orders").insert({ id: uid(), ...payload, created_at: new Date().toISOString() });
+          if (retry.error) {
+            showToast("No se pudo guardar el pedido: " + retry.error.message);
+            return;
+          }
+          showToast("Pedido guardado sin fotos. Falta agregar photos en Supabase.");
+        } else {
+          showToast("No se pudo guardar el pedido: " + error.message);
+          return;
+        }
+      }
     }
     await createNotification(`Pedido de repuestos guardado para ${payload.equipment}`);
     state.orderDraft = null;
