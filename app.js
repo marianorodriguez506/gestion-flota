@@ -183,9 +183,10 @@
     const theme = state.preferences?.theme || "dark";
     document.body.classList.toggle("theme-light", theme === "light");
     document.body.classList.toggle("theme-cholo", theme === "cholo");
+    document.body.classList.toggle("theme-cholo-light", theme === "cholo-light");
     document.body.classList.toggle("theme-dark", theme !== "light");
     document.documentElement.lang = state.preferences?.language || "es";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f8fafc" : theme === "cholo" ? "#03131d" : "#020b14");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" || theme === "cholo-light" ? "#f8fafc" : theme === "cholo" ? "#03131d" : "#020b14");
   }
 
   function specialtyLabel(value) {
@@ -4200,17 +4201,18 @@
         : "Abrir menu del navegador para instalar";
     const theme = state.preferences?.theme || "dark";
     const language = state.preferences?.language || "es";
-    const themeLabel = theme === "light" ? "Claro" : theme === "cholo" ? "Cholo Pro" : "Oscuro";
+    const themeLabel = theme === "light" ? "Claro" : theme === "cholo" ? "Cholo Pro" : theme === "cholo-light" ? "Cholo Claro" : "Oscuro";
     grid.innerHTML = [
       `
         <label class="settings-tile settings-select-tile" for="settingsThemeSelect">
           <span>Apariencia</span>
           <strong>${themeLabel}</strong>
-          <small>ElegÃ­ oscuro, claro o estilo Cholo Pro</small>
+          <small>ElegÃ­ oscuro, claro, Cholo Pro o Cholo Claro</small>
           <select id="settingsThemeSelect">
             <option value="dark"${theme === "dark" ? " selected" : ""}>Oscuro</option>
             <option value="light"${theme === "light" ? " selected" : ""}>Claro</option>
             <option value="cholo"${theme === "cholo" ? " selected" : ""}>Cholo Pro</option>
+            <option value="cholo-light"${theme === "cholo-light" ? " selected" : ""}>Cholo Claro</option>
           </select>
         </label>
       `,
@@ -4232,7 +4234,7 @@
     grid.querySelector("#settingsThemeSelect")?.addEventListener("change", (event) => {
       savePreferences({ theme: event.target.value });
       renderSettings();
-      const nextLabel = event.target.value === "light" ? "Claro" : event.target.value === "cholo" ? "Cholo Pro" : "Oscuro";
+      const nextLabel = event.target.value === "light" ? "Claro" : event.target.value === "cholo" ? "Cholo Pro" : event.target.value === "cholo-light" ? "Cholo Claro" : "Oscuro";
       showToast(`Tema activado: ${nextLabel}.`);
     });
     grid.querySelector("#settingsLanguageSelect")?.addEventListener("change", (event) => {

@@ -3604,3 +3604,296 @@ body.theme-cholo .ok {
     border-radius: 18px 18px 0 0 !important;
   }
 }
+
+/* Tema Cholo Claro: blanco/turquesa con paisaje dibujado en Inicio. */
+body.theme-cholo-light {
+  --bg: #f7f9fc;
+  --panel: #ffffff;
+  --panel-soft: #f3f7fb;
+  --text: #142033;
+  --muted: #687789;
+  --line: #e7edf4;
+  --accent: #0ea5a8;
+  --accent-dark: #087f83;
+  --danger: #ef4444;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  background: #f7f9fc !important;
+  color: #142033 !important;
+}
+
+body.theme-cholo-light .app,
+body.theme-cholo-light .app-shell,
+body.theme-cholo-light .screen {
+  background: transparent !important;
+}
+
+body.theme-cholo-light .topbar,
+body.theme-cholo-light .mobile-bottom-nav,
+body.theme-cholo-light.logged-in .desktop-sidebar {
+  background: rgba(255, 255, 255, .98) !important;
+  color: #142033 !important;
+  border-color: #e7edf4 !important;
+  box-shadow: 0 8px 24px rgba(20, 32, 51, .06) !important;
+}
+
+body.theme-cholo-light .user-strip,
+body.theme-cholo-light .panel,
+body.theme-cholo-light .card,
+body.theme-cholo-light .module-btn,
+body.theme-cholo-light .quick-btn,
+body.theme-cholo-light .wide-btn,
+body.theme-cholo-light .settings-tile,
+body.theme-cholo-light .settings-grid,
+body.theme-cholo-light .modal-panel,
+body.theme-cholo-light .notification-panel,
+body.theme-cholo-light .mobile-tools-panel,
+body.theme-cholo-light .mobile-stat,
+body.theme-cholo-light .mobile-highlight,
+body.theme-cholo-light .mobile-assigned-card,
+body.theme-cholo-light .desktop-stat-card,
+body.theme-cholo-light .desktop-report-card,
+body.theme-cholo-light .desktop-panel,
+body.theme-cholo-light .desktop-activity-row,
+body.theme-cholo-light .report-group,
+body.theme-cholo-light .report-group-head,
+body.theme-cholo-light .report-row,
+body.theme-cholo-light .plan-report-card,
+body.theme-cholo-light .detail-row,
+body.theme-cholo-light .choice-btn,
+body.theme-cholo-light .notification-item,
+body.theme-cholo-light .active-map-card,
+body.theme-cholo-light .active-map-list,
+body.theme-cholo-light .order-sheet,
+body.theme-cholo-light .history-row,
+body.theme-cholo-light .empty {
+  background: #ffffff !important;
+  color: #142033 !important;
+  border-color: #e7edf4 !important;
+  box-shadow: 0 10px 24px rgba(20, 32, 51, .06) !important;
+}
+
+body.theme-cholo-light .feed-hero {
+  min-height: 132px;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 18px !important;
+  padding: 18px 16px !important;
+  background:
+    radial-gradient(circle at 86% 26%, #ffd84d 0 13px, rgba(255, 216, 77, .22) 14px 24px, transparent 25px),
+    radial-gradient(circle at 23% 72%, rgba(12, 74, 110, .92) 0 16px, transparent 17px),
+    linear-gradient(145deg, #071d3a 0%, #0b2f5a 56%, #0f416d 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 16px 30px rgba(20, 32, 51, .12) !important;
+}
+
+body.theme-cholo-light .feed-hero::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 72%;
+  background:
+    linear-gradient(135deg, transparent 0 30%, rgba(52, 107, 150, .92) 30% 43%, transparent 43%),
+    linear-gradient(30deg, transparent 0 42%, rgba(22, 70, 117, .95) 42% 60%, transparent 60%),
+    linear-gradient(155deg, transparent 0 49%, rgba(12, 55, 97, .92) 49% 69%, transparent 69%),
+    linear-gradient(to top, #06182d 0 22%, transparent 23%);
+  opacity: .95;
+  pointer-events: none;
+}
+
+body.theme-cholo-light .feed-hero::after {
+  content: "";
+  position: absolute;
+  right: 30px;
+  bottom: 18px;
+  width: 30px;
+  height: 15px;
+  border-radius: 4px 7px 3px 3px;
+  background: #f59e0b;
+  box-shadow:
+    -10px 7px 0 -4px #0f172a,
+    12px 7px 0 -4px #0f172a,
+    -44px -37px 0 -13px #ffd84d,
+    -82px -36px 0 -14px #f8fafc,
+    -100px -28px 0 -15px #f8fafc;
+  pointer-events: none;
+}
+
+body.theme-cholo-light .feed-hero strong,
+body.theme-cholo-light .feed-hero p {
+  position: relative;
+  z-index: 1;
+  color: #ffffff !important;
+}
+
+body.theme-cholo-light .feed-hero strong::after {
+  content: "";
+}
+
+body.theme-cholo-light h1,
+body.theme-cholo-light h2,
+body.theme-cholo-light h3,
+body.theme-cholo-light strong,
+body.theme-cholo-light .report-main strong,
+body.theme-cholo-light .card-head h2,
+body.theme-cholo-light .desktop-report-card strong,
+body.theme-cholo-light .mobile-stat strong,
+body.theme-cholo-light .modal-panel h2,
+body.theme-cholo-light .modal-panel h3,
+body.theme-cholo-light .notification-title {
+  color: #142033 !important;
+}
+
+body.theme-cholo-light p,
+body.theme-cholo-light span,
+body.theme-cholo-light small,
+body.theme-cholo-light label,
+body.theme-cholo-light .meta,
+body.theme-cholo-light .hint,
+body.theme-cholo-light .report-failure,
+body.theme-cholo-light .report-mechanic,
+body.theme-cholo-light .desktop-report-card p,
+body.theme-cholo-light .desktop-report-card small,
+body.theme-cholo-light .notification-body {
+  color: #687789 !important;
+}
+
+body.theme-cholo-light .mobile-brand span,
+body.theme-cholo-light .mobile-brand em,
+body.theme-cholo-light .desktop-brand em,
+body.theme-cholo-light .eyebrow,
+body.theme-cholo-light .tag,
+body.theme-cholo-light .status-pill,
+body.theme-cholo-light .settings-tile span,
+body.theme-cholo-light .detail-row strong,
+body.theme-cholo-light .mobile-highlight strong {
+  color: #0ea5a8 !important;
+}
+
+body.theme-cholo-light input,
+body.theme-cholo-light select,
+body.theme-cholo-light textarea,
+body.theme-cholo-light .fleet-search-input,
+body.theme-cholo-light #activeReportSearch,
+body.theme-cholo-light #days-search-input {
+  background: #ffffff !important;
+  color: #142033 !important;
+  border-color: #e7edf4 !important;
+  box-shadow: 0 8px 18px rgba(20, 32, 51, .04) !important;
+  -webkit-text-fill-color: #142033;
+}
+
+body.theme-cholo-light input::placeholder,
+body.theme-cholo-light textarea::placeholder {
+  color: #9aa7b6 !important;
+  -webkit-text-fill-color: #9aa7b6;
+}
+
+body.theme-cholo-light button,
+body.theme-cholo-light .icon-btn,
+body.theme-cholo-light .text-btn,
+body.theme-cholo-light .sidebar-nav button,
+body.theme-cholo-light .mobile-bottom-nav button,
+body.theme-cholo-light .mobile-tools-panel button {
+  background: #ffffff !important;
+  color: #6b7788 !important;
+  border-color: #e7edf4 !important;
+}
+
+body.theme-cholo-light button.primary,
+body.theme-cholo-light .primary,
+body.theme-cholo-light .sidebar-nav button.active,
+body.theme-cholo-light .mobile-bottom-nav button.active,
+body.theme-cholo-light .mobile-highlight {
+  background: #0ea5a8 !important;
+  color: #ffffff !important;
+  border-color: #0ea5a8 !important;
+}
+
+body.theme-cholo-light .mobile-bottom-nav button.active::before,
+body.theme-cholo-light .mobile-bottom-nav button.active span {
+  color: #0ea5a8 !important;
+}
+
+body.theme-cholo-light .mobile-highlight span,
+body.theme-cholo-light .mobile-highlight small,
+body.theme-cholo-light .mobile-highlight strong {
+  color: #ffffff !important;
+}
+
+body.theme-cholo-light .mobile-stat.danger,
+body.theme-cholo-light .report-row.status-fs,
+body.theme-cholo-light .desktop-report-card.status-fs {
+  background: #fff1f2 !important;
+  border-left-color: #ef4444 !important;
+}
+
+body.theme-cholo-light .mobile-stat.warn,
+body.theme-cholo-light .report-row.status-obs,
+body.theme-cholo-light .desktop-report-card.status-obs {
+  background: #fffbeb !important;
+  border-left-color: #f59e0b !important;
+}
+
+body.theme-cholo-light .mobile-stat.ok,
+body.theme-cholo-light .report-row.status-op,
+body.theme-cholo-light .desktop-report-card.status-op {
+  background: #ecfdf5 !important;
+  border-left-color: #10b981 !important;
+}
+
+body.theme-cholo-light .mobile-stat.info {
+  background: #f5f3ff !important;
+  border-left-color: #8b5cf6 !important;
+}
+
+body.theme-cholo-light .report-status,
+body.theme-cholo-light .desktop-status,
+body.theme-cholo-light .age-pill,
+body.theme-cholo-light .tag {
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  background: #e6fffb !important;
+  color: #0e8f92 !important;
+  border: 1px solid #b5f3ee !important;
+}
+
+body.theme-cholo-light .report-row.status-fs .report-status,
+body.theme-cholo-light .desktop-report-card.status-fs .desktop-status {
+  background: #ffe4e6 !important;
+  color: #e11d48 !important;
+  border-color: #fecdd3 !important;
+}
+
+body.theme-cholo-light .report-row.status-obs .report-status,
+body.theme-cholo-light .desktop-report-card.status-obs .desktop-status {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+@media (max-width: 899px) {
+  body.theme-cholo-light .app {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(104px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.theme-cholo-light .mobile-stat {
+    min-height: 72px;
+    border-radius: 12px !important;
+    padding: 12px 9px !important;
+  }
+
+  body.theme-cholo-light .module-btn,
+  body.theme-cholo-light .quick-btn {
+    min-height: 86px;
+    border-radius: 13px !important;
+  }
+
+  body.theme-cholo-light .report-row,
+  body.theme-cholo-light .plan-report-card,
+  body.theme-cholo-light .card {
+    border-radius: 16px !important;
+  }
+}
