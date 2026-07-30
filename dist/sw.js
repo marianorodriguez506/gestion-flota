@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gestion-flota-pwa-v16";
+const CACHE_VERSION = "gestion-flota-pwa-v17";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -10,7 +10,22 @@ const APP_SHELL = [
   "/assets/icons/favicon-cholo-32.png",
   "/assets/icons/apple-touch-icon-cholo.png",
   "/assets/icons/icon-cholo-192.png",
-  "/assets/icons/icon-cholo-512.png"
+  "/assets/icons/icon-cholo-512.png",
+  "/assets/theme/hero-cholo-pro.jpg",
+  "/assets/theme/hero-cholo-light.jpg",
+  "/assets/theme/status-fs.jpg",
+  "/assets/theme/status-obs.jpg",
+  "/assets/theme/status-op.jpg",
+  "/assets/theme/tool-plan.jpg",
+  "/assets/theme/tool-validations.jpg",
+  "/assets/theme/tool-map.jpg",
+  "/assets/theme/tool-history.jpg",
+  "/assets/theme/tool-new-report.jpg",
+  "/assets/theme/tool-orders.jpg",
+  "/assets/theme/tool-base.jpg",
+  "/assets/theme/tool-mechanics.jpg",
+  "/assets/theme/tool-locations.jpg",
+  "/assets/theme/tool-fleet.jpg"
 ];
 const STATIC_HOSTS = new Set(["cdn.jsdelivr.net", "unpkg.com"]);
 

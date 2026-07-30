@@ -3404,20 +3404,12 @@ body.theme-cholo .feed-hero {
   min-height: 138px;
   padding: 20px 16px !important;
   background:
-    radial-gradient(circle at 88% 22%, rgba(255, 193, 7, .42), transparent 54px),
-    linear-gradient(135deg, rgba(7, 29, 41, .98), rgba(3, 14, 22, .98)) !important;
+    linear-gradient(90deg, rgba(3, 14, 22, .92) 0%, rgba(3, 14, 22, .74) 42%, rgba(3, 14, 22, .18) 100%),
+    url("assets/theme/hero-cholo-pro.jpg") center / cover no-repeat !important;
 }
 
 body.theme-cholo .feed-hero::after {
-  content: "";
-  position: absolute;
-  right: 18px;
-  top: 38px;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #ffc107;
-  box-shadow: 0 0 24px rgba(255, 193, 7, .72);
+  content: none;
 }
 
 body.theme-cholo .feed-hero strong,
@@ -3680,44 +3672,18 @@ body.theme-cholo-light .feed-hero {
   border-radius: 18px !important;
   padding: 18px 16px !important;
   background:
-    radial-gradient(circle at 86% 26%, #ffd84d 0 13px, rgba(255, 216, 77, .22) 14px 24px, transparent 25px),
-    radial-gradient(circle at 23% 72%, rgba(12, 74, 110, .92) 0 16px, transparent 17px),
-    linear-gradient(145deg, #071d3a 0%, #0b2f5a 56%, #0f416d 100%) !important;
+    linear-gradient(90deg, rgba(4, 21, 36, .84) 0%, rgba(4, 21, 36, .56) 44%, rgba(4, 21, 36, .12) 100%),
+    url("assets/theme/hero-cholo-light.jpg") center / cover no-repeat !important;
   color: #ffffff !important;
   box-shadow: 0 16px 30px rgba(20, 32, 51, .12) !important;
 }
 
 body.theme-cholo-light .feed-hero::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 72%;
-  background:
-    linear-gradient(135deg, transparent 0 30%, rgba(52, 107, 150, .92) 30% 43%, transparent 43%),
-    linear-gradient(30deg, transparent 0 42%, rgba(22, 70, 117, .95) 42% 60%, transparent 60%),
-    linear-gradient(155deg, transparent 0 49%, rgba(12, 55, 97, .92) 49% 69%, transparent 69%),
-    linear-gradient(to top, #06182d 0 22%, transparent 23%);
-  opacity: .95;
-  pointer-events: none;
+  content: none;
 }
 
 body.theme-cholo-light .feed-hero::after {
-  content: "";
-  position: absolute;
-  right: 30px;
-  bottom: 18px;
-  width: 30px;
-  height: 15px;
-  border-radius: 4px 7px 3px 3px;
-  background: #f59e0b;
-  box-shadow:
-    -10px 7px 0 -4px #0f172a,
-    12px 7px 0 -4px #0f172a,
-    -44px -37px 0 -13px #ffd84d,
-    -82px -36px 0 -14px #f8fafc,
-    -100px -28px 0 -15px #f8fafc;
+  content: none;
   pointer-events: none;
 }
 
@@ -3895,5 +3861,139 @@ body.theme-cholo-light .desktop-report-card.status-obs .desktop-status {
   body.theme-cholo-light .plan-report-card,
   body.theme-cholo-light .card {
     border-radius: 16px !important;
+  }
+}
+
+/* Cholo theme artwork. These assets are decorative, buttons keep their data-screen actions. */
+body.theme-cholo .quick-btn,
+body.theme-cholo .module-btn,
+body.theme-cholo #usersBtn,
+body.theme-cholo #locationsBtn,
+body.theme-cholo-light .quick-btn,
+body.theme-cholo-light .module-btn,
+body.theme-cholo-light #usersBtn,
+body.theme-cholo-light #locationsBtn {
+  position: relative;
+  overflow: hidden;
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+
+body.theme-cholo .quick-btn::before,
+body.theme-cholo .module-btn::before,
+body.theme-cholo #usersBtn::before,
+body.theme-cholo #locationsBtn::before,
+body.theme-cholo-light .quick-btn::before,
+body.theme-cholo-light .module-btn::before,
+body.theme-cholo-light #usersBtn::before,
+body.theme-cholo-light #locationsBtn::before {
+  content: "";
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background-color: #020712;
+  background-image: var(--tool-art);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 82px 46px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), 0 8px 16px rgba(0, 0, 0, .18);
+}
+
+body.theme-cholo-light .quick-btn::before,
+body.theme-cholo-light .module-btn::before,
+body.theme-cholo-light #usersBtn::before,
+body.theme-cholo-light #locationsBtn::before {
+  background-color: #071527;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2), 0 8px 16px rgba(20, 32, 51, .14);
+}
+
+body.theme-cholo [data-screen="immediate"],
+body.theme-cholo-light [data-screen="immediate"] {
+  --tool-art: url("assets/theme/tool-fleet.jpg");
+}
+
+body.theme-cholo [data-screen="myJobs"],
+body.theme-cholo-light [data-screen="myJobs"] {
+  --tool-art: url("assets/theme/tool-mechanics.jpg");
+}
+
+body.theme-cholo [data-screen="tomorrow"],
+body.theme-cholo-light [data-screen="tomorrow"] {
+  --tool-art: url("assets/theme/tool-plan.jpg");
+}
+
+body.theme-cholo [data-screen="orders"],
+body.theme-cholo-light [data-screen="orders"] {
+  --tool-art: url("assets/theme/tool-orders.jpg");
+}
+
+body.theme-cholo [data-screen="validations"],
+body.theme-cholo-light [data-screen="validations"] {
+  --tool-art: url("assets/theme/tool-validations.jpg");
+}
+
+body.theme-cholo [data-screen="mechanic"],
+body.theme-cholo-light [data-screen="mechanic"] {
+  --tool-art: url("assets/theme/tool-new-report.jpg");
+}
+
+body.theme-cholo [data-screen="activeMap"],
+body.theme-cholo-light [data-screen="activeMap"],
+body.theme-cholo #locationsBtn,
+body.theme-cholo-light #locationsBtn {
+  --tool-art: url("assets/theme/tool-map.jpg");
+}
+
+body.theme-cholo [data-screen="doneTasks"],
+body.theme-cholo-light [data-screen="doneTasks"] {
+  --tool-art: url("assets/theme/tool-plan.jpg");
+}
+
+body.theme-cholo [data-screen="baseEquipment"],
+body.theme-cholo-light [data-screen="baseEquipment"] {
+  --tool-art: url("assets/theme/tool-base.jpg");
+}
+
+body.theme-cholo [data-screen="history"],
+body.theme-cholo-light [data-screen="history"],
+body.theme-cholo [data-screen="fleet"],
+body.theme-cholo-light [data-screen="fleet"] {
+  --tool-art: url("assets/theme/tool-history.jpg");
+}
+
+body.theme-cholo [data-screen="settings"],
+body.theme-cholo-light [data-screen="settings"] {
+  --tool-art: url("assets/theme/tool-orders.jpg");
+}
+
+body.theme-cholo [data-screen="panel"],
+body.theme-cholo-light [data-screen="panel"],
+body.theme-cholo [data-screen="operatives"],
+body.theme-cholo-light [data-screen="operatives"] {
+  --tool-art: url("assets/theme/status-op.jpg");
+}
+
+body.theme-cholo #usersBtn,
+body.theme-cholo-light #usersBtn {
+  --tool-art: url("assets/theme/tool-mechanics.jpg");
+}
+
+@media (min-width: 900px) {
+  body.theme-cholo .feed-hero,
+  body.theme-cholo-light .feed-hero {
+    min-height: 158px;
+    padding: 24px 22px !important;
+  }
+
+  body.theme-cholo .module-btn::before,
+  body.theme-cholo .quick-btn::before,
+  body.theme-cholo-light .module-btn::before,
+  body.theme-cholo-light .quick-btn::before {
+    flex-basis: 54px;
+    width: 54px;
+    height: 54px;
+    background-size: 96px 54px;
   }
 }
