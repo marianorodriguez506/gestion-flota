@@ -2069,6 +2069,25 @@
     await refreshAllData();
   }
 
+  async function updatePlanAssignment(reportId, mechanicIds, planDate) {
+    const normalizedIds = normalizeMechanicIds(mechanicIds);
+    const primaryId = normalizedIds[0] || null;
+    const updates = primaryId
+      ? { mechanic_id: primaryId, mechanic_ids: normalizedIds, plan_date: planDate || state.planDate }
+      : { mechanic_id: null, mechanic_ids: [], plan_date: null };
+
+    try {
+      return await updateReport(reportId, updates);
+    } catch (error) {
+      if (!String(error.message || "").includes("mechanic_ids")) throw error;
+      const fallbackUpdates = primaryId
+        ? { mechanic_id: primaryId, plan_date: planDate || state.planDate }
+        : { mechanic_id: null, plan_date: null };
+      showToast("Guardado sin lista multiple. Falta aplicar mechanic_ids en Supabase.");
+      return updateReport(reportId, fallbackUpdates);
+    }
+  }
+
   async function chooseMechanicForReport(report) {
     const selected = await openChoiceModal(
       "Asignar mecánico",
@@ -2721,10 +2740,7 @@
     for (const [reportId, change] of assignmentEntries) {
       const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
       const primaryId = mechanicIds[0] || null;
-      const updates = primaryId
-        ? { mechanic_id: primaryId, mechanic_ids: mechanicIds, plan_date: change.planDate || state.planDate }
-        : { mechanic_id: null, plan_date: null };
-      const updated = await updateReport(reportId, updates);
+      const updated = await updatePlanAssignment(reportId, mechanicIds, change.planDate || state.planDate);
       mergeReportUpdate(reportId, updated, {
         mechanicId: primaryId,
         mechanicIds,
