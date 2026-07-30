@@ -22,6 +22,7 @@ alter table public.battery_records enable row level security;
 
 drop policy if exists battery_records_select_approved on public.battery_records;
 drop policy if exists battery_records_insert_admin on public.battery_records;
+drop policy if exists battery_records_insert_approved on public.battery_records;
 drop policy if exists battery_records_update_admin on public.battery_records;
 drop policy if exists battery_records_delete_admin on public.battery_records;
 
@@ -29,9 +30,9 @@ create policy battery_records_select_approved
   on public.battery_records for select to authenticated
   using (private.is_approved_user());
 
-create policy battery_records_insert_admin
+create policy battery_records_insert_approved
   on public.battery_records for insert to authenticated
-  with check (private.is_admin());
+  with check (private.is_approved_user() and created_by = auth.uid());
 
 create policy battery_records_update_admin
   on public.battery_records for update to authenticated

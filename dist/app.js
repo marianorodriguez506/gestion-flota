@@ -5275,7 +5275,7 @@
 
   el.batteryForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!isAdmin()) return;
+    if (!state.currentUser) return;
     const payload = batteryPayloadFromForm(el.batteryForm);
     if (!payload.equipment || !payload.batteries || !payload.mechanic_id) {
       showToast("Completa interno, mecánico y baterías.");
