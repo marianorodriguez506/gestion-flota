@@ -3328,3 +3328,279 @@ body.theme-light .ok {
   color: #166534 !important;
   border-color: #bbf7d0 !important;
 }
+
+/* Tema Cholo Pro: alternativa oscura compacta, tipo app nativa. */
+body.theme-cholo {
+  --bg: #03131d;
+  --panel: #071d29;
+  --panel-soft: #0b2634;
+  --text: #f8fafc;
+  --muted: #8ea0ad;
+  --line: #173646;
+  --accent: #ffc107;
+  --accent-dark: #d99a00;
+  --danger: #ff3b45;
+  --ok: #19c66a;
+  --warn: #ffc107;
+  background:
+    radial-gradient(circle at 85% 13%, rgba(255, 193, 7, .20), transparent 105px),
+    radial-gradient(circle at 10% 0%, rgba(30, 144, 255, .12), transparent 190px),
+    linear-gradient(180deg, #041722 0%, #020b12 100%) !important;
+  color: var(--text) !important;
+}
+
+body.theme-cholo .app,
+body.theme-cholo .app-shell,
+body.theme-cholo .screen {
+  background: transparent !important;
+}
+
+body.theme-cholo .topbar,
+body.theme-cholo.logged-in .desktop-sidebar,
+body.theme-cholo .mobile-bottom-nav {
+  background: rgba(3, 17, 27, .96) !important;
+  border-color: rgba(64, 92, 108, .52) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .32) !important;
+}
+
+body.theme-cholo .user-strip,
+body.theme-cholo .feed-hero,
+body.theme-cholo .panel,
+body.theme-cholo .card,
+body.theme-cholo .module-btn,
+body.theme-cholo .quick-btn,
+body.theme-cholo .wide-btn,
+body.theme-cholo .settings-tile,
+body.theme-cholo .settings-grid,
+body.theme-cholo .modal-panel,
+body.theme-cholo .notification-panel,
+body.theme-cholo .mobile-tools-panel,
+body.theme-cholo .mobile-stat,
+body.theme-cholo .mobile-highlight,
+body.theme-cholo .mobile-assigned-card,
+body.theme-cholo .desktop-stat-card,
+body.theme-cholo .desktop-report-card,
+body.theme-cholo .desktop-panel,
+body.theme-cholo .desktop-activity-row,
+body.theme-cholo .report-group,
+body.theme-cholo .report-group-head,
+body.theme-cholo .report-row,
+body.theme-cholo .plan-report-card,
+body.theme-cholo .detail-row,
+body.theme-cholo .choice-btn,
+body.theme-cholo .notification-item,
+body.theme-cholo .active-map-card,
+body.theme-cholo .active-map-list,
+body.theme-cholo .order-sheet,
+body.theme-cholo .history-row,
+body.theme-cholo .empty {
+  background: #071d29 !important;
+  color: #f8fafc !important;
+  border-color: #173646 !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .24) !important;
+}
+
+body.theme-cholo .feed-hero {
+  min-height: 138px;
+  padding: 20px 16px !important;
+  background:
+    radial-gradient(circle at 88% 22%, rgba(255, 193, 7, .42), transparent 54px),
+    linear-gradient(135deg, rgba(7, 29, 41, .98), rgba(3, 14, 22, .98)) !important;
+}
+
+body.theme-cholo .feed-hero::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 38px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffc107;
+  box-shadow: 0 0 24px rgba(255, 193, 7, .72);
+}
+
+body.theme-cholo .feed-hero strong,
+body.theme-cholo h1,
+body.theme-cholo h2,
+body.theme-cholo h3,
+body.theme-cholo strong,
+body.theme-cholo .report-main strong,
+body.theme-cholo .card-head h2,
+body.theme-cholo .desktop-report-card strong,
+body.theme-cholo .mobile-stat strong,
+body.theme-cholo .mobile-highlight small,
+body.theme-cholo .modal-panel h2,
+body.theme-cholo .modal-panel h3 {
+  color: #f8fafc !important;
+}
+
+body.theme-cholo .feed-hero strong::after {
+  content: "";
+}
+
+body.theme-cholo .feed-hero strong,
+body.theme-cholo .desktop-brand em,
+body.theme-cholo .mobile-brand em,
+body.theme-cholo .eyebrow,
+body.theme-cholo .tag,
+body.theme-cholo .status-pill,
+body.theme-cholo .mobile-highlight strong,
+body.theme-cholo .settings-tile span,
+body.theme-cholo .detail-row strong {
+  color: #ffc107 !important;
+}
+
+body.theme-cholo p,
+body.theme-cholo span,
+body.theme-cholo small,
+body.theme-cholo label,
+body.theme-cholo .meta,
+body.theme-cholo .hint,
+body.theme-cholo .report-failure,
+body.theme-cholo .report-mechanic,
+body.theme-cholo .desktop-report-card p,
+body.theme-cholo .desktop-report-card small,
+body.theme-cholo .notification-body {
+  color: #9fb0bc !important;
+}
+
+body.theme-cholo input,
+body.theme-cholo select,
+body.theme-cholo textarea,
+body.theme-cholo .fleet-search-input,
+body.theme-cholo #activeReportSearch,
+body.theme-cholo #days-search-input {
+  background: #061722 !important;
+  color: #f8fafc !important;
+  border-color: #173646 !important;
+  -webkit-text-fill-color: #f8fafc;
+}
+
+body.theme-cholo input::placeholder,
+body.theme-cholo textarea::placeholder {
+  color: #667b88 !important;
+  -webkit-text-fill-color: #667b88;
+}
+
+body.theme-cholo button,
+body.theme-cholo .icon-btn,
+body.theme-cholo .text-btn,
+body.theme-cholo .sidebar-nav button,
+body.theme-cholo .mobile-bottom-nav button,
+body.theme-cholo .mobile-tools-panel button {
+  background: #071d29 !important;
+  color: #cbd5e1 !important;
+  border-color: #173646 !important;
+}
+
+body.theme-cholo button.primary,
+body.theme-cholo .primary,
+body.theme-cholo .sidebar-nav button.active,
+body.theme-cholo .mobile-bottom-nav button.active,
+body.theme-cholo .mobile-highlight {
+  background: #ffc107 !important;
+  color: #06111f !important;
+  border-color: #ffc107 !important;
+}
+
+body.theme-cholo .mobile-bottom-nav button.active::before,
+body.theme-cholo .mobile-bottom-nav button.active span {
+  color: #ffc107 !important;
+}
+
+body.theme-cholo .mobile-highlight span,
+body.theme-cholo .mobile-highlight small,
+body.theme-cholo .mobile-highlight strong {
+  color: #06111f !important;
+}
+
+body.theme-cholo .mobile-stat.danger,
+body.theme-cholo .report-row.status-fs,
+body.theme-cholo .desktop-report-card.status-fs {
+  background: linear-gradient(90deg, rgba(255, 59, 69, .18), #071d29 48%) !important;
+  border-left-color: #ff3b45 !important;
+}
+
+body.theme-cholo .mobile-stat.warn,
+body.theme-cholo .report-row.status-obs,
+body.theme-cholo .desktop-report-card.status-obs {
+  background: linear-gradient(90deg, rgba(255, 193, 7, .18), #071d29 48%) !important;
+  border-left-color: #ffc107 !important;
+}
+
+body.theme-cholo .mobile-stat.ok,
+body.theme-cholo .report-row.status-op,
+body.theme-cholo .desktop-report-card.status-op {
+  background: linear-gradient(90deg, rgba(25, 198, 106, .18), #071d29 48%) !important;
+  border-left-color: #19c66a !important;
+}
+
+body.theme-cholo .mobile-stat.info {
+  background: linear-gradient(90deg, rgba(99, 102, 241, .18), #071d29 48%) !important;
+  border-left-color: #6366f1 !important;
+}
+
+body.theme-cholo .report-status,
+body.theme-cholo .desktop-status,
+body.theme-cholo .age-pill,
+body.theme-cholo .tag {
+  border-radius: 999px !important;
+  padding: 4px 8px !important;
+  background: rgba(255, 193, 7, .14) !important;
+  color: #ffc107 !important;
+  border: 1px solid rgba(255, 193, 7, .24) !important;
+}
+
+body.theme-cholo .report-row.status-fs .report-status,
+body.theme-cholo .desktop-report-card.status-fs .desktop-status {
+  background: rgba(255, 59, 69, .18) !important;
+  color: #ff6b73 !important;
+}
+
+body.theme-cholo .report-row.status-op .report-status,
+body.theme-cholo .desktop-report-card.status-op .desktop-status,
+body.theme-cholo .ok {
+  background: rgba(25, 198, 106, .16) !important;
+  color: #19c66a !important;
+}
+
+@media (max-width: 899px) {
+  body.theme-cholo .app {
+    padding: max(10px, env(safe-area-inset-top)) 10px max(104px, env(safe-area-inset-bottom)) !important;
+  }
+
+  body.theme-cholo .mobile-stats {
+    gap: 7px;
+  }
+
+  body.theme-cholo .mobile-stat {
+    min-height: 60px;
+    border-radius: 9px !important;
+    padding: 9px 8px !important;
+  }
+
+  body.theme-cholo .mobile-stat strong {
+    font-size: 20px !important;
+  }
+
+  body.theme-cholo .quick-actions,
+  body.theme-cholo .home-grid {
+    gap: 8px !important;
+  }
+
+  body.theme-cholo .module-btn,
+  body.theme-cholo .quick-btn {
+    min-height: 76px;
+    border-radius: 10px !important;
+  }
+
+  body.theme-cholo .report-row {
+    border-radius: 10px !important;
+    min-height: 70px;
+  }
+
+  body.theme-cholo .mobile-bottom-nav {
+    border-radius: 18px 18px 0 0 !important;
+  }
+}

@@ -182,9 +182,10 @@
   function applyPreferences() {
     const theme = state.preferences?.theme || "dark";
     document.body.classList.toggle("theme-light", theme === "light");
+    document.body.classList.toggle("theme-cholo", theme === "cholo");
     document.body.classList.toggle("theme-dark", theme !== "light");
     document.documentElement.lang = state.preferences?.language || "es";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f8fafc" : "#020b14");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f8fafc" : theme === "cholo" ? "#03131d" : "#020b14");
   }
 
   function specialtyLabel(value) {
@@ -4199,8 +4200,20 @@
         : "Abrir menu del navegador para instalar";
     const theme = state.preferences?.theme || "dark";
     const language = state.preferences?.language || "es";
+    const themeLabel = theme === "light" ? "Claro" : theme === "cholo" ? "Cholo Pro" : "Oscuro";
     grid.innerHTML = [
-      settingsTile("settingsThemeBtn", "Apariencia", theme === "light" ? "Modo claro" : "Modo oscuro", "Toca para cambiar claro / oscuro"),
+      `
+        <label class="settings-tile settings-select-tile" for="settingsThemeSelect">
+          <span>Apariencia</span>
+          <strong>${themeLabel}</strong>
+          <small>ElegÃ­ oscuro, claro o estilo Cholo Pro</small>
+          <select id="settingsThemeSelect">
+            <option value="dark"${theme === "dark" ? " selected" : ""}>Oscuro</option>
+            <option value="light"${theme === "light" ? " selected" : ""}>Claro</option>
+            <option value="cholo"${theme === "cholo" ? " selected" : ""}>Cholo Pro</option>
+          </select>
+        </label>
+      `,
       `
         <label class="settings-tile settings-select-tile" for="settingsLanguageSelect">
           <span>Idioma</span>
@@ -4216,10 +4229,11 @@
       settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
       settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
     ].join("");
-    grid.querySelector("#settingsThemeBtn")?.addEventListener("click", () => {
-      savePreferences({ theme: theme === "light" ? "dark" : "light" });
+    grid.querySelector("#settingsThemeSelect")?.addEventListener("change", (event) => {
+      savePreferences({ theme: event.target.value });
       renderSettings();
-      showToast(state.preferences.theme === "light" ? "Modo claro activado." : "Modo oscuro activado.");
+      const nextLabel = event.target.value === "light" ? "Claro" : event.target.value === "cholo" ? "Cholo Pro" : "Oscuro";
+      showToast(`Tema activado: ${nextLabel}.`);
     });
     grid.querySelector("#settingsLanguageSelect")?.addEventListener("change", (event) => {
       savePreferences({ language: event.target.value });
