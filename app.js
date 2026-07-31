@@ -799,6 +799,10 @@
       .replace(/\s+/g, " ");
   }
 
+  function normalizeText(value) {
+    return normalizeLocationText(value).toLowerCase();
+  }
+
   function groupLocation(report) {
     const location = normalizeLocationText(report.location);
     if (!location) return "SIN UBICACIÓN";
@@ -1979,7 +1983,7 @@
     });
   }
 
-  function openChoiceModal(title, rows, renderRow, emptyText) {
+  function openChoiceModal(title, rows, renderRow, emptyText, options = {}) {
     return new Promise((resolve) => {
       el.modalTitle.textContent = title;
       el.modalBody.innerHTML = "";
@@ -1989,20 +1993,38 @@
 
       const list = document.createElement("div");
       list.className = "modal-list";
-      if (!rows.length) {
-        list.appendChild(empty(emptyText || "No hay opciones disponibles."));
-      }
-      rows.forEach((row) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "choice-btn";
-        btn.innerHTML = renderRow(row);
-        btn.addEventListener("click", () => {
-          closeModal();
-          resolve(row);
+      const renderRows = (query = "") => {
+        list.innerHTML = "";
+        const normalizedQuery = normalizeText(query);
+        const filtered = normalizedQuery
+          ? rows.filter((row) => normalizeText(options.searchText ? options.searchText(row) : renderRow(row)).includes(normalizedQuery))
+          : rows;
+        if (!filtered.length) {
+          list.appendChild(empty(query ? "No encontre maquinas con ese filtro." : emptyText || "No hay opciones disponibles."));
+          return;
+        }
+        filtered.forEach((row) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "choice-btn";
+          btn.innerHTML = renderRow(row);
+          btn.addEventListener("click", () => {
+            closeModal();
+            resolve(row);
+          });
+          list.appendChild(btn);
         });
-        list.appendChild(btn);
-      });
+      };
+      if (options.searchPlaceholder) {
+        const search = document.createElement("input");
+        search.type = "search";
+        search.className = "modal-search";
+        search.placeholder = options.searchPlaceholder;
+        search.addEventListener("input", () => renderRows(search.value));
+        el.modalBody.appendChild(search);
+        setTimeout(() => search.focus(), 0);
+      }
+      renderRows();
       el.modalBody.appendChild(list);
 
       const cancel = button("Cancelar", "secondary", () => {
@@ -2220,7 +2242,6 @@
   }
 
   async function chooseReportForWorker(worker) {
-    const assignedIds = new Set(planReports().map((report) => report.id));
     const rows = activeReports()
       .map(applyPlanDraft)
       .filter((report) => !reportHasWorker(report, worker.id));
@@ -2231,7 +2252,17 @@
         <strong>${report.equipment}</strong>
         <span>${report.location || "Sin ubicacion"} - ${report.deviation || "Sin falla"} - ${displayStatus(report.status)}${report.mechanicId ? ` - Asignado a ${workerName(report.mechanicId)}` : ""}</span>
       `,
-      "No hay reportes activos para asignar."
+      "No hay reportes activos para asignar.",
+      {
+        searchPlaceholder: "Buscar interno, ubicacion, falla o mecanico...",
+        searchText: (report) => [
+          report.equipment,
+          report.location,
+          reportDeviationSummary(report),
+          displayStatus(report.status),
+          reportAssignedNames(report)
+        ].join(" ")
+      }
     );
     if (selected) await assignReportToWorkers(selected, [worker], { defer: true, append: true });
   }
