@@ -3828,10 +3828,11 @@
         <label>Destino<select data-order-field="destination"><option>Añelo</option><option>Plottier</option></select></label>
       </div>
       <label class="order-photo-input ${canEdit ? "" : "hidden"}">
-        Fotos de referencia opcionales
+        <span>Agregar fotos del repuesto</span>
+        <small>${normalizeReportPhotos(draft.photos).length ? `Fotos actuales: ${normalizeReportPhotos(draft.photos).length}. Las nuevas se suman al guardar.` : "Opcional: fotos para ver como es el repuesto."}</small>
         <input data-order-photos type="file" accept="image/*" multiple>
       </label>
-      <p class="hint">${normalizeReportPhotos(draft.photos).length ? `Fotos actuales: ${normalizeReportPhotos(draft.photos).length}. Las nuevas se suman.` : "Podes adjuntar fotos del repuesto como referencia."}</p>
+      ${!canEdit && normalizeReportPhotos(draft.photos).length ? `<p class="hint">Fotos actuales: ${normalizeReportPhotos(draft.photos).length}. Usa el boton Fotos del pedido para verlas.</p>` : ""}
       <div class="sheet-wrap">
         <table class="order-sheet">
           <thead><tr><th>Pag.</th><th>Referencia</th><th>Código</th><th>Descripción</th><th>Cant. urgente</th><th>Cant. stock</th></tr></thead>

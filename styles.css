@@ -3065,6 +3065,37 @@ body.theme-light dialog[style] {
   gap: 10px;
 }
 
+.order-photo-input {
+  display: grid;
+  gap: 6px;
+  min-height: 74px;
+  align-content: center;
+  padding: 13px 14px;
+  border: 1px dashed rgba(34, 211, 238, .55);
+  border-radius: 12px;
+  background: rgba(8, 47, 73, .30);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.order-photo-input span {
+  color: var(--accent);
+  font-weight: 950;
+}
+
+.order-photo-input small {
+  color: var(--muted);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.order-photo-input input {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .sheet-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
