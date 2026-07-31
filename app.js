@@ -10,6 +10,7 @@
   const OFFLINE_CACHE_KEY = "gestion-flota:last-data";
   const OFFLINE_QUEUE_KEY = "gestion-flota:pending-writes";
   const PLAN_DRAFT_KEY = "gestion-flota:plan-drafts";
+  const PLAN_BACKUP_KEY = "gestion-flota:plan-backups";
   const PREFERENCES_KEY = "gestion-flota:preferences";
 
   const screens = {
@@ -687,6 +688,42 @@
   function planDraftPendingCount() {
     const draft = ensurePlanDraft();
     return Object.keys(draft.assignments).length + draft.manualItems.length;
+  }
+
+  function savedPlanRows(date = state.planDate) {
+    return activeReports().filter((report) => reportMechanicIds(report).length && report.planDate === date);
+  }
+
+  function projectedPlanRowsAfterDraft(draft) {
+    const projected = new Map(savedPlanRows(draft.date || state.planDate).map((report) => [report.id, report]));
+    Object.entries(draft.assignments || {}).forEach(([reportId, change]) => {
+      const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
+      if (!mechanicIds.length || !change.planDate) {
+        projected.delete(reportId);
+        return;
+      }
+      const original = state.reports.find((report) => report.id === reportId) || { id: reportId };
+      projected.set(reportId, { ...original, mechanicIds, mechanicId: mechanicIds[0] || null, planDate: change.planDate });
+    });
+    (draft.manualItems || []).forEach((item) => projected.set(item.id, item));
+    return [...projected.values()].filter((report) => reportMechanicIds(report).length && report.planDate === (draft.date || state.planDate));
+  }
+
+  function savePlanBackup(date = state.planDate) {
+    const rows = savedPlanRows(date);
+    if (!rows.length) return;
+    const backups = safeJson(localStorage.getItem(PLAN_BACKUP_KEY), {});
+    backups[date] = {
+      savedAt: new Date().toISOString(),
+      rows: rows.map((report) => ({
+        id: report.id,
+        equipment: report.equipment,
+        mechanicId: report.mechanicId,
+        mechanicIds: reportMechanicIds(report),
+        planDate: report.planDate
+      }))
+    };
+    localStorage.setItem(PLAN_BACKUP_KEY, JSON.stringify(backups));
   }
 
   function applyPlanDraft(report) {
@@ -2150,12 +2187,12 @@
     await refreshAllData();
   }
 
-  async function updatePlanAssignment(reportId, mechanicIds, planDate) {
+  async function updatePlanAssignment(reportId, mechanicIds, planDate, options = {}) {
     const normalizedIds = normalizeMechanicIds(mechanicIds);
     const primaryId = normalizedIds[0] || null;
     const updates = primaryId
       ? { mechanic_id: primaryId, mechanic_ids: normalizedIds, plan_date: planDate || state.planDate }
-      : { mechanic_id: null, mechanic_ids: [], plan_date: null };
+      : { mechanic_id: null, mechanic_ids: [], plan_date: null, __allowPlanClear: Boolean(options.allowPlanClear) };
 
     try {
       return await updateReport(reportId, updates);
@@ -2163,7 +2200,7 @@
       if (!String(error.message || "").includes("mechanic_ids")) throw error;
       const fallbackUpdates = primaryId
         ? { mechanic_id: primaryId, plan_date: planDate || state.planDate }
-        : { mechanic_id: null, plan_date: null };
+        : { mechanic_id: null, plan_date: null, __allowPlanClear: Boolean(options.allowPlanClear) };
       showToast("Guardado sin lista multiple. Falta aplicar mechanic_ids en Supabase.");
       return updateReport(reportId, fallbackUpdates);
     }
@@ -2811,9 +2848,14 @@
       return;
     }
 
-    const savedPlanRows = activeReports().filter((report) => reportMechanicIds(report).length && isReportInSelectedPlan(report));
+    const currentSavedPlanRows = savedPlanRows();
     const removals = assignmentEntries.filter(([, change]) => !normalizeMechanicIds(change.mechanicIds, change.mechanicId).length);
-    if (removals.length > 1 && savedPlanRows.length && removals.length >= savedPlanRows.length && !draft.clearRequested) {
+    const projectedRows = projectedPlanRowsAfterDraft(draft);
+    if (currentSavedPlanRows.length && !projectedRows.length && !draft.clearRequested) {
+      showToast("Bloqueado: Plan Mañana no puede quedar vacio salvo usando Limpiar hoja.");
+      return;
+    }
+    if (removals.length > 1 && currentSavedPlanRows.length && removals.length >= currentSavedPlanRows.length && !draft.clearRequested) {
       showToast("Bloqueado: para limpiar toda la hoja tenes que usar el boton Limpiar hoja.");
       return;
     }
@@ -2821,7 +2863,7 @@
     for (const [reportId, change] of assignmentEntries) {
       const mechanicIds = normalizeMechanicIds(change.mechanicIds, change.mechanicId);
       const primaryId = mechanicIds[0] || null;
-      const updated = await updatePlanAssignment(reportId, mechanicIds, change.planDate || state.planDate);
+      const updated = await updatePlanAssignment(reportId, mechanicIds, change.planDate || state.planDate, { allowPlanClear: draft.clearRequested });
       mergeReportUpdate(reportId, updated, {
         mechanicId: primaryId,
         mechanicIds,
@@ -2851,6 +2893,7 @@
 
     clearStoredPlanDraft(state.planDate);
     state.planDraft = emptyPlanDraft();
+    savePlanBackup(state.planDate);
     await createNotification(`Plan Manana ${state.planDate} guardado por ${state.currentUser.name}`);
     await refreshAllData();
     showToast("Plan guardado.");
@@ -4780,6 +4823,7 @@
       const freshProfile = state.users.find((user) => user.id === state.currentUser.id);
       if (freshProfile) state.currentUser = freshProfile;
     }
+    if (!state.offlineMode) savePlanBackup(state.planDate);
     if (!state.offlineMode) saveOfflineSnapshot();
     render();
   }
@@ -4938,6 +4982,14 @@
 
   async function updateReport(id, updates) {
     if (!supabase) return;
+    const cleanUpdates = { ...(updates || {}) };
+    const allowPlanClear = Boolean(cleanUpdates.__allowPlanClear);
+    delete cleanUpdates.__allowPlanClear;
+    if (!allowPlanClear && wouldClearLastPlanAssignment(id, cleanUpdates)) {
+      const error = new Error("Bloqueado: Plan Mañana no puede quedar vacio salvo usando Limpiar hoja.");
+      showToast(error.message);
+      throw error;
+    }
     const token = await getSessionToken();
     if (!token) {
       const error = new Error("Sesion requerida.");
@@ -4951,7 +5003,7 @@
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ id, updates })
+      body: JSON.stringify({ id, updates: cleanUpdates })
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.report) {
@@ -4960,6 +5012,17 @@
       throw error;
     }
     return result.report;
+  }
+
+  function wouldClearLastPlanAssignment(id, updates = {}) {
+    const report = activeReports().find((item) => item.id === id);
+    if (!report || !reportMechanicIds(report).length || report.planDate !== state.planDate) return false;
+    if (updates.status === "Operativo validado") return false;
+    const clearsPlanDate = Object.prototype.hasOwnProperty.call(updates, "plan_date") && !updates.plan_date;
+    const clearsPrimary = Object.prototype.hasOwnProperty.call(updates, "mechanic_id") && !updates.mechanic_id;
+    const clearsMultiple = Object.prototype.hasOwnProperty.call(updates, "mechanic_ids") && !normalizeMechanicIds(updates.mechanic_ids).length;
+    if (!clearsPlanDate || (!clearsPrimary && !clearsMultiple)) return false;
+    return savedPlanRows().length <= 1;
   }
 
   async function initializeApp() {
