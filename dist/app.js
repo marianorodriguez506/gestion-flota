@@ -5177,6 +5177,82 @@
     const screen = event.state?.screen || "home";
     setScreen(screen, { history: false });
   });
+  function appendNavigationGroup(parent, title, buttons) {
+    const group = document.createElement("section");
+    group.className = "nav-group";
+    const label = document.createElement("p");
+    label.className = "nav-group-title";
+    label.textContent = title;
+    group.appendChild(label);
+    buttons.filter(Boolean).forEach((button) => group.appendChild(button));
+    parent.appendChild(group);
+  }
+
+  function organizeMainNavigation() {
+    const desktopNav = document.querySelector(".sidebar-nav");
+    if (desktopNav && !desktopNav.dataset.organized) {
+      const buttons = new Map();
+      desktopNav.querySelectorAll("button[data-screen]").forEach((button) => {
+        if (!buttons.has(button.dataset.screen)) buttons.set(button.dataset.screen, button);
+      });
+      desktopNav.innerHTML = "";
+      const homeButton = buttons.get("home");
+      if (homeButton) desktopNav.appendChild(homeButton);
+      appendNavigationGroup(desktopNav, "Tareas", ["myJobs", "tomorrow", "doneTasks", "mechanic"].map((screen) => buttons.get(screen)));
+      appendNavigationGroup(desktopNav, "Reportes", ["immediate", "activeMap", "validations", "operatives", "panel"].map((screen) => buttons.get(screen)));
+      appendNavigationGroup(desktopNav, "Repuestos", ["orders", "history"].map((screen) => buttons.get(screen)));
+      appendNavigationGroup(desktopNav, "Base", ["baseEquipment", "batteries", "locations", "fleet"].map((screen) => buttons.get(screen)));
+      appendNavigationGroup(desktopNav, "Administracion", ["users", "settings"].map((screen) => buttons.get(screen)));
+      desktopNav.dataset.organized = "true";
+    }
+
+    const mobileBody = document.querySelector("#mobileToolsPanel .mobile-tools-body");
+    if (mobileBody && !mobileBody.dataset.organized) {
+      const buttons = new Map();
+      mobileBody.querySelectorAll("[data-screen]").forEach((button) => {
+        if (!buttons.has(button.dataset.screen)) buttons.set(button.dataset.screen, button);
+      });
+      const mobileLabels = {
+        myJobs: "Mis trabajos",
+        tomorrow: "Plan Manana",
+        doneTasks: "Tareas realizadas",
+        mechanic: "Reportes nuevos",
+        immediate: "Reportes activos",
+        activeMap: "Mapa activos",
+        validations: "Validaciones pendientes",
+        operatives: "Operativos",
+        panel: "Panel",
+        orders: "Pedidos",
+        history: "Historial de pedidos",
+        baseEquipment: "Equipos en base",
+        batteries: "Baterias",
+        locations: "Ubicaciones",
+        fleet: "Informacion de flota",
+        users: "Gestion de mecanicos",
+        settings: "Configuracion"
+      };
+      const adminScreens = new Set(["validations", "operatives", "panel", "users"]);
+      const mobileButton = (screen) => {
+        if (buttons.has(screen)) return buttons.get(screen);
+        const button = document.createElement("button");
+        button.className = `module-btn${adminScreens.has(screen) ? " admin-only" : ""}`;
+        button.dataset.screen = screen;
+        button.type = "button";
+        button.textContent = mobileLabels[screen] || screen;
+        return button;
+      };
+      mobileBody.innerHTML = "";
+      appendNavigationGroup(mobileBody, "Tareas", ["myJobs", "tomorrow", "doneTasks", "mechanic"].map(mobileButton));
+      appendNavigationGroup(mobileBody, "Reportes", ["immediate", "activeMap", "validations", "operatives", "panel"].map(mobileButton));
+      appendNavigationGroup(mobileBody, "Repuestos", ["orders", "history"].map(mobileButton));
+      appendNavigationGroup(mobileBody, "Base", ["baseEquipment", "batteries", "locations", "fleet"].map(mobileButton));
+      appendNavigationGroup(mobileBody, "Administracion", ["users", "settings"].map(mobileButton));
+      mobileBody.dataset.organized = "true";
+    }
+  }
+
+  organizeMainNavigation();
+
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;

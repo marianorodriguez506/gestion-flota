@@ -1502,6 +1502,23 @@ body.theme-light .fleet-search-input {
     gap: 8px;
   }
 
+  .nav-group {
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, .18);
+  }
+
+  .nav-group-title {
+    margin: 0 4px 2px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
   .sidebar-nav button {
     width: 100%;
     min-height: 50px;
@@ -2498,7 +2515,36 @@ body.theme-light .fleet-search-input {
   }
 
   .mobile-tools-body {
+    display: grid;
+    gap: 14px;
     padding-top: 10px;
+  }
+
+  .mobile-tools-body .nav-group {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .mobile-tools-body .nav-group + .nav-group {
+    padding-top: 12px;
+    border-top: 1px solid rgba(148, 163, 184, .16);
+  }
+
+  .mobile-tools-body .nav-group-title {
+    margin-bottom: 8px;
+  }
+
+  .mobile-tools-body .nav-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-tools-body .nav-group-title {
+    grid-column: 1 / -1;
+  }
+
+  .mobile-tools-body .module-btn {
+    min-height: 62px;
   }
 
   .secondary {

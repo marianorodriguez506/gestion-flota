@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-cholo-32.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-cholo.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=20260731-order-photo-input">
+  <link rel="stylesheet" href="styles.css?v=20260801-module-navigation">
 </head>
 <body>
   <main class="app">
@@ -28,22 +28,28 @@
       </div>
       <nav class="sidebar-nav">
         <button data-screen="home" type="button">Inicio</button>
+        <p class="nav-group-title">Tareas</p>
+        <button data-screen="myJobs" type="button">Mis trabajos</button>
         <button data-screen="tomorrow" type="button">Plan Manana</button>
+        <button data-screen="doneTasks" type="button">Tareas realizadas</button>
+        <button data-screen="mechanic" type="button">Reportes nuevos</button>
+        <p class="nav-group-title">Reportes</p>
         <button data-screen="immediate" type="button">Reportes Activos</button>
         <button data-screen="activeMap" type="button">Mapa activos</button>
-        <button data-screen="orders" type="button">Repuestos</button>
-        <button data-screen="batteries" type="button">Baterías</button>
-        <button data-screen="doneTasks" type="button">Tareas realizadas</button>
-        <button data-screen="baseEquipment" type="button">Equipos en base</button>
-        <button data-screen="mechanic" type="button">Reportes nuevos</button>
-        <button data-screen="history" type="button">Historial</button>
-        <button data-screen="fleet" type="button">Informacion Flota</button>
-        <button data-screen="locations" type="button">Ubicaciones</button>
-        <button data-screen="settings" type="button">Configuracion</button>
-        <button class="admin-only" data-screen="users" type="button">Mecanicos</button>
-        <button class="admin-only" data-screen="panel" type="button">Panel</button>
         <button class="admin-only" data-screen="validations" type="button">Validaciones</button>
         <button class="admin-only" data-screen="operatives" type="button">Operativos</button>
+        <button class="admin-only" data-screen="panel" type="button">Panel</button>
+        <p class="nav-group-title">Repuestos</p>
+        <button data-screen="orders" type="button">Repuestos</button>
+        <button data-screen="batteries" type="button">Baterías</button>
+        <button data-screen="history" type="button">Historial</button>
+        <p class="nav-group-title">Base</p>
+        <button data-screen="baseEquipment" type="button">Equipos en base</button>
+        <button data-screen="fleet" type="button">Informacion Flota</button>
+        <button data-screen="locations" type="button">Ubicaciones</button>
+        <p class="nav-group-title">Administracion</p>
+        <button data-screen="settings" type="button">Configuracion</button>
+        <button class="admin-only" data-screen="users" type="button">Mecanicos</button>
       </nav>
       <div class="sidebar-user">
         <span id="desktopUserName">Usuario</span>
@@ -550,7 +556,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260713-4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=20260801-plan-api-guard-fast-actions"></script>
+  <script src="app.js?v=20260801-module-navigation"></script>
   <dialog id="modal-eliminar-operativo" style="background-color: #1a1e23; color: white; border: 1px solid #444; border-radius: 12px; padding: 25px; text-align: center; max-width: 320px; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
   <h3 style="margin-top: 0; color: #ff4d4d; font-size: 22px;">⚠️ ¿Eliminar?</h3>
   <p style="color: #ccc; font-size: 16px;">El reporte de <strong><span id="equipo-modal"></span></strong> se borrará para siempre.</p>
