@@ -1727,6 +1727,15 @@
     return false;
   }
 
+  async function askCopyOperativeWhatsApp(report) {
+    if (!isAdmin() || !report?.equipment) return;
+    const text = `${String(report.equipment).trim().toUpperCase()}: OPERATIVO.`;
+    const ok = await openConfirmModal("Copiar?", `Copiar para WhatsApp: ${text}`, "Copiar");
+    if (!ok) return;
+    const copied = await writeClipboard(text);
+    if (copied) showToast("Copiado para WhatsApp.");
+  }
+
   function card(title, tag, body, actions) {
     const article = document.createElement("article");
     article.className = "card";
@@ -1987,7 +1996,7 @@
         closeModal();
         resolve(false);
       }));
-      el.modalActions.appendChild(button(confirmLabel, "danger", () => {
+      el.modalActions.appendChild(button(confirmLabel, confirmLabel === "Copiar" ? "primary" : "danger", () => {
         closeModal();
         resolve(true);
       }));
@@ -3311,6 +3320,9 @@
     const note = result.note;
     const photos = [...normalizeReportPhotos(report.photos), ...result.photos].slice(0, 12);
     const adminDirectValidation = isAdmin();
+    if (adminDirectValidation) {
+      await askCopyOperativeWhatsApp(report);
+    }
     const updates = {
       status: adminDirectValidation ? "Operativo validado" : "PV",
       previous_status: isOperativeInformedStatus(report.status) ? report.previousStatus || "FS" : displayStatus(report.status),
