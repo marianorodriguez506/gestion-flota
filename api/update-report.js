@@ -23,6 +23,25 @@ async function supabaseFetch(url, serviceKey, path, options = {}) {
   return { response, data, text };
 }
 
+function mechanicIds(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function clearsPlanAssignment(updates = {}) {
+  if (updates.status === "Operativo validado") return false;
+  const clearsPlanDate = Object.prototype.hasOwnProperty.call(updates, "plan_date") && !updates.plan_date;
+  const clearsPrimary = Object.prototype.hasOwnProperty.call(updates, "mechanic_id") && !updates.mechanic_id;
+  const clearsMultiple = Object.prototype.hasOwnProperty.call(updates, "mechanic_ids") && !mechanicIds(updates.mechanic_ids).length;
+  return clearsPlanDate && (clearsPrimary || clearsMultiple);
+}
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== "POST") return json(res, 405, { error: "Metodo no permitido." });
@@ -49,6 +68,7 @@ module.exports = async function handler(req, res) {
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     const reportId = body.id;
     const updates = body.updates || {};
+    const allowPlanClear = Boolean(body.allowPlanClear);
     if (!reportId || !updates || typeof updates !== "object") {
       return json(res, 400, { error: "Falta reporte o cambios." });
     }
@@ -82,6 +102,23 @@ module.exports = async function handler(req, res) {
       Object.entries(updates).filter(([key]) => isAdmin || allowedForWorker.has(key))
     );
     if (!Object.keys(safeUpdates).length) return json(res, 400, { error: "No hay cambios permitidos." });
+
+    if (isAdmin && !allowPlanClear && clearsPlanAssignment(safeUpdates) && report.plan_date) {
+      const planDate = String(report.plan_date).slice(0, 10);
+      const planResult = await supabaseFetch(
+        supabaseUrl,
+        serviceKey,
+        `/rest/v1/reports?plan_date=eq.${encodeURIComponent(planDate)}&status=neq.Operativo%20validado&select=id,mechanic_id,mechanic_ids`
+      );
+      if (!planResult.response.ok) return json(res, planResult.response.status, { error: "No se pudo proteger Plan Mañana." });
+      const remainingAssigned = (planResult.data || []).filter((row) => {
+        if (row.id === reportId) return false;
+        return row.mechanic_id || mechanicIds(row.mechanic_ids).length;
+      });
+      if (!remainingAssigned.length) {
+        return json(res, 409, { error: "Bloqueado: Plan Mañana no puede quedar vacio salvo usando Limpiar hoja." });
+      }
+    }
 
     const updateResult = await supabaseFetch(
       supabaseUrl,

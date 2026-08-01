@@ -2128,7 +2128,7 @@
     renderMyJobs();
     await createNotification(`${report.equipment} asignado a ${worker.name}`);
     showToast(`${report.equipment} asignado a ${worker.name}`);
-    await refreshAllData();
+    scheduleRefreshAllData();
   }
 
   function openWorkersMultiModal(title, selectedIds = []) {
@@ -2207,7 +2207,7 @@
     const names = selectedWorkers.map((worker) => worker.name).join(", ");
     await createNotification(`${report.equipment} asignado a ${names}`);
     showToast(`${report.equipment} asignado a ${names}`);
-    await refreshAllData();
+    scheduleRefreshAllData();
   }
 
   async function updatePlanAssignment(reportId, mechanicIds, planDate, options = {}) {
@@ -3237,11 +3237,13 @@
       return;
     }
     await saveCurrentLocationForReport(report);
-    await updateReport(report.id, updates);
+    const updated = await updateReport(report.id, updates);
+    mergeReportUpdate(report.id, updated, reportFallbackFromUpdates(updates));
+    renderActiveScreen();
     await createNotification(adminDirectValidation
       ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
       : `${state.currentUser.name} informo reparacion realizada en ${report.equipment}: ${note}`);
-    await refreshAllData();
+    scheduleRefreshAllData();
   }
 
   function showReportHistory(report) {
@@ -5051,7 +5053,7 @@
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify({ id, updates: cleanUpdates })
+      body: JSON.stringify({ id, updates: cleanUpdates, allowPlanClear })
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.report) {
