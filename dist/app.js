@@ -12,6 +12,42 @@
   const PLAN_DRAFT_KEY = "gestion-flota:plan-drafts";
   const PLAN_BACKUP_KEY = "gestion-flota:plan-backups";
   const PREFERENCES_KEY = "gestion-flota:preferences";
+  const PERMISSION_GROUPS = [
+    {
+      title: "Tareas",
+      items: [
+        { key: "myJobs", label: "Mis trabajos", default: true },
+        { key: "tomorrow", label: "Plan Mañana", default: true },
+        { key: "doneTasks", label: "Tareas realizadas", default: true },
+        { key: "mechanic", label: "Reportes nuevos", default: true }
+      ]
+    },
+    {
+      title: "Reportes",
+      items: [
+        { key: "immediate", label: "Reportes activos", default: true },
+        { key: "activeMap", label: "Mapa activos", default: true },
+        { key: "operatives", label: "Operativos", default: false }
+      ]
+    },
+    {
+      title: "Repuestos",
+      items: [
+        { key: "orders", label: "Pedidos de repuestos", default: true },
+        { key: "history", label: "Historial de pedidos", default: true }
+      ]
+    },
+    {
+      title: "Base",
+      items: [
+        { key: "baseEquipment", label: "Equipos en base", default: true },
+        { key: "batteries", label: "Baterias", default: true },
+        { key: "locations", label: "Ubicaciones", default: true },
+        { key: "fleet", label: "Informacion de flota", default: true }
+      ]
+    }
+  ];
+  const PERMISSION_ITEMS = PERMISSION_GROUPS.flatMap((group) => group.items);
 
   const screens = {
     auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
@@ -51,6 +87,8 @@
     notifications: [],
     availability: [],
     savedLocations: [],
+    userPermissions: {},
+    permissionsLoadError: "",
     planDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
     planDraft: null,
     orderDraft: null,
@@ -398,6 +436,20 @@
     };
   }
 
+  function normalizePermissionMap(value) {
+    const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return PERMISSION_ITEMS.reduce((next, item) => {
+      next[item.key] = Object.prototype.hasOwnProperty.call(raw, item.key) ? Boolean(raw[item.key]) : item.default;
+      return next;
+    }, {});
+  }
+
+  function normalizeUserPermission(row) {
+    return {
+      userId: row.user_id,
+      permissions: normalizePermissionMap(row.permissions)
+    };
+  }
 
   function normalizeSavedLocation(row) {
     return {
@@ -1749,6 +1801,7 @@
         notifications: state.notifications,
         availability: state.availability,
         savedLocations: state.savedLocations,
+        userPermissions: state.userPermissions,
         planDate: state.planDate
       }));
     } catch (error) {
@@ -1770,6 +1823,7 @@
       state.notifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
       state.availability = Array.isArray(snapshot.availability) ? snapshot.availability : [];
       state.savedLocations = Array.isArray(snapshot.savedLocations) ? snapshot.savedLocations : [];
+      state.userPermissions = snapshot.userPermissions && typeof snapshot.userPermissions === "object" ? snapshot.userPermissions : {};
       state.planDate = snapshot.planDate || state.planDate;
       state.offlineSavedAt = snapshot.savedAt || "";
       state.offlineMode = true;
@@ -1903,7 +1957,7 @@
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
     el.modalActions.classList.remove("action-menu");
-    el.modalRoot.classList.remove("report-menu-modal", "notifications-modal", "order-sheet-modal");
+    el.modalRoot.classList.remove("report-menu-modal", "notifications-modal", "order-sheet-modal", "permissions-modal");
   }
 
   function cancelModal() {
@@ -2095,6 +2149,40 @@
 
   function availableWorkers() {
     return approvedWorkers().filter((worker) => workerAvailability(worker.id) !== "franco");
+  }
+
+  function permissionsForUser(userId = state.currentUser?.id) {
+    if (!userId) return normalizePermissionMap({});
+    return normalizePermissionMap(state.userPermissions[userId] || {});
+  }
+
+  function isAdminScreen(screenName) {
+    return ["panel", "validations", "users"].includes(screenName);
+  }
+
+  function canAccessScreen(screenName) {
+    if (!screenName || screenName === "auth" || screenName === "home" || screenName === "settings" || screenName === "notifications") return true;
+    if (!isLoggedIn()) return false;
+    const role = state.currentUser?.role;
+    const isFullAdmin = role === "admin" || role === "administrador";
+    const isAdmin2 = role === "admin2";
+    if (isFullAdmin) return true;
+    if (isAdmin2) return screenName !== "users";
+    if (isAdminScreen(screenName)) return false;
+    return permissionsForUser()[screenName] !== false;
+  }
+
+  function applyPermissionsToControls() {
+    if (!isLoggedIn()) return;
+    document.querySelectorAll("[data-screen]").forEach((node) => {
+      const screen = node.dataset.screen;
+      const allowed = canAccessScreen(screen);
+      node.classList.toggle("permission-hidden", !allowed);
+      if (!isAdmin() && node.classList.contains("admin-only") && allowed) {
+        node.classList.remove("admin-disabled");
+      }
+      node.disabled = !allowed;
+    });
   }
 
   async function assignReportToWorker(report, worker, options = {}) {
@@ -2375,13 +2463,17 @@
       name = "home";
     }
 
-    // 2. Los mecánicos comunes NO pueden entrar a NADA del panel de control
-    if (isLoggedIn() && !isFullAdmin && !isAdmin2 && ["panel", "validations", "operatives", "users"].includes(name)) {
+    // 2. Los mecánicos comunes solo entran a lo que habilite el administrador.
+    if (isLoggedIn() && !isFullAdmin && !isAdmin2 && !canAccessScreen(name)) {
       name = "home";
     }
 
     // 3. LA REGLA DE ORO: Si es Admi 2 y quiere entrar a Gestión de Mecánicos ("users"), lo pateamos a "home"
     if (isLoggedIn() && isAdmin2 && name === "users") {
+      name = "home";
+    }
+
+    if (isLoggedIn() && isAdmin2 && !canAccessScreen(name)) {
       name = "home";
     }
 
@@ -2452,6 +2544,7 @@
       const label = el.mobileWorkNavBtn.querySelector("span");
       if (label) label.textContent = isAdmin() ? "Plan Mañana" : "Mis trabajos";
     }
+    applyPermissionsToControls();
     updatePushNotificationsButton();
 
   }
@@ -4444,6 +4537,85 @@
     await refreshAllData();
   }
 
+  function permissionSummary(user) {
+    if (user.role === "admin" || user.role === "administrador" || user.role === "admin2") return "Acceso administrador";
+    const permissions = permissionsForUser(user.id);
+    const enabled = PERMISSION_ITEMS.filter((item) => permissions[item.key] !== false).length;
+    return `Permisos: ${enabled}/${PERMISSION_ITEMS.length} activos`;
+  }
+
+  async function editUserPermissions(user) {
+    if (!isAdmin() || !user?.id || user.id === state.currentUser.id) return;
+    if (user.role === "admin" || user.role === "administrador" || user.role === "admin2") {
+      showToast("Los administradores mantienen acceso completo.");
+      return;
+    }
+
+    const current = permissionsForUser(user.id);
+    el.modalRoot.classList.add("permissions-modal");
+    el.modalTitle.textContent = `Permisos de ${user.name}`;
+    el.modalBody.innerHTML = "";
+    el.modalActions.innerHTML = "";
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+
+    if (state.permissionsLoadError) {
+      const warning = document.createElement("p");
+      warning.className = "hint danger-text";
+      warning.textContent = "Falta preparar la tabla user_permissions en Supabase. Los cambios no se van a guardar hasta correr el SQL.";
+      el.modalBody.appendChild(warning);
+    }
+
+    const grid = document.createElement("section");
+    grid.className = "permissions-grid";
+    PERMISSION_GROUPS.forEach((group) => {
+      const block = document.createElement("section");
+      block.className = "permission-group";
+      const title = document.createElement("h3");
+      title.textContent = group.title;
+      block.appendChild(title);
+      group.items.forEach((item) => {
+        const label = document.createElement("label");
+        label.className = "permission-toggle";
+        label.innerHTML = `<span>${item.label}</span><input type="checkbox" data-permission="${item.key}">`;
+        label.querySelector("input").checked = current[item.key] !== false;
+        block.appendChild(label);
+      });
+      grid.appendChild(block);
+    });
+    el.modalBody.appendChild(grid);
+
+    el.modalActions.appendChild(button("Cancelar", "secondary", closeModal));
+    el.modalActions.appendChild(button("Guardar permisos", "primary", async () => {
+      const permissions = {};
+      el.modalBody.querySelectorAll("[data-permission]").forEach((input) => {
+        permissions[input.dataset.permission] = input.checked;
+      });
+      state.userPermissions[user.id] = normalizePermissionMap(permissions);
+      if (!supabase) {
+        closeModal();
+        renderUsers();
+        return;
+      }
+      const { error } = await supabase.from("user_permissions").upsert({
+        user_id: user.id,
+        permissions: state.userPermissions[user.id],
+        updated_by: state.currentUser.id,
+        updated_at: new Date().toISOString()
+      });
+      closeModal();
+      if (error) {
+        state.permissionsLoadError = error.message || "No se pudieron guardar permisos.";
+        showToast("No se pudieron guardar permisos. Falta correr el SQL de permisos.");
+        renderUsers();
+        return;
+      }
+      state.permissionsLoadError = "";
+      await refreshAllData();
+      showToast("Permisos guardados.");
+    }));
+  }
+
   function renderUsers() {
     el.usersList.innerHTML = "";
     const selectedSpecialty = el.userFilter.value || "all";
@@ -4469,6 +4641,9 @@
           }));
         }
         actions.push(button("Editar", "secondary", async () => editUser(user)));
+        if (user.role !== "admin" && user.role !== "administrador" && user.role !== "admin2") {
+          actions.push(button("Permisos", "secondary", () => editUserPermissions(user)));
+        }
         actions.push(button(user.accountStatus === "inactivo" ? "Activar" : "Bloquear", "secondary", async () => {
           await supabase.from("profiles").update({ account_status: user.accountStatus === "inactivo" ? "activo" : "inactivo" }).eq("id", user.id);
           await refreshAllData();
@@ -4483,7 +4658,7 @@
       let roleLabel = (user.role === "admin" || user.role === "administrador") ? "Administrador" : (user.role === "admin2") ? "Admi 2" : "Trabajador";
       const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
       const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Aprobación: ${statusLabel} · Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
-      el.usersList.appendChild(card(user.name, roleLabel, details, actions));
+      el.usersList.appendChild(card(user.name, roleLabel, `${details} Â· ${permissionSummary(user)}`, actions));
     });
   }
 
@@ -4864,7 +5039,7 @@
       return;
     }
     try {
-      const [profiles, reports, orders, batteries, fleet, notifications, availability, savedLocations] = await Promise.all([
+      const [profiles, reports, orders, batteries, fleet, notifications, availability, savedLocations, permissions] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("reports").select("*").order("created_at", { ascending: false }),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
@@ -4872,7 +5047,8 @@
         supabase.from("fleet_items").select("*").order("created_at", { ascending: false }),
         supabase.from("notifications").select("*").order("created_at", { ascending: false }),
         supabase.from("worker_availability").select("*").eq("date", state.planDate),
-        supabase.from("saved_locations").select("*").order("created_at", { ascending: false })
+        supabase.from("saved_locations").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_permissions").select("*")
       ]);
 
       const queryError = [profiles, reports, orders, fleet, notifications, availability, savedLocations].find((result) => result.error)?.error;
@@ -4887,6 +5063,13 @@
       state.notifications = (notifications.data || []).map(normalizeNotification);
       state.availability = (availability.data || []).map(normalizeAvailability);
       state.savedLocations = (savedLocations.data || []).map(normalizeSavedLocation);
+      state.permissionsLoadError = permissions.error ? permissions.error.message || "No se pudo cargar user_permissions." : "";
+      state.userPermissions = permissions.error
+        ? state.userPermissions
+        : (permissions.data || []).map(normalizeUserPermission).reduce((map, item) => {
+            map[item.userId] = item.permissions;
+            return map;
+          }, {});
       setOfflineMode(false);
     } catch (error) {
       console.info("Usando cache offline:", error);
@@ -5149,6 +5332,7 @@
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => scheduleRefreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => scheduleRefreshAllData())
       .on("postgres_changes", { event: "*", schema: "public", table: "saved_locations" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_permissions" }, () => scheduleRefreshAllData())
       .subscribe();
   }
 
