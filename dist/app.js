@@ -69,6 +69,7 @@
   let notificationsModalResolve = null;
   let activeMapInstance = null;
   let deferredInstallPrompt = null;
+  let refreshAllDataTimer = null;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
@@ -4786,25 +4787,32 @@
       el.logoutBtn.classList.add("hidden");
       return;
     }
-    renderHome();
-    renderImmediate();
-    renderMyJobs();
-    renderTomorrow();
-    renderMechanicReports();
-    renderDoneTasks();
-    renderBaseEquipment();
-    renderOrders();
-    renderBatteries();
-    renderHistory();
-    renderFleet();
-    renderOperatives();
-    renderPanel();
-    renderValidations();
-    renderUsers();
-    renderLocations();
-    renderActiveMap();
-    renderNotifications();
-    renderSettings();
+    renderActiveScreen();
+  }
+
+  function renderActiveScreen() {
+    const renderers = {
+      home: renderHome,
+      immediate: renderImmediate,
+      myJobs: renderMyJobs,
+      tomorrow: renderTomorrow,
+      mechanic: renderMechanicReports,
+      doneTasks: renderDoneTasks,
+      baseEquipment: renderBaseEquipment,
+      orders: renderOrders,
+      batteries: renderBatteries,
+      history: renderHistory,
+      fleet: renderFleet,
+      operatives: renderOperatives,
+      panel: renderPanel,
+      validations: renderValidations,
+      users: renderUsers,
+      locations: renderLocations,
+      activeMap: renderActiveMap,
+      notifications: renderNotifications,
+      settings: renderSettings
+    };
+    (renderers[activeScreen] || renderHome)();
   }
 
   function populateUserFilter() {
@@ -4858,6 +4866,14 @@
     if (!state.offlineMode) savePlanBackup(state.planDate);
     if (!state.offlineMode) saveOfflineSnapshot();
     render();
+  }
+
+  function scheduleRefreshAllData(delay = 350) {
+    if (refreshAllDataTimer) clearTimeout(refreshAllDataTimer);
+    refreshAllDataTimer = setTimeout(() => {
+      refreshAllDataTimer = null;
+      refreshAllData();
+    }, delay);
   }
 
   async function loadCurrentUser(userId) {
@@ -5087,14 +5103,14 @@
 
     realtimeChannel = supabase.channel("fleet-realtime");
     realtimeChannel
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "battery_records" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => refreshAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "saved_locations" }, () => refreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "reports" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "battery_records" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fleet_items" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_availability" }, () => scheduleRefreshAllData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "saved_locations" }, () => scheduleRefreshAllData())
       .subscribe();
   }
 
