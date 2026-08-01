@@ -109,6 +109,8 @@
   let activeMapInstance = null;
   let deferredInstallPrompt = null;
   let refreshAllDataTimer = null;
+  let refreshAllDataInFlight = false;
+  let refreshAllDataAgain = false;
   let appHistoryDepth = 0;
 
   const el = {
@@ -1720,8 +1722,28 @@
 
   async function writeClipboard(text) {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_error) {
+        // Seguimos con fallback clasico.
+      }
+    }
+    try {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      area.style.top = "0";
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (copied) return true;
+    } catch (_error) {
+      // Dejamos el aviso existente.
     }
     showToast("No pude copiar automáticamente en este navegador.");
     return false;
@@ -1734,6 +1756,7 @@
     if (!ok) return;
     const copied = await writeClipboard(text);
     if (copied) showToast("Copiado para WhatsApp.");
+    else showToast(`Texto para copiar: ${text}`);
   }
 
   function card(title, tag, body, actions) {
@@ -5136,8 +5159,14 @@
   }
 
   async function refreshAllData() {
+    if (refreshAllDataInFlight) {
+      refreshAllDataAgain = true;
+      return;
+    }
+    refreshAllDataInFlight = true;
     if (!supabase) {
       if (loadOfflineSnapshot()) render();
+      refreshAllDataInFlight = false;
       return;
     }
     try {
@@ -5177,6 +5206,7 @@
       console.info("Usando cache offline:", error);
       if (!loadOfflineSnapshot()) {
         showToast("Sin conexion y sin datos guardados en este celular.");
+        refreshAllDataInFlight = false;
         return;
       }
       showToast("Sin conexion: mostrando datos guardados.");
@@ -5189,9 +5219,14 @@
     if (!state.offlineMode) savePlanBackup(state.planDate);
     if (!state.offlineMode) saveOfflineSnapshot();
     render();
+    refreshAllDataInFlight = false;
+    if (refreshAllDataAgain) {
+      refreshAllDataAgain = false;
+      scheduleRefreshAllData(900);
+    }
   }
 
-  function scheduleRefreshAllData(delay = 350) {
+  function scheduleRefreshAllData(delay = 800) {
     if (refreshAllDataTimer) clearTimeout(refreshAllDataTimer);
     refreshAllDataTimer = setTimeout(() => {
       refreshAllDataTimer = null;
@@ -6197,8 +6232,8 @@
 // CANALES DE TIEMPO REAL (REPORTE Y NOTIFICACIONES)
 // ==========================================
 
-// 1. Escuchar cambios en los Reportes (Para que la pantalla se actualice sola)
-supabase
+// 1. Escuchar cambios en los Reportes: lo maneja el canal principal fleet-realtime.
+if (false && supabase) supabase
   .channel('cambios-reportes')
   .on(
     'postgres_changes', 
