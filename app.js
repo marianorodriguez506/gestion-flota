@@ -109,6 +109,7 @@
   let activeMapInstance = null;
   let deferredInstallPrompt = null;
   let refreshAllDataTimer = null;
+  let appHistoryDepth = 0;
 
   const el = {
     backBtn: document.getElementById("backBtn"),
@@ -2504,6 +2505,7 @@
         history.replaceState(nextState, "", `#${name}`);
       } else if (history.state.screen !== name) {
         history.pushState(nextState, "", `#${name}`);
+        appHistoryDepth += 1;
       }
     }
     render();
@@ -2544,6 +2546,7 @@
       const label = el.mobileWorkNavBtn.querySelector("span");
       if (label) label.textContent = isAdmin() ? "Plan Mañana" : "Mis trabajos";
     }
+    updateMobileMoreDuplicates();
     applyPermissionsToControls();
     updatePushNotificationsButton();
 
@@ -5507,6 +5510,7 @@
   });
 
   window.addEventListener("popstate", (event) => {
+    appHistoryDepth = Math.max(0, appHistoryDepth - 1);
     if (notificationsModalOpen) {
       closeNotificationsModal(null);
       return;
@@ -5514,6 +5518,14 @@
     if (reportMenuModalOpen) {
       closeModal();
       return;
+    }
+    if (event.state?.panel === "mobile-tools") {
+      setScreen("home", { history: false });
+      setMobileToolsOpen(true, { history: false });
+      return;
+    }
+    if (el.mobileToolsPanel?.open && isMobileViewport()) {
+      setMobileToolsOpen(false, { history: false });
     }
     const screen = event.state?.screen || "home";
     setScreen(screen, { history: false });
@@ -5592,6 +5604,68 @@
     }
   }
 
+  function updateMobileMoreDuplicates() {
+    if (!el.mobileToolsPanel) return;
+    const hiddenScreens = new Set(["home"]);
+    if (isAdmin()) {
+      hiddenScreens.add("immediate");
+      hiddenScreens.add("tomorrow");
+    } else {
+      hiddenScreens.add("mechanic");
+      hiddenScreens.add("myJobs");
+    }
+    el.mobileToolsPanel.querySelectorAll("[data-screen]").forEach((button) => {
+      button.classList.toggle("nav-duplicate-hidden", hiddenScreens.has(button.dataset.screen));
+    });
+  }
+
+  function isMobileViewport() {
+    return window.matchMedia?.("(max-width: 899px)").matches;
+  }
+
+  function setMobileToolsOpen(open, options = {}) {
+    if (!el.mobileToolsPanel) return;
+    el.mobileToolsPanel.open = open;
+    document.querySelector("[data-mobile-more]")?.classList.toggle("active", open);
+    if (open && options.history !== false && window.history?.pushState && isMobileViewport()) {
+      const nextState = { screen: "home", panel: "mobile-tools" };
+      if (history.state?.panel !== "mobile-tools") {
+        history.pushState(nextState, "", "#home-tools");
+        appHistoryDepth += 1;
+      }
+    }
+  }
+
+  function goBackWithinApp() {
+    if (notificationsModalOpen) {
+      closeNotificationsModalFromUi(null);
+      return;
+    }
+    if (reportMenuModalOpen) {
+      closeReportMenuModalFromUi();
+      return;
+    }
+    if (modalCancelHandler) {
+      cancelModal();
+      return;
+    }
+    if (el.mobileToolsPanel?.open && isMobileViewport()) {
+      if (history.state?.panel === "mobile-tools" && appHistoryDepth > 0) {
+        history.back();
+      } else {
+        setMobileToolsOpen(false, { history: false });
+      }
+      return;
+    }
+    if (appHistoryDepth > 0) {
+      history.back();
+      return;
+    }
+    if (activeScreen !== "home") {
+      setScreen("home");
+    }
+  }
+
   organizeMainNavigation();
 
   window.addEventListener("beforeinstallprompt", (event) => {
@@ -5620,12 +5694,15 @@
     btn.addEventListener("click", () => setScreen(btn.dataset.screen));
   });
   document.querySelector("[data-mobile-more]")?.addEventListener("click", () => {
-    setScreen("home");
-    if (el.mobileToolsPanel) {
-      el.mobileToolsPanel.open = !el.mobileToolsPanel.open;
-      el.mobileToolsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-      document.querySelector("[data-mobile-more]")?.classList.toggle("active", el.mobileToolsPanel.open);
+    if (activeScreen !== "home") setScreen("home");
+    if (!el.mobileToolsPanel) return;
+    const nextOpen = !el.mobileToolsPanel.open;
+    if (!nextOpen && history.state?.panel === "mobile-tools" && appHistoryDepth > 0) {
+      history.back();
+      return;
     }
+    setMobileToolsOpen(nextOpen);
+    if (nextOpen) el.mobileToolsPanel.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   el.mobileToolsPanel?.addEventListener("toggle", () => {
     document.querySelector("[data-mobile-more]")?.classList.toggle("active", el.mobileToolsPanel.open);
@@ -5634,7 +5711,7 @@
     el.mobileToolsPanel.open = false;
   }
 
-  el.backBtn.addEventListener("click", () => setScreen("home"));
+  el.backBtn.addEventListener("click", goBackWithinApp);
   el.installAppBtn?.addEventListener("click", installApp);
   el.pushNotificationsBtn?.addEventListener("click", togglePushNotifications);
   el.settingsPushBtn?.addEventListener("click", togglePushNotifications);

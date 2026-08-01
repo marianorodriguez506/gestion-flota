@@ -117,6 +117,10 @@ body.theme-light .settings-tile {
   display: none;
 }
 
+.mobile-tools-panel {
+  display: none;
+}
+
 .install-app-btn {
   position: fixed;
   right: 16px;
@@ -399,6 +403,16 @@ label {
   grid-template-columns: 1.2fr 1fr 1fr;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+#homeScreen .quick-actions,
+#usersBtn,
+#locationsBtn {
+  display: none !important;
+}
+
+.nav-duplicate-hidden {
+  display: none !important;
 }
 
 .quick-btn {
