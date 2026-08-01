@@ -4964,6 +4964,10 @@
       : permission === "denied"
         ? "Permiso bloqueado en el navegador"
         : "Recibir avisos importantes";
+    const pushMuted = arePushNotificationsMuted();
+    const pushTitle = permission === "granted" && !pushMuted ? "Alertas activas" : pushMuted ? "Alertas silenciadas" : "Activar alertas";
+    const pushClass = permission === "granted" && !pushMuted ? "push-active" : pushMuted ? "push-muted" : "";
+    const pushStatusDetail = pushMuted ? "Tocar para volver a activar" : pushDetail;
     const installDetail = standalone
       ? "Ya estas usando la app instalada"
       : deferredInstallPrompt
@@ -4997,7 +5001,7 @@
           </select>
         </label>
       `,
-      settingsTile("settingsPushBtn", "Notificaciones", permission === "granted" ? "Alertas activas" : "Activar alertas", pushDetail),
+      settingsTile("settingsPushBtn", "Notificaciones", pushTitle, pushStatusDetail, pushClass),
       settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
       settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
     ].join("");
@@ -5006,7 +5010,7 @@
     const isSecondAdmin = role === "admin2";
     grid.innerHTML = [
       settingsSection("Mi cuenta", state.currentUser?.name || "Usuario actual", [
-        settingsTile("settingsPushBtn", "Notificaciones", permission === "granted" ? "Alertas activas" : "Activar alertas", pushDetail),
+        settingsTile("settingsPushBtn", "Notificaciones", pushTitle, pushStatusDetail, pushClass),
         settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
         settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
       ]),
@@ -5067,7 +5071,7 @@
       renderSettings();
       showToast(event.target.value === "en" ? "Idioma guardado: English." : "Idioma guardado: Español.");
     });
-    grid.querySelector("#settingsPushBtn")?.addEventListener("click", registerPushNotifications);
+    grid.querySelector("#settingsPushBtn")?.addEventListener("click", togglePushNotifications);
     grid.querySelector("#settingsInstallBtn")?.addEventListener("click", installApp);
     grid.querySelector("#settingsLogoutBtn")?.addEventListener("click", () => el.logoutBtn?.click());
     grid.querySelectorAll("[data-settings-screen]").forEach((button) => {
@@ -5226,14 +5230,20 @@
     return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   }
 
+  function arePushNotificationsMuted() {
+    return state.preferences?.pushMuted === true;
+  }
+
   function updatePushNotificationsButton() {
     if (!el.pushNotificationsBtn) return;
     const show = isLoggedIn() && supportsPushNotifications() && navigator.onLine !== false;
     el.pushNotificationsBtn.classList.toggle("hidden", !show);
     if (!show) return;
     const permission = Notification.permission;
-    el.pushNotificationsBtn.textContent = permission === "granted" ? "Alertas activas" : "Activar alertas";
-    el.pushNotificationsBtn.classList.toggle("is-active", permission === "granted");
+    const muted = arePushNotificationsMuted();
+    el.pushNotificationsBtn.textContent = permission === "granted" && !muted ? "Alertas activas" : muted ? "Alertas silenciadas" : "Activar alertas";
+    el.pushNotificationsBtn.classList.toggle("is-active", permission === "granted" && !muted);
+    el.pushNotificationsBtn.classList.toggle("is-muted", muted);
   }
 
   function urlBase64ToUint8Array(value) {
@@ -5306,6 +5316,34 @@
     } catch (error) {
       showToast(error.message || "No se pudieron activar las alertas.");
     }
+  }
+
+  async function mutePushNotifications() {
+    savePreferences({ pushMuted: true });
+    try {
+      if (supportsPushNotifications() && navigator.serviceWorker?.ready) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) await subscription.unsubscribe();
+      }
+      showToast("Alertas silenciadas en este dispositivo.");
+    } catch (_error) {
+      showToast("Alertas silenciadas. Si alguna queda activa, cerrá y abrí la app.");
+    } finally {
+      updatePushNotificationsButton();
+      if (activeScreen === "settings") renderSettings();
+    }
+  }
+
+  async function togglePushNotifications() {
+    if (supportsPushNotifications() && Notification.permission === "granted" && !arePushNotificationsMuted()) {
+      await mutePushNotifications();
+      return;
+    }
+    savePreferences({ pushMuted: false });
+    updatePushNotificationsButton();
+    if (activeScreen === "settings") renderSettings();
+    await registerPushNotifications();
   }
 
   async function sendPushNotification(notification) {
@@ -5598,8 +5636,8 @@
 
   el.backBtn.addEventListener("click", () => setScreen("home"));
   el.installAppBtn?.addEventListener("click", installApp);
-  el.pushNotificationsBtn?.addEventListener("click", registerPushNotifications);
-  el.settingsPushBtn?.addEventListener("click", registerPushNotifications);
+  el.pushNotificationsBtn?.addEventListener("click", togglePushNotifications);
+  el.settingsPushBtn?.addEventListener("click", togglePushNotifications);
   el.settingsInstallBtn?.addEventListener("click", installApp);
   el.settingsLogoutBtn?.addEventListener("click", () => el.logoutBtn?.click());
   el.usersBtn.addEventListener("click", () => setScreen("users"));
@@ -6143,6 +6181,7 @@ supabase
       if (noti.created_by === state.currentUser.id) return;
       if (noti.target_user_id && noti.target_user_id !== state.currentUser.id) return;
       if (noti.type === "validacion" && !isAdmin()) return;
+      if (arePushNotificationsMuted()) return;
 
       let makeNoise = false;
       if (isAdmin()) {
