@@ -4923,13 +4923,38 @@
     `;
   }
 
+  function settingsScreenTile(screenName, label, title, detail, className = "") {
+    if (!canAccessScreen(screenName)) return "";
+    return `
+      <button class="settings-tile ${className}" data-settings-screen="${screenName}" type="button">
+        <span>${label}</span>
+        <strong>${title}</strong>
+        <small>${detail}</small>
+      </button>
+    `;
+  }
+
+  function settingsSection(title, subtitle, content) {
+    const body = Array.isArray(content) ? content.filter(Boolean).join("") : content;
+    if (!body) return "";
+    return `
+      <section class="settings-section">
+        <header>
+          <h3>${title}</h3>
+          <p>${subtitle}</p>
+        </header>
+        <div class="settings-grid">${body}</div>
+      </section>
+    `;
+  }
+
   function renderSettings() {
     const screen = document.getElementById("settingsScreen");
     if (!screen) return;
-    let grid = screen.querySelector(".settings-grid");
+    let grid = screen.querySelector(".settings-layout");
     if (!grid) {
-      grid = document.createElement("section");
-      grid.className = "settings-grid";
+      grid = screen.querySelector(".settings-grid") || document.createElement("section");
+      grid.className = "settings-layout";
       screen.appendChild(grid);
     }
     const permission = supportsPushNotifications() ? Notification.permission : "unsupported";
@@ -4976,6 +5001,61 @@
       settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
       settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
     ].join("");
+    const role = state.currentUser?.role;
+    const isFullAdmin = role === "admin" || role === "administrador";
+    const isSecondAdmin = role === "admin2";
+    grid.innerHTML = [
+      settingsSection("Mi cuenta", state.currentUser?.name || "Usuario actual", [
+        settingsTile("settingsPushBtn", "Notificaciones", permission === "granted" ? "Alertas activas" : "Activar alertas", pushDetail),
+        settingsTile("settingsInstallBtn", "App", standalone ? "App instalada" : "Instalar acceso", installDetail),
+        settingsTile("settingsLogoutBtn", "Sesion", "Salir", state.currentUser?.name || "Cerrar usuario actual", "danger")
+      ]),
+      settingsSection("App", "Apariencia y preferencias", [
+        `
+          <label class="settings-tile settings-select-tile" for="settingsThemeSelect">
+            <span>Apariencia</span>
+            <strong>${themeLabel}</strong>
+            <small>Elegir oscuro, claro, Cholo Pro o Cholo Claro</small>
+            <select id="settingsThemeSelect">
+              <option value="dark"${theme === "dark" ? " selected" : ""}>Oscuro</option>
+              <option value="light"${theme === "light" ? " selected" : ""}>Claro</option>
+              <option value="cholo"${theme === "cholo" ? " selected" : ""}>Cholo Pro</option>
+              <option value="cholo-light"${theme === "cholo-light" ? " selected" : ""}>Cholo Claro</option>
+            </select>
+          </label>
+        `,
+        `
+          <label class="settings-tile settings-select-tile" for="settingsLanguageSelect">
+            <span>Idioma</span>
+            <strong>${language === "en" ? "English" : "Espanol"}</strong>
+            <small>Base preparada para traducir la app</small>
+            <select id="settingsLanguageSelect">
+              <option value="es"${language === "es" ? " selected" : ""}>Espanol</option>
+              <option value="en"${language === "en" ? " selected" : ""}>English</option>
+            </select>
+          </label>
+        `
+      ]),
+      settingsSection("Tareas", "Accesos de trabajo diario", [
+        settingsScreenTile("tomorrow", "Plan", "Plan manana", "Asignaciones y copia para grupo"),
+        isAdmin() ? "" : settingsScreenTile("myJobs", "Trabajo", "Mis trabajos", "Equipos asignados"),
+        settingsScreenTile("doneTasks", "Realizado", "Tareas realizadas", "Historial y carga diaria"),
+        settingsScreenTile("mechanic", "Carga", "Reportes nuevos", "Carga de mecanicos con fotos")
+      ]),
+      settingsSection("Reportes y base", "Consultas principales", [
+        settingsScreenTile("immediate", "Reportes", "Reportes activos", "Tablero de equipos"),
+        settingsScreenTile("activeMap", "Mapa", "Mapa activos", "Ubicaciones de reportes"),
+        settingsScreenTile("orders", "Repuestos", "Pedidos", "Hoja de pedidos"),
+        settingsScreenTile("batteries", "Baterias", "Registro", "Baterias colocadas"),
+        settingsScreenTile("baseEquipment", "Base", "Equipos en base", "Checklist y estado"),
+        settingsScreenTile("locations", "GPS", "Base de ubicaciones", "Buscar y abrir Maps")
+      ]),
+      (isFullAdmin || isSecondAdmin) ? settingsSection("Administracion", "Control y permisos", [
+        settingsScreenTile("panel", "Panel", "Panel general", "Indicadores de la flota"),
+        settingsScreenTile("validations", "Pendientes", "Validaciones", "Revisar trabajos a aprobar"),
+        isFullAdmin ? settingsScreenTile("users", "Usuarios", "Gestion de mecanicos", "Franco, roles y permisos") : ""
+      ]) : ""
+    ].join("");
     grid.querySelector("#settingsThemeSelect")?.addEventListener("change", (event) => {
       savePreferences({ theme: event.target.value });
       renderSettings();
@@ -4990,6 +5070,9 @@
     grid.querySelector("#settingsPushBtn")?.addEventListener("click", registerPushNotifications);
     grid.querySelector("#settingsInstallBtn")?.addEventListener("click", installApp);
     grid.querySelector("#settingsLogoutBtn")?.addEventListener("click", () => el.logoutBtn?.click());
+    grid.querySelectorAll("[data-settings-screen]").forEach((button) => {
+      button.addEventListener("click", () => setScreen(button.dataset.settingsScreen));
+    });
   }
 
   function render() {
