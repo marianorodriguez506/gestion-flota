@@ -65,6 +65,7 @@
   let realtimeChannel = null;
   let modalCancelHandler = null;
   let reportMenuModalOpen = false;
+  let orderSheetModalOpen = false;
   let notificationsModalOpen = false;
   let notificationsModalResolve = null;
   let activeMapInstance = null;
@@ -1312,7 +1313,7 @@
     const slot = state.orderDraft.items.findIndex((row) => !row.page && !row.reference && !row.code && !row.description && !row.urgentQty && !row.stockQty);
     const index = slot >= 0 ? slot : Math.min(state.orderDraft.items.length - 1, 29);
     state.orderDraft.items[index] = normalizeOrderRow(item);
-    renderOrders();
+    refreshOrderEditor();
   }
 
   function filteredOrderHistory(query) {
@@ -1889,6 +1890,11 @@
 
   function closeModal() {
     if (!el.modalRoot) return;
+    if (orderSheetModalOpen) {
+      orderSheetModalOpen = false;
+      state.orderDraft = null;
+      state.orderDraftReadOnly = false;
+    }
     modalCancelHandler = null;
     reportMenuModalOpen = false;
     el.modalRoot.classList.add("hidden");
@@ -1897,7 +1903,7 @@
     el.modalBody.innerHTML = "";
     el.modalActions.innerHTML = "";
     el.modalActions.classList.remove("action-menu");
-    el.modalRoot.classList.remove("report-menu-modal", "notifications-modal");
+    el.modalRoot.classList.remove("report-menu-modal", "notifications-modal", "order-sheet-modal");
   }
 
   function cancelModal() {
@@ -3734,6 +3740,44 @@
     });
   }
 
+  function openOrderSheet(order = null, readOnly = false) {
+    state.orderDraft = orderDraftFromOrder(order);
+    state.orderDraftReadOnly = Boolean(readOnly);
+    orderSheetModalOpen = true;
+    refreshOrderEditor();
+  }
+
+  function closeOrderSheet() {
+    state.orderDraft = null;
+    state.orderDraftReadOnly = false;
+    if (orderSheetModalOpen) {
+      orderSheetModalOpen = false;
+      closeModal();
+      renderOrders();
+      return;
+    }
+    renderOrders();
+  }
+
+  function refreshOrderEditor() {
+    if (!orderSheetModalOpen) {
+      renderOrders();
+      return;
+    }
+    const editor = renderOrderEditor();
+    if (!editor) {
+      closeOrderSheet();
+      return;
+    }
+    el.modalRoot.classList.add("order-sheet-modal");
+    el.modalRoot.classList.remove("hidden");
+    el.modalRoot.setAttribute("aria-hidden", "false");
+    el.modalTitle.textContent = "";
+    el.modalActions.innerHTML = "";
+    el.modalBody.innerHTML = "";
+    el.modalBody.appendChild(editor);
+  }
+
   function renderOrders() {
     if (el.orderForm?.elements?.requester) fillSelect(el.orderForm.elements.requester, approvedWorkers());
     fillSelect(el.orderFilter, approvedWorkers(), { all: true });
@@ -3741,9 +3785,6 @@
     const equipmentFilter = normalizeEquipment(el.orderEquipmentFilter?.value || "");
     const destinationFilter = el.orderDestinationFilter?.value || "all";
     el.ordersList.innerHTML = "";
-
-    const editor = renderOrderEditor();
-    if (editor) el.ordersList.appendChild(editor);
 
     const rows = state.orders.filter((order) => {
       const matchesUser = selected === "all" || order.requesterId === selected;
@@ -3762,19 +3803,11 @@
       const items = filledOrderItems(order);
       const photoCount = normalizeReportPhotos(order.photos).length;
       const actions = [
-        button("Ver hoja", "secondary", () => {
-          state.orderDraft = orderDraftFromOrder(order);
-          state.orderDraftReadOnly = true;
-          renderOrders();
-        })
+        button("Ver hoja", "secondary", () => openOrderSheet(order, true))
       ];
 
       if (orderEditable(order)) {
-        actions.push(button("Editar", "primary", () => {
-          state.orderDraft = orderDraftFromOrder(order);
-          state.orderDraftReadOnly = false;
-          renderOrders();
-        }));
+        actions.push(button("Editar", "primary", () => openOrderSheet(order, false)));
         actions.push(button("Marcar pedido", "ok", async () => {
           await supabase.from("orders").update({ status: "Pedido" }).eq("id", order.id);
           await refreshAllData();
@@ -3867,9 +3900,7 @@
     equipmentInput.disabled = !canEdit;
     equipmentInput.addEventListener("input", (event) => { draft.equipment = normalizeEquipment(event.target.value); });
     section.querySelector("[data-order-cancel]").addEventListener("click", () => {
-      state.orderDraft = null;
-      state.orderDraftReadOnly = false;
-      renderOrders();
+      closeOrderSheet();
     });
     section.querySelector("[data-order-save]")?.addEventListener("click", () => saveOrderDraft(section));
     section.querySelector("[data-order-copy]").addEventListener("click", async () => copyOrder(draft));
@@ -4017,8 +4048,13 @@
       }
     }
     await createNotification(`Pedido de repuestos guardado para ${payload.equipment}`);
+    const wasOrderSheetModalOpen = orderSheetModalOpen;
     state.orderDraft = null;
     state.orderDraftReadOnly = false;
+    if (wasOrderSheetModalOpen) {
+      orderSheetModalOpen = false;
+      closeModal();
+    }
     await refreshAllData();
   }
 
@@ -5599,9 +5635,7 @@
   });
 
   el.newOrderBtn?.addEventListener("click", () => {
-    state.orderDraft = orderDraftFromOrder();
-    state.orderDraftReadOnly = false;
-    renderOrders();
+    openOrderSheet(null, false);
   });
   el.orderFilter.addEventListener("change", renderOrders);
   el.orderEquipmentFilter?.addEventListener("input", renderOrders);
