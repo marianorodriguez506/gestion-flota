@@ -1,4 +1,4 @@
-const CACHE_VERSION = "gestion-flota-pwa-v40";
+const CACHE_VERSION = "gestion-flota-pwa-v41";
 const APP_SHELL = [
   "/",
   "/index.html",
