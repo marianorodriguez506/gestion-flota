@@ -6050,3 +6050,259 @@ body.theme-cholo-light #usersBtn {
   .mobile-fab-report { position:fixed!important; right:20px!important; bottom:calc(84px + env(safe-area-inset-bottom))!important; z-index:69!important; width:auto!important; min-width:58px!important; height:58px!important; min-height:58px!important; padding:0 20px!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; border-radius:999px!important; font-size:28px!important; font-weight:300!important; }
   body:not(.logged-in) .mobile-fab-report, body[data-screen="auth"] .mobile-fab-report { display:none!important; }
 }
+
+/* Mobile reference hard fix v2 - overrides Cholo theme specificity. Keep last. */
+@media (max-width: 899px) {
+  body.logged-in,
+  body.theme-cholo.logged-in,
+  body.theme-cholo-light.logged-in,
+  body.theme-light.logged-in {
+    background: #f5f7fa !important;
+    color: #202124 !important;
+  }
+
+  body.logged-in .app,
+  body.theme-cholo.logged-in .app,
+  body.theme-cholo-light.logged-in .app,
+  body.theme-light.logged-in .app,
+  body.logged-in .app-shell,
+  body.theme-cholo.logged-in .app-shell,
+  body.theme-cholo-light.logged-in .app-shell,
+  body.theme-light.logged-in .app-shell {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    background: #f5f7fa !important;
+  }
+
+  body.logged-in .topbar,
+  body.theme-cholo.logged-in .topbar,
+  body.theme-cholo-light.logged-in .topbar,
+  body.theme-light.logged-in .topbar,
+  body[data-screen="home"].logged-in .topbar {
+    min-height: calc(76px + env(safe-area-inset-top)) !important;
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) 48px 58px !important;
+    align-items: end !important;
+    padding: calc(16px + env(safe-area-inset-top)) 12px 10px !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #1e88f5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(16, 24, 40, .22) !important;
+  }
+
+  body.logged-in #pushNotificationsBtn,
+  body.theme-cholo.logged-in #pushNotificationsBtn,
+  body.theme-cholo-light.logged-in #pushNotificationsBtn,
+  body.theme-light.logged-in #pushNotificationsBtn {
+    display: none !important;
+  }
+
+  body.logged-in #notificationsBtn,
+  body.theme-cholo.logged-in #notificationsBtn,
+  body.theme-cholo-light.logged-in #notificationsBtn,
+  body.theme-light.logged-in #notificationsBtn {
+    width: 48px !important;
+    min-width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    font-size: 0 !important;
+  }
+
+  body.logged-in #logoutBtn,
+  body.theme-cholo.logged-in #logoutBtn,
+  body.theme-cholo-light.logged-in #logoutBtn,
+  body.theme-light.logged-in #logoutBtn {
+    width: 58px !important;
+    min-width: 58px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    font-size: 14px !important;
+  }
+
+  body.logged-in .mobile-primary-action button,
+  body.theme-cholo.logged-in .mobile-primary-action button,
+  body.theme-cholo-light.logged-in .mobile-primary-action button,
+  body.theme-light.logged-in .mobile-primary-action button {
+    width: 100% !important;
+    min-height: 56px !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+    background: #1e88f5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(30, 136, 245, .25) !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+  }
+
+  body.logged-in .mobile-plan-card button,
+  body.theme-cholo.logged-in .mobile-plan-card button,
+  body.theme-cholo-light.logged-in .mobile-plan-card button,
+  body.theme-light.logged-in .mobile-plan-card button,
+  body.logged-in .mobile-work-card,
+  body.theme-cholo.logged-in .mobile-work-card,
+  body.theme-cholo-light.logged-in .mobile-work-card,
+  body.theme-light.logged-in .mobile-work-card,
+  body.logged-in .mobile-status-card,
+  body.theme-cholo.logged-in .mobile-status-card,
+  body.theme-cholo-light.logged-in .mobile-status-card,
+  body.theme-light.logged-in .mobile-status-card,
+  body.logged-in .mobile-secondary-shortcuts button,
+  body.theme-cholo.logged-in .mobile-secondary-shortcuts button,
+  body.theme-cholo-light.logged-in .mobile-secondary-shortcuts button,
+  body.theme-light.logged-in .mobile-secondary-shortcuts button,
+  body.logged-in .mobile-tools-panel > summary,
+  body.theme-cholo.logged-in .mobile-tools-panel > summary,
+  body.theme-cholo-light.logged-in .mobile-tools-panel > summary,
+  body.theme-light.logged-in .mobile-tools-panel > summary {
+    border: 1px solid #dde3e8 !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    color: #202124 !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 4px 14px rgba(16, 24, 40, .08) !important;
+  }
+
+  body.logged-in .mobile-plan-card strong,
+  body.theme-cholo.logged-in .mobile-plan-card strong,
+  body.theme-cholo-light.logged-in .mobile-plan-card strong,
+  body.theme-light.logged-in .mobile-plan-card strong,
+  body.logged-in .mobile-work-main strong,
+  body.theme-cholo.logged-in .mobile-work-main strong,
+  body.theme-cholo-light.logged-in .mobile-work-main strong,
+  body.theme-light.logged-in .mobile-work-main strong,
+  body.logged-in .mobile-section-title span,
+  body.theme-cholo.logged-in .mobile-section-title span,
+  body.theme-cholo-light.logged-in .mobile-section-title span,
+  body.theme-light.logged-in .mobile-section-title span {
+    color: #202124 !important;
+  }
+
+  body.logged-in .mobile-plan-card small,
+  body.theme-cholo.logged-in .mobile-plan-card small,
+  body.theme-cholo-light.logged-in .mobile-plan-card small,
+  body.theme-light.logged-in .mobile-plan-card small,
+  body.logged-in .mobile-work-main span,
+  body.theme-cholo.logged-in .mobile-work-main span,
+  body.theme-cholo-light.logged-in .mobile-work-main span,
+  body.theme-light.logged-in .mobile-work-main span,
+  body.logged-in .mobile-section-title,
+  body.theme-cholo.logged-in .mobile-section-title,
+  body.theme-cholo-light.logged-in .mobile-section-title,
+  body.theme-light.logged-in .mobile-section-title {
+    color: #667085 !important;
+  }
+
+  body.logged-in .mobile-bottom-nav,
+  body.theme-cholo.logged-in .mobile-bottom-nav,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav,
+  body.theme-light.logged-in .mobile-bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-height: calc(70px + env(safe-area-inset-bottom)) !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    padding: 6px 0 max(6px, env(safe-area-inset-bottom)) !important;
+    border: 0 !important;
+    border-top: 1px solid #dde3e8 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: 0 -2px 10px rgba(16, 24, 40, .08) !important;
+  }
+
+  body.logged-in .mobile-bottom-nav button,
+  body.theme-cholo.logged-in .mobile-bottom-nav button,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav button,
+  body.theme-light.logged-in .mobile-bottom-nav button {
+    min-height: 58px !important;
+    padding: 4px 2px !important;
+    display: grid !important;
+    grid-template-rows: 28px auto !important;
+    place-items: center !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #60717d !important;
+    box-shadow: none !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+  }
+
+  body.logged-in .mobile-bottom-nav button::before,
+  body.theme-cholo.logged-in .mobile-bottom-nav button::before,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav button::before,
+  body.theme-light.logged-in .mobile-bottom-nav button::before {
+    content: "" !important;
+    width: 24px !important;
+    height: 20px !important;
+    display: block !important;
+    margin: 0 auto 2px !important;
+    border: 2px solid currentColor !important;
+    border-radius: 5px !important;
+    background: transparent !important;
+    color: currentColor !important;
+    box-shadow: none !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+  }
+
+  body.logged-in .mobile-bottom-nav [data-mobile-more]::before,
+  body.theme-cholo.logged-in .mobile-bottom-nav [data-mobile-more]::before,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav [data-mobile-more]::before,
+  body.theme-light.logged-in .mobile-bottom-nav [data-mobile-more]::before {
+    width: 26px !important;
+    height: 4px !important;
+    margin-top: 9px !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: currentColor !important;
+    box-shadow: 0 -8px 0 currentColor, 0 8px 0 currentColor !important;
+  }
+
+  body.logged-in .mobile-bottom-nav button.active,
+  body.theme-cholo.logged-in .mobile-bottom-nav button.active,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav button.active,
+  body.theme-light.logged-in .mobile-bottom-nav button.active,
+  body.logged-in .mobile-bottom-nav button.active span,
+  body.theme-cholo.logged-in .mobile-bottom-nav button.active span,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav button.active span,
+  body.theme-light.logged-in .mobile-bottom-nav button.active span,
+  body.logged-in .mobile-bottom-nav button.active::before,
+  body.theme-cholo.logged-in .mobile-bottom-nav button.active::before,
+  body.theme-cholo-light.logged-in .mobile-bottom-nav button.active::before,
+  body.theme-light.logged-in .mobile-bottom-nav button.active::before {
+    color: #1e88f5 !important;
+  }
+
+  body.logged-in .mobile-fab-report,
+  body.theme-cholo.logged-in .mobile-fab-report,
+  body.theme-cholo-light.logged-in .mobile-fab-report,
+  body.theme-light.logged-in .mobile-fab-report {
+    right: 20px !important;
+    bottom: calc(84px + env(safe-area-inset-bottom)) !important;
+    width: 58px !important;
+    min-width: 58px !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: #1e88f5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(30, 136, 245, .25) !important;
+  }
+}
