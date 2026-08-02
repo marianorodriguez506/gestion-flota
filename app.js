@@ -1,9 +1,9 @@
-(function () {
+﻿(function () {
   const SPECIALTY_OPTIONS = [
-    { value: "mecanico-maquinaria-pesada", label: "Mecánico de maquinaria pesada" },
+    { value: "mecanico-maquinaria-pesada", label: "MecÃ¡nico de maquinaria pesada" },
     { value: "electricista", label: "Electricista" },
     { value: "soldador", label: "Soldador" },
-    { value: "mecanico-vehiculos-livianos", label: "Mecánico de vehículos livianos" }
+    { value: "mecanico-vehiculos-livianos", label: "MecÃ¡nico de vehÃ­culos livianos" }
   ];
 
   const EQUIPMENT_PREFIXES = ["MN", "TO", "TP", "CF", "PR", "RE", "CT", "CV", "CR", "CA", "RN", "RV", "SB", "ST", "CC", "CP", "GE", "CM", "CB", "PL", "CCH"];
@@ -17,7 +17,7 @@
       title: "Tareas",
       items: [
         { key: "myJobs", label: "Mis trabajos", default: true },
-        { key: "tomorrow", label: "Plan Mañana", default: true },
+        { key: "tomorrow", label: "Plan MaÃ±ana", default: true },
         { key: "doneTasks", label: "Tareas realizadas", default: true },
         { key: "mechanic", label: "Reportes nuevos", default: true }
       ]
@@ -50,22 +50,22 @@
   const PERMISSION_ITEMS = PERMISSION_GROUPS.flatMap((group) => group.items);
 
   const screens = {
-    auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesión" },
-    home: { id: "homeScreen", title: "Gestión de Flota", label: "Inicio" },
+    auth: { id: "authScreen", title: "Acceso", label: "Inicio de sesiÃ³n" },
+    home: { id: "homeScreen", title: "Taller", label: "Inicio" },
     immediate: { id: "immediateScreen", title: "Reporte inmediato", label: "Tablero" },
     myJobs: { id: "myJobsScreen", title: "Mis trabajos", label: "Asignados" },
-    tomorrow: { id: "tomorrowScreen", title: "Plan mañana", label: "Plan completo" },
-    mechanic: { id: "mechanicScreen", title: "Reportes nuevos", label: "Carga mecánica" },
+    tomorrow: { id: "tomorrowScreen", title: "Plan maÃ±ana", label: "Plan completo" },
+    mechanic: { id: "mechanicScreen", title: "Reportes nuevos", label: "Carga mecÃ¡nica" },
     doneTasks: { id: "doneTasksScreen", title: "Tareas realizadas", label: "Realizado" },
     baseEquipment: { id: "baseEquipmentScreen", title: "Equipos en base", label: "Base" },
     orders: { id: "ordersScreen", title: "Repuestos", label: "Pedidos" },
-    batteries: { id: "batteriesScreen", title: "Baterías", label: "Registro" },
+    batteries: { id: "batteriesScreen", title: "BaterÃ­as", label: "Registro" },
     history: { id: "historyScreen", title: "Historial de pedidos", label: "Consulta" },
-    fleet: { id: "fleetScreen", title: "Información de flota", label: "Equipos" },
+    fleet: { id: "fleetScreen", title: "InformaciÃ³n de flota", label: "Equipos" },
     operatives: { id: "operativesScreen", title: "Operativos", label: "Validado" },
     panel: { id: "panelScreen", title: "Panel", label: "Control" },
-    validations: { id: "validationsScreen", title: "Validaciones pendientes", label: "Revisión" },
-    users: { id: "usersScreen", title: "Gestión de Mecánicos", label: "Mecánicos" },
+    validations: { id: "validationsScreen", title: "Validaciones pendientes", label: "RevisiÃ³n" },
+    users: { id: "usersScreen", title: "GestiÃ³n de MecÃ¡nicos", label: "MecÃ¡nicos" },
     locations: { id: "locationsScreen", title: "Base de ubicaciones", label: "GPS" },
     activeMap: { id: "activeMapScreen", title: "Mapa de activos", label: "Mapa" },
     notifications: { id: "notificationsScreen", title: "Notificaciones", label: "Avisos" },
@@ -475,7 +475,7 @@
   }
 
   function isTechnicalObservation(report) {
-    return /observaci[oó]n t[eé]cnica/i.test(report.status || "") && !report.mechanicId;
+    return /observaci[oÃ³]n t[eÃ©]cnica/i.test(report.status || "") && !report.mechanicId;
   }
 
   function displayStatus(status) {
@@ -864,7 +864,7 @@
 
   function groupLocation(report) {
     const location = normalizeLocationText(report.location);
-    if (!location) return "SIN UBICACIÓN";
+    if (!location) return "SIN UBICACIÃ“N";
     const compact = location.replace(/\s+/g, "");
     if (compact.startsWith("AMO30")) return "AMO 30";
     if (compact.startsWith("LC344")) return "LC 344";
@@ -1075,7 +1075,7 @@
     if (!isAdmin()) return;
     const payload = await openLocationLinkModal("Cargar ubicacion por link");
     if (!payload) {
-      showToast("Pegá un link o coordenadas válidas y un nombre.");
+      showToast("PegÃ¡ un link o coordenadas vÃ¡lidas y un nombre.");
       return;
     }
     await saveLocationRecord(payload);
@@ -1089,7 +1089,7 @@
       link: `${item.latitude}, ${item.longitude}`
     });
     if (!payload) {
-      showToast("Pegá coordenadas válidas para guardar el cambio.");
+      showToast("PegÃ¡ coordenadas vÃ¡lidas para guardar el cambio.");
       return;
     }
     const { error } = await supabase.from("saved_locations").update({
@@ -1120,9 +1120,9 @@
   }
   function reportLine(report) {
     const mechanic = reportAssignedNames(report);
-    const hourmeter = report.hourmeter ? ` · Horómetro: ${report.hourmeter}` : "";
-    const repair = report.repairNote ? ` · Reparación: ${report.repairNote}` : "";
-    return `${report.location || "Sin ubicación"} · ${reportDeviationSummary(report)} · Mecánico: ${mechanic} · Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
+    const hourmeter = report.hourmeter ? ` Â· HorÃ³metro: ${report.hourmeter}` : "";
+    const repair = report.repairNote ? ` Â· ReparaciÃ³n: ${report.repairNote}` : "";
+    return `${report.location || "Sin ubicaciÃ³n"} Â· ${reportDeviationSummary(report)} Â· MecÃ¡nico: ${mechanic} Â· Fecha: ${report.planDate || state.planDate}${hourmeter}${repair}`;
   }
 
   function reportMeta(report) {
@@ -1145,7 +1145,7 @@
   }
 
   function isMechanicSheetReport(report) {
-    return /reporte mecanico/i.test(report?.location || "") || /observaci[oÃ³]n t[eÃ©]cnica/i.test(report?.status || "");
+    return /reporte mecanico/i.test(report?.location || "") || /observaci[oÃƒÂ³]n t[eÃƒÂ©]cnica/i.test(report?.status || "");
   }
 
   function isBaseChecklistReport(report) {
@@ -1257,7 +1257,7 @@
 
       const hint = document.createElement("p");
       hint.className = "hint";
-      hint.textContent = "Podés agregar fotos de referencia. No es obligatorio.";
+      hint.textContent = "PodÃ©s agregar fotos de referencia. No es obligatorio.";
 
       el.modalBody.appendChild(noteLabel);
       el.modalBody.appendChild(photoLabel);
@@ -1269,7 +1269,7 @@
       el.modalActions.appendChild(button("Guardar", "primary", async () => {
         const note = noteInput.value.trim();
         if (!note && !options.allowEmptyNote) {
-          showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
+          showToast("Para marcar la reparaciÃ³n, tenÃ©s que escribir quÃ© hiciste.");
           return;
         }
         const photos = await reportPhotosFromInput(photoInput);
@@ -1352,7 +1352,7 @@
       equipment: order?.equipment || "",
       requesterId: order?.requesterId || state.currentUser?.id || null,
       requesterName: order?.requesterName || state.currentUser?.name || "",
-      destination: order?.destination || "Añelo",
+      destination: order?.destination || "AÃ±elo",
       status: order?.status || "Incompleto",
       createdAt: order?.createdAt || new Date().toISOString(),
       photos: normalizeReportPhotos(order?.photos),
@@ -1589,11 +1589,11 @@
       "Ver historial",
       "Editar",
       "Asignar",
-      "Enviar a Plan Mañana",
-      "Quitar asignación",
+      "Enviar a Plan MaÃ±ana",
+      "Quitar asignaciÃ³n",
       "Validar operativo",
       "Validar y pasar a Operativos",
-      "Rechazar / requiere revisión",
+      "Rechazar / requiere revisiÃ³n",
       "Eliminar"
     ];
     return [...actions].sort((a, b) => {
@@ -1747,7 +1747,7 @@
     } catch (_error) {
       // Dejamos el aviso existente.
     }
-    showToast("No pude copiar automáticamente en este navegador.");
+    showToast("No pude copiar automÃ¡ticamente en este navegador.");
     return false;
   }
 
@@ -2247,7 +2247,7 @@
     }
 
     if (!updated || String(updated.mechanic_id || "") !== String(worker.id)) {
-      showToast("No se pudo confirmar la asignación. Volvé a intentar.");
+      showToast("No se pudo confirmar la asignaciÃ³n. VolvÃ© a intentar.");
       return;
     }
 
@@ -2360,7 +2360,7 @@
 
   async function chooseMechanicForReport(report) {
     const selected = await openChoiceModal(
-      "Asignar mecánico",
+      "Asignar mecÃ¡nico",
       availableWorkers(),
       (worker) => `
         <strong>${worker.name}</strong>
@@ -2488,22 +2488,22 @@
       name = "auth";
     }
 
-    // Leemos el rol del usuario que entró
+    // Leemos el rol del usuario que entrÃ³
     const role = state.currentUser ? state.currentUser.role : null;
     const isFullAdmin = role === "admin" || role === "administrador";
     const isAdmin2 = role === "admin2";
 
-    // 1. Los administradores (Jefe y Admi 2) no entran a "Mis trabajos" de mecánicos
+    // 1. Los administradores (Jefe y Admi 2) no entran a "Mis trabajos" de mecÃ¡nicos
     if (isLoggedIn() && (isFullAdmin || isAdmin2) && name === "myJobs") {
       name = "home";
     }
 
-    // 2. Los mecánicos comunes solo entran a lo que habilite el administrador.
+    // 2. Los mecÃ¡nicos comunes solo entran a lo que habilite el administrador.
     if (isLoggedIn() && !isFullAdmin && !isAdmin2 && !canAccessScreen(name)) {
       name = "home";
     }
 
-    // 3. LA REGLA DE ORO: Si es Admi 2 y quiere entrar a Gestión de Mecánicos ("users"), lo pateamos a "home"
+    // 3. LA REGLA DE ORO: Si es Admi 2 y quiere entrar a GestiÃ³n de MecÃ¡nicos ("users"), lo pateamos a "home"
     if (isLoggedIn() && isAdmin2 && name === "users") {
       name = "home";
     }
@@ -2562,7 +2562,7 @@
     el.rolePill.textContent = isAdmin() ? "Administrador" : "Trabajador";
     if (el.desktopUserName) el.desktopUserName.textContent = state.currentUser.name;
     if (el.desktopUserRole) el.desktopUserRole.textContent = isAdmin() ? "Administrador" : "Trabajador";
-    el.welcomeText.textContent = `Buen dia, ${state.currentUser.name}`;
+    el.welcomeText.textContent = `Hola, ${state.currentUser.name}`;
 
     document.querySelectorAll(".admin-only").forEach((node) => {
       node.classList.toggle("admin-disabled", !isAdmin());
@@ -2699,7 +2699,7 @@
           <span class="mobile-plan-icon">${mobileLineIcon("plan")}</span>
           <span>
             <strong>${isAdmin() ? "Plan de manana" : "Mis trabajos"}</strong>
-            <small>${plan.length} equipos · ${isAdmin() ? `${planWorkerCount} mecanicos` : "asignados"}</small>
+            <small>${plan.length} equipos Â· ${isAdmin() ? `${planWorkerCount} mecanicos` : "asignados"}</small>
           </span>
           <em>${isAdmin() ? "Ver planificacion" : "Ver trabajos"}</em>
         </button>
@@ -2933,7 +2933,7 @@
   function renderImmediate() {
     fillSelect(el.immediateForm.elements.mechanic, approvedWorkers(), { placeholder: "Sin asignar" });
 
-    // 1. Inyectamos el buscador de días dinámicamente
+    // 1. Inyectamos el buscador de dÃ­as dinÃ¡micamente
     let daysSearchContainer = document.getElementById("days-search-container");
     if (!daysSearchContainer) {
         daysSearchContainer = document.createElement("div");
@@ -2942,18 +2942,18 @@
         // Lo insertamos justo antes de la lista de reportes
         el.immediateList.parentNode.insertBefore(daysSearchContainer, el.immediateList);
         
-        // Cada vez que se escribe un número, redibujamos la lista
+        // Cada vez que se escribe un nÃºmero, redibujamos la lista
         document.getElementById("days-search-input").addEventListener("input", renderImmediate);
     }
 
     el.immediateList.innerHTML = "";
     const reports = visibleActiveReports();
     if (!reports.length) {
-      el.immediateList.appendChild(empty("Todavía no hay reportes inmediatos."));
+      el.immediateList.appendChild(empty("TodavÃ­a no hay reportes inmediatos."));
       return;
     }
 
-    // 2. Leemos el buscador de texto y nuestro nuevo buscador de días
+    // 2. Leemos el buscador de texto y nuestro nuevo buscador de dÃ­as
     const search = normalizeEquipment(el.activeReportSearch?.value || "").toLowerCase();
     const daysInput = document.getElementById("days-search-input")?.value;
     const maxDays = daysInput !== "" ? parseInt(daysInput, 10) : null;
@@ -2968,10 +2968,10 @@
                     reportDeviationSummary(report).toLowerCase().includes(search);
       }
 
-      // Chequeo matemático (Días de antigüedad)
+      // Chequeo matemÃ¡tico (DÃ­as de antigÃ¼edad)
       let matchDays = true;
       if (maxDays !== null && !isNaN(maxDays)) {
-        // "Si la antigüedad del reporte es menor o igual a lo que puso el usuario, mostralo"
+        // "Si la antigÃ¼edad del reporte es menor o igual a lo que puso el usuario, mostralo"
         matchDays = reportAgeDays(report) <= maxDays;
       }
 
@@ -2996,18 +2996,18 @@
           if (selected) await assignReportToWorkers(report, selected);
         }));
         actions.push(menuAction("Editar", "secondary", async () => editReport(report)));
-        actions.push(menuAction("Enviar a Plan Mañana", "secondary", async () => {
+        actions.push(menuAction("Enviar a Plan MaÃ±ana", "secondary", async () => {
           await updateReport(report.id, { plan_date: state.planDate });
-          await createNotification(`${report.equipment} enviado al Plan Mañana`);
+          await createNotification(`${report.equipment} enviado al Plan MaÃ±ana`);
           await refreshAllData();
         }));
         if (isOperativeInformedStatus(report.status)) {
           actions.push(menuAction("Validar y pasar a Operativos", "ok", async () => validateReport(report)));
-          actions.push(menuAction("Rechazar / requiere revisión", "secondary", async () => rejectReport(report)));
+          actions.push(menuAction("Rechazar / requiere revisiÃ³n", "secondary", async () => rejectReport(report)));
         } else {
           actions.push(menuAction("Validar operativo", "ok", async () => validateReport(report)));
         }
-        actions.push(menuAction("Quitar asignación", "secondary", async () => {
+        actions.push(menuAction("Quitar asignaciÃ³n", "secondary", async () => {
           await updateReport(report.id, { mechanic_id: null, mechanic_ids: [], plan_date: null });
           await refreshAllData();
         }));
@@ -3022,7 +3022,7 @@
     });
 
     if (!filteredReports.length) {
-      el.immediateList.appendChild(empty("No encontré reportes con ese filtro."));
+      el.immediateList.appendChild(empty("No encontrÃ© reportes con ese filtro."));
       return;
     }
 
@@ -3045,7 +3045,7 @@
     const workers = approvedWorkers().filter((worker) => workerAvailability(worker.id) !== "franco");
 
     if (!workers.length) {
-      el.tomorrowList.appendChild(empty("No hay mecánicos aprobados."));
+      el.tomorrowList.appendChild(empty("No hay mecÃ¡nicos aprobados."));
       return;
     }
 
@@ -3119,7 +3119,7 @@
     const removals = assignmentEntries.filter(([, change]) => !normalizeMechanicIds(change.mechanicIds, change.mechanicId).length);
     const projectedRows = projectedPlanRowsAfterDraft(draft);
     if (currentSavedPlanRows.length && !projectedRows.length && !draft.clearRequested) {
-      showToast("Bloqueado: Plan Mañana no puede quedar vacio salvo usando Limpiar hoja.");
+      showToast("Bloqueado: Plan MaÃ±ana no puede quedar vacio salvo usando Limpiar hoja.");
       return;
     }
     if (removals.length > 1 && currentSavedPlanRows.length && removals.length >= currentSavedPlanRows.length && !draft.clearRequested) {
@@ -3212,7 +3212,7 @@
     el.myJobsList.innerHTML = "";
     const own = myReports();
     if (!own.length) {
-      el.myJobsList.appendChild(empty("No tenés equipos asignados."));
+      el.myJobsList.appendChild(empty("No tenÃ©s equipos asignados."));
       return;
     }
     [
@@ -3302,11 +3302,11 @@
   async function markRepairDone(report) {
     const resolvedItem = await chooseDeviationToResolve(report);
     if (!resolvedItem) return;
-    const description = await openTextModal("Informar equipo operativo", "Qué reparación se realizó, repuestos usados, observaciones y horómetro final");
+    const description = await openTextModal("Informar equipo operativo", "QuÃ© reparaciÃ³n se realizÃ³, repuestos usados, observaciones y horÃ³metro final");
     if (description === null) return;
     const note = description.trim();
     if (!note) {
-      showToast("Para marcar la reparación, tenés que escribir qué hiciste.");
+      showToast("Para marcar la reparaciÃ³n, tenÃ©s que escribir quÃ© hiciste.");
       return;
     }
     const adminDirectValidation = isAdmin();
@@ -3340,7 +3340,7 @@
     await updateReport(report.id, updates);
     await createNotification(adminDirectValidation
       ? `${report.equipment} validado operativo por ${state.currentUser.name}: ${note}`
-      : `${state.currentUser.name} informó reparación realizada en ${report.equipment}: ${note}`);
+      : `${state.currentUser.name} informÃ³ reparaciÃ³n realizada en ${report.equipment}: ${note}`);
     await refreshAllData();
   }
 
@@ -3488,17 +3488,17 @@
     const history = regularEquipmentReports(report.equipment)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
       .map((item) => ({
-        label: `${formatDateTime(item.createdAt)} · ${displayStatus(item.status)}`,
-        value: `${item.deviation || "Sin falla"}${item.repairNote ? " · Reparación: " + item.repairNote : ""}`
+        label: `${formatDateTime(item.createdAt)} Â· ${displayStatus(item.status)}`,
+        value: `${item.deviation || "Sin falla"}${item.repairNote ? " Â· ReparaciÃ³n: " + item.repairNote : ""}`
       }));
     openInfoModal(`Historial ${report.equipment}`, history.length ? history : [{ label: "Historial", value: "Sin movimientos registrados." }]);
   }
 
   async function editReport(report) {
     if (!isAdmin()) return;
-    const location = await openTextModal("Editar ubicación", "Ubicación", report.location || "");
+    const location = await openTextModal("Editar ubicaciÃ³n", "UbicaciÃ³n", report.location || "");
     if (location === null) return;
-    const deviation = await openTextModal("Editar falla / desvío", "Falla / desvío", report.deviation || "");
+    const deviation = await openTextModal("Editar falla / desvÃ­o", "Falla / desvÃ­o", report.deviation || "");
     if (deviation === null) return;
     const status = await openTextModal("Editar estado", "Estado", displayStatus(report.status));
     if (status === null) return;
@@ -3512,18 +3512,18 @@
   }
 
   async function validateReport(report) {
-  // 1. Abrimos la misma ventanita de texto que usa el mecánico
+  // 1. Abrimos la misma ventanita de texto que usa el mecÃ¡nico
   const description = await openTextModal(
     `Validar ${report.equipment} a Operativo`, 
-    "Qué reparación se realizó (Dejalo en blanco si el mecánico ya lo informó)"
+    "QuÃ© reparaciÃ³n se realizÃ³ (Dejalo en blanco si el mecÃ¡nico ya lo informÃ³)"
   );
   
-  // Si apretás Cancelar, no hacemos nada
+  // Si apretÃ¡s Cancelar, no hacemos nada
   if (description === null) return; 
   
   const note = description.trim();
   
-  // 2. Preparamos los datos básicos de la validación
+  // 2. Preparamos los datos bÃ¡sicos de la validaciÃ³n
   const updates = {
     status: "Operativo validado",
     mechanic_id: null,
@@ -3533,7 +3533,7 @@
     validated_at: new Date().toISOString()
   };
 
-  // 3. Si escribiste algo, guardamos tus tareas como reparación
+  // 3. Si escribiste algo, guardamos tus tareas como reparaciÃ³n
   if (note) {
     updates.repair_note = note;
     updates.repaired_by = state.currentUser.name;
@@ -3545,7 +3545,7 @@
   // 4. Mandamos todo a la base de datos
   await updateReport(report.id, updates);
   
-  // 5. Creamos la notificación (con o sin el texto según lo que escribiste)
+  // 5. Creamos la notificaciÃ³n (con o sin el texto segÃºn lo que escribiste)
   const mensajeNoti = note 
     ? `${report.equipment} validado por ${state.currentUser.name}: ${note}`
     : `${report.equipment} validado operativo por ${state.currentUser.name}`;
@@ -3555,20 +3555,20 @@
 }
 
   async function rejectReport(report) {
-    const observation = await openTextModal("Rechazar revisión", "Observación para devolver el trabajo a revisión");
+    const observation = await openTextModal("Rechazar revisiÃ³n", "ObservaciÃ³n para devolver el trabajo a revisiÃ³n");
     if (observation === null) return;
     const nextStatus = report.previousStatus && report.previousStatus !== "PV" ? report.previousStatus : "FS";
     await updateReport(report.id, {
       status: nextStatus,
       repair_note: report.repairNote ? `${report.repairNote} | Rechazado: ${observation.trim()}` : `Rechazado: ${observation.trim()}`
     });
-    await createNotification(`${report.equipment} requiere revisión. ${observation.trim()}`);
+    await createNotification(`${report.equipment} requiere revisiÃ³n. ${observation.trim()}`);
     await refreshAllData();
   }
 
   function buildPlanText(workerId) {
     const workers = workerId ? approvedWorkers().filter((worker) => worker.id === workerId) : approvedWorkers();
-    const lines = [`PLAN MAÑANA - ${state.planDate}`, ""];
+    const lines = [`PLAN MAÃ‘ANA - ${state.planDate}`, ""];
     workers.forEach((worker) => {
       const reports = planReports().filter((report) => reportHasWorker(report, worker.id));
       lines.push(worker.name.toUpperCase());
@@ -3578,7 +3578,7 @@
         return;
       }
       reports.forEach((report) => {
-        lines.push(`${report.equipment} - ${report.location || "Sin ubicación"}`);
+        lines.push(`${report.equipment} - ${report.location || "Sin ubicaciÃ³n"}`);
         lines.push(report.deviation || "Sin detalle");
         lines.push(`Estado: ${displayStatus(report.status)}`);
         lines.push("");
@@ -3710,7 +3710,7 @@
           await refreshAllData();
         }));
         actions.push(button("Realizado", "ok", async () => {
-          const note = await openTextModal("Solucionar observación", "Qué se hizo");
+          const note = await openTextModal("Solucionar observaciÃ³n", "QuÃ© se hizo");
           if (note === null) return;
           await updateReport(row.id, {
             status: "Operativo validado",
@@ -3723,7 +3723,7 @@
           await refreshAllData();
         }));
       }
-      el.mechanicList.appendChild(card(row.equipment, row.status, `${row.deviation} · ${row.operationNote || "sin detalle"}`, actions));
+      el.mechanicList.appendChild(card(row.equipment, row.status, `${row.deviation} Â· ${row.operationNote || "sin detalle"}`, actions));
     });
   }
 
@@ -4069,7 +4069,7 @@
         }));
       }
 
-      const article = card(order.equipment || "Sin interno", traffic.label, `${order.requesterName} · ${order.destination || "Sin destino"} · ${items.length} repuestos · ${formatDateTime(order.createdAt)}`, actions);
+      const article = card(order.equipment || "Sin interno", traffic.label, `${order.requesterName} Â· ${order.destination || "Sin destino"} Â· ${items.length} repuestos Â· ${formatDateTime(order.createdAt)}`, actions);
       article.classList.add("order-card", `order-card-${traffic.className}`);
       el.ordersList.appendChild(article);
     });
@@ -4093,7 +4093,7 @@
         <label>Interno<input data-order-field="equipment" value="${draft.equipment}" placeholder="Ej.: CF-38"></label>
         <label>Solicitante<input value="${draft.requesterName}" disabled></label>
         <label>Fecha<input value="${formatDateTime(draft.createdAt)}" disabled></label>
-        <label>Destino<select data-order-field="destination"><option>Añelo</option><option>Plottier</option></select></label>
+        <label>Destino<select data-order-field="destination"><option>AÃ±elo</option><option>Plottier</option></select></label>
       </div>
       <label class="order-photo-input ${canEdit ? "" : "hidden"}">
         <span>Agregar fotos del repuesto</span>
@@ -4103,14 +4103,14 @@
       ${!canEdit && normalizeReportPhotos(draft.photos).length ? `<p class="hint">Fotos actuales: ${normalizeReportPhotos(draft.photos).length}. Usa el boton Fotos del pedido para verlas.</p>` : ""}
       <div class="sheet-wrap">
         <table class="order-sheet">
-          <thead><tr><th>Pag.</th><th>Referencia</th><th>Código</th><th>Descripción</th><th>Cant. urgente</th><th>Cant. stock</th></tr></thead>
+          <thead><tr><th>Pag.</th><th>Referencia</th><th>CÃ³digo</th><th>DescripciÃ³n</th><th>Cant. urgente</th><th>Cant. stock</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
       <section class="order-history-block">
         <div class="order-history-head">
           <h3>Historial</h3>
-          <input data-history-filter type="text" placeholder="Filtrar por palabra clave o código">
+          <input data-history-filter type="text" placeholder="Filtrar por palabra clave o cÃ³digo">
         </div>
         <p class="hint" data-history-help></p>
         <div class="order-history-results"></div>
@@ -4125,7 +4125,7 @@
     if (existingGallery) section.appendChild(existingGallery);
 
     const destination = section.querySelector('[data-order-field="destination"]');
-    destination.value = draft.destination || "Añelo";
+    destination.value = draft.destination || "AÃ±elo";
     destination.disabled = !canEdit;
     destination.addEventListener("change", (event) => { draft.destination = event.target.value; });
     const equipmentInput = section.querySelector('[data-order-field="equipment"]');
@@ -4140,7 +4140,7 @@
     const tbody = section.querySelector("tbody");
     draft.items.forEach((item, index) => {
       const tr = document.createElement("tr");
-      [["page", "Pag."], ["reference", "Referencia"], ["code", "Código"], ["description", "Descripción"], ["urgentQty", "Urg."], ["stockQty", "Stock"]].forEach(([key, label]) => {
+      [["page", "Pag."], ["reference", "Referencia"], ["code", "CÃ³digo"], ["description", "DescripciÃ³n"], ["urgentQty", "Urg."], ["stockQty", "Stock"]].forEach(([key, label]) => {
         const td = document.createElement("td");
         const input = document.createElement("input");
         input.value = item[key] || "";
@@ -4171,8 +4171,8 @@
         const row = document.createElement("div");
         row.className = "history-row";
         row.innerHTML = `<div><strong></strong><span></span></div><small></small><button type="button" class="secondary">Agregar</button>`;
-        row.querySelector("strong").textContent = item.code || "Sin código";
-        row.querySelector("span").textContent = item.description || "Sin descripción";
+        row.querySelector("strong").textContent = item.code || "Sin cÃ³digo";
+        row.querySelector("span").textContent = item.description || "Sin descripciÃ³n";
         row.querySelector("small").textContent = `${item.times} veces`;
         const addButton = row.querySelector("button");
         addButton.disabled = !canEdit;
@@ -4234,7 +4234,7 @@
       requester_name: draft.requesterName || state.currentUser.name,
       need: orderNeedFromItems(filledItems),
       status: traffic.status,
-      destination: draft.destination || "Añelo",
+      destination: draft.destination || "AÃ±elo",
       items: filledItems,
       photos,
       whatsapp_text: generateOrderWhatsAppText({ ...draft, items: filledItems, status: traffic.status }),
@@ -4242,7 +4242,7 @@
     };
 
     if (!payload.equipment) {
-      showToast("Cargá el interno antes de guardar.");
+      showToast("CargÃ¡ el interno antes de guardar.");
       return;
     }
 
@@ -4308,7 +4308,7 @@
       if (!rows.length) return;
       lines.push(title);
       rows.forEach((item) => {
-        lines.push(`- Pag ${item.page || "s/d"} | Ref ${item.reference || "s/d"} | ${item.code || "s/c"} | ${item.description || "Sin descripción"} | Cant: ${item[qtyKey]}`);
+        lines.push(`- Pag ${item.page || "s/d"} | Ref ${item.reference || "s/d"} | ${item.code || "s/c"} | ${item.description || "Sin descripciÃ³n"} | Cant: ${item[qtyKey]}`);
       });
       lines.push("");
     };
@@ -4326,7 +4326,7 @@
   function renderHistory() {
     el.historyList.innerHTML = "";
     if (!state.orders.length) {
-      el.historyList.appendChild(empty("El historial está vacío."));
+      el.historyList.appendChild(empty("El historial estÃ¡ vacÃ­o."));
       return;
     }
     state.orders.forEach((order) => {
@@ -4342,7 +4342,7 @@
   }
 
   function batteryMechanicName(record) {
-    return record.mechanicName || workerName(record.mechanicId) || "Sin mecánico";
+    return record.mechanicName || workerName(record.mechanicId) || "Sin mecÃ¡nico";
   }
 
   function populateBatteryMechanics() {
@@ -4351,7 +4351,7 @@
     if (formMechanic) {
       if (isAdmin()) {
         formMechanic.disabled = false;
-        fillSelect(formMechanic, workers, { placeholder: "Mecánico que la coloca" });
+        fillSelect(formMechanic, workers, { placeholder: "MecÃ¡nico que la coloca" });
       } else {
         fillSelect(formMechanic, state.currentUser ? [state.currentUser] : [], {});
         formMechanic.value = state.currentUser?.id || "";
@@ -4378,12 +4378,12 @@
 
   async function editBatteryRecord(record) {
     if (!isAdmin()) return;
-    el.modalTitle.textContent = `Editar batería ${record.equipment}`;
+    el.modalTitle.textContent = `Editar baterÃ­a ${record.equipment}`;
     el.modalBody.innerHTML = `
       <form id="batteryEditForm" class="form-grid">
         <input name="equipment" placeholder="Interno / equipo" required>
         <select name="mechanic" required></select>
-        <input name="batteries" placeholder="Baterías colocadas" required>
+        <input name="batteries" placeholder="BaterÃ­as colocadas" required>
         <input name="quantity" type="number" min="1" step="1" required>
         <select name="condition" required>
           <option value="Nueva">Nueva</option>
@@ -4397,7 +4397,7 @@
     el.modalRoot.setAttribute("aria-hidden", "false");
 
     const form = el.modalBody.querySelector("#batteryEditForm");
-    fillSelect(form.elements.mechanic, approvedWorkers(), { placeholder: "Mecánico que la coloca" });
+    fillSelect(form.elements.mechanic, approvedWorkers(), { placeholder: "MecÃ¡nico que la coloca" });
     form.elements.equipment.value = record.equipment || "";
     form.elements.mechanic.value = record.mechanicId || "";
     form.elements.batteries.value = record.batteries || "";
@@ -4413,22 +4413,22 @@
         updated_at: new Date().toISOString()
       }).eq("id", record.id);
       if (error) {
-        showToast("No se pudo editar batería: " + error.message);
+        showToast("No se pudo editar baterÃ­a: " + error.message);
         return;
       }
       closeModal();
       await refreshAllData();
-      showToast("Registro de batería actualizado.");
+      showToast("Registro de baterÃ­a actualizado.");
     }));
   }
 
   async function deleteBatteryRecord(record) {
     if (!isAdmin()) return;
-    const ok = await openConfirmModal("Eliminar registro de batería", `Eliminar el registro de ${record.equipment}?`, "Eliminar");
+    const ok = await openConfirmModal("Eliminar registro de baterÃ­a", `Eliminar el registro de ${record.equipment}?`, "Eliminar");
     if (!ok) return;
     const { error } = await supabase.from("battery_records").delete().eq("id", record.id);
     if (error) {
-      showToast("No se pudo eliminar batería: " + error.message);
+      showToast("No se pudo eliminar baterÃ­a: " + error.message);
       return;
     }
     await refreshAllData();
@@ -4464,16 +4464,16 @@
       .sort((a, b) => String(b.installedAt || b.createdAt).localeCompare(String(a.installedAt || a.createdAt)));
 
     if (!rows.length) {
-      el.batteriesList.appendChild(empty("No hay registros de baterías con esos filtros."));
+      el.batteriesList.appendChild(empty("No hay registros de baterÃ­as con esos filtros."));
       return;
     }
 
     rows.forEach((record) => {
       const actions = [
-        button("Ver detalle", "secondary", () => openInfoModal(`Baterías ${record.equipment}`, [
+        button("Ver detalle", "secondary", () => openInfoModal(`BaterÃ­as ${record.equipment}`, [
           { label: "Interno", value: record.equipment },
-          { label: "Mecánico", value: batteryMechanicName(record) },
-          { label: "Baterías", value: record.batteries },
+          { label: "MecÃ¡nico", value: batteryMechanicName(record) },
+          { label: "BaterÃ­as", value: record.batteries },
           { label: "Cantidad", value: record.quantity },
           { label: "Estado", value: record.condition },
           { label: "Fecha", value: record.installedAt || "Sin fecha" },
@@ -4486,8 +4486,8 @@
       }
       el.batteriesList.appendChild(card(
         record.equipment || "Sin interno",
-        `${record.condition} · ${record.quantity} batería${record.quantity === 1 ? "" : "s"}`,
-        `${batteryMechanicName(record)} · ${record.batteries} · ${record.installedAt || "Sin fecha"}`,
+        `${record.condition} Â· ${record.quantity} baterÃ­a${record.quantity === 1 ? "" : "s"}`,
+        `${batteryMechanicName(record)} Â· ${record.batteries} Â· ${record.installedAt || "Sin fecha"}`,
         actions
       ));
     });
@@ -4500,7 +4500,7 @@
         searchContainer = document.createElement("div");
         searchContainer.id = "fleet-search-container";
         // Le damos estilo oscuro para que combine con tu panel
-        searchContainer.innerHTML = `<input type="text" id="fleet-search-input" class="fleet-search-input" placeholder="🔍 Buscar por interno, pieza o nota...">`;
+        searchContainer.innerHTML = `<input type="text" id="fleet-search-input" class="fleet-search-input" placeholder="ðŸ” Buscar por interno, pieza o nota...">`;
         
         // Lo insertamos justo arriba de la lista de flota
         el.fleetList.parentNode.insertBefore(searchContainer, el.fleetList);
@@ -4517,10 +4517,10 @@
       return;
     }
 
-    // 3. Leemos qué escribió el usuario en el buscador
+    // 3. Leemos quÃ© escribiÃ³ el usuario en el buscador
     const query = document.getElementById("fleet-search-input").value.toLowerCase();
 
-    // 4. Filtramos la flota y la ordenamos alfanuméricamente
+    // 4. Filtramos la flota y la ordenamos alfanumÃ©ricamente
     const filteredAndSortedFleet = [...state.fleet]
       .filter((item) => {
          // Buscamos coincidencia en el nombre, las partes o las notas
@@ -4535,7 +4535,7 @@
 
     // 5. Si el filtro no encuentra nada, avisamos
     if (!filteredAndSortedFleet.length) {
-      el.fleetList.appendChild(empty("No se encontraron equipos con esa búsqueda."));
+      el.fleetList.appendChild(empty("No se encontraron equipos con esa bÃºsqueda."));
       return;
     }
 
@@ -4556,7 +4556,7 @@
         { label: "Pedidos", value: relatedOrders(item.equipment).length },
         { label: "Historial", value: regularEquipmentReports(item.equipment).length }
       ])));
-      el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " · " + item.notes : ""}`, actions));
+      el.fleetList.appendChild(card(item.equipment, "Flota", `${item.parts}${item.notes ? " Â· " + item.notes : ""}`, actions));
     });
 }
 
@@ -4568,17 +4568,17 @@
       return;
     }
     
-    // Filtramos los validados y los ORDENAMOS por fecha (el más nuevo arriba)
+    // Filtramos los validados y los ORDENAMOS por fecha (el mÃ¡s nuevo arriba)
     const rows = state.reports
       .filter((report) => report.status === "Operativo validado")
       .sort((a, b) => {
         const dateA = new Date(a.validatedAt || a.created_at || 0).getTime();
         const dateB = new Date(b.validatedAt || b.created_at || 0).getTime();
-        return dateB - dateA; // Orden descendente (más nuevo a más viejo)
+        return dateB - dateA; // Orden descendente (mÃ¡s nuevo a mÃ¡s viejo)
       });
 
     if (!rows.length) {
-      el.operativesList.appendChild(empty("Todavía no hay equipos validados como operativos."));
+      el.operativesList.appendChild(empty("TodavÃ­a no hay equipos validados como operativos."));
       return;
     }
     
@@ -4586,7 +4586,7 @@
       el.operativesList.appendChild(card(
         report.equipment,
         "Operativo",
-        `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · Validó: ${report.validatedBy || "sin dato"}${report.validatedAt ? " · " + formatDateTime(report.validatedAt) : ""}`,
+        `${report.location || "Sin ubicaciÃ³n"} Â· ${report.deviation || "Sin falla"} Â· ReparÃ³: ${report.repairedBy || report.operatedBy || "sin dato"} Â· ValidÃ³: ${report.validatedBy || "sin dato"}${report.validatedAt ? " Â· " + formatDateTime(report.validatedAt) : ""}`,
         [
           button("Ver detalles", "secondary", () => showReportDetails(report)),
           button("Ver historial", "secondary", () => showReportHistory(report)),
@@ -4610,7 +4610,7 @@
       return;
     }
     rows.forEach((report) => {
-      el.validationsList.appendChild(card(report.equipment, "Operativo informado", `${report.location || "Sin ubicación"} · ${report.deviation || "Sin falla"} · Reparó: ${report.repairedBy || report.operatedBy || "sin dato"} · ${report.repairNote || "Sin detalle de reparación"}`, [
+      el.validationsList.appendChild(card(report.equipment, "Operativo informado", `${report.location || "Sin ubicaciÃ³n"} Â· ${report.deviation || "Sin falla"} Â· ReparÃ³: ${report.repairedBy || report.operatedBy || "sin dato"} Â· ${report.repairNote || "Sin detalle de reparaciÃ³n"}`, [
         button("Ver detalles", "secondary", () => showReportDetails(report)),
         button("Validar operativo", "ok", async () => validateReport(report)),
         button("Devolver a Reportes activos", "secondary", async () => rejectReport(report)),
@@ -4640,7 +4640,7 @@
       ["Operativos validados", state.reports.filter((report) => report.status === "Operativo validado").length],
       ["Pedidos pendientes", ordersPending.length],
       ["Equipos de flota", state.fleet.length],
-      ["Mecánicos activos", approvedWorkers().length]
+      ["MecÃ¡nicos activos", approvedWorkers().length]
     ].forEach(([label, value]) => {
       const node = document.createElement("article");
       node.className = "stat-card";
@@ -4796,8 +4796,8 @@
       }
       let roleLabel = (user.role === "admin" || user.role === "administrador") ? "Administrador" : (user.role === "admin2") ? "Admi 2" : "Trabajador";
       const statusLabel = user.status === "pendiente" ? "Pendiente" : user.status === "aprobado" ? "Aprobado" : user.status === "rechazado" ? "Rechazado" : "Aprobado";
-      const details = `Usuario: ${user.username} · Especialidad: ${specialtyLabel(user.specialty)} · Aprobación: ${statusLabel} · Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
-      el.usersList.appendChild(card(user.name, roleLabel, `${details} Â· ${permissionSummary(user)}`, actions));
+      const details = `Usuario: ${user.username} Â· Especialidad: ${specialtyLabel(user.specialty)} Â· AprobaciÃ³n: ${statusLabel} Â· Estado: ${user.accountStatus === "inactivo" ? "Inactivo" : "Activo"}`;
+      el.usersList.appendChild(card(user.name, roleLabel, `${details} Ã‚Â· ${permissionSummary(user)}`, actions));
     });
   }
 
@@ -5048,7 +5048,7 @@
       return;
     }
     state.notifications.forEach((item) => {
-      el.notificationsList.appendChild(card(item.at, item.read ? "Leída" : "Nueva", item.text, []));
+      el.notificationsList.appendChild(card(item.at, item.read ? "LeÃ­da" : "Nueva", item.text, []));
     });
   }
 
@@ -5120,7 +5120,7 @@
         <label class="settings-tile settings-select-tile" for="settingsThemeSelect">
           <span>Apariencia</span>
           <strong>${themeLabel}</strong>
-          <small>ElegÃ­ oscuro, claro, Cholo Pro o Cholo Claro</small>
+          <small>ElegÃƒÂ­ oscuro, claro, Cholo Pro o Cholo Claro</small>
           <select id="settingsThemeSelect">
             <option value="dark"${theme === "dark" ? " selected" : ""}>Oscuro</option>
             <option value="light"${theme === "light" ? " selected" : ""}>Claro</option>
@@ -5132,10 +5132,10 @@
       `
         <label class="settings-tile settings-select-tile" for="settingsLanguageSelect">
           <span>Idioma</span>
-          <strong>${language === "en" ? "English" : "Español"}</strong>
+          <strong>${language === "en" ? "English" : "EspaÃ±ol"}</strong>
           <small>Base preparada para traducir la app</small>
           <select id="settingsLanguageSelect">
-            <option value="es"${language === "es" ? " selected" : ""}>Español</option>
+            <option value="es"${language === "es" ? " selected" : ""}>EspaÃ±ol</option>
             <option value="en"${language === "en" ? " selected" : ""}>English</option>
           </select>
         </label>
@@ -5208,7 +5208,7 @@
     grid.querySelector("#settingsLanguageSelect")?.addEventListener("change", (event) => {
       savePreferences({ language: event.target.value });
       renderSettings();
-      showToast(event.target.value === "en" ? "Idioma guardado: English." : "Idioma guardado: Español.");
+      showToast(event.target.value === "en" ? "Idioma guardado: English." : "Idioma guardado: EspaÃ±ol.");
     });
     grid.querySelector("#settingsPushBtn")?.addEventListener("click", togglePushNotifications);
     grid.querySelector("#settingsInstallBtn")?.addEventListener("click", installApp);
@@ -5345,11 +5345,11 @@
 
   function playNotificationSound() {
     try {
-      // Usamos un sonido de notificación corto y profesional
+      // Usamos un sonido de notificaciÃ³n corto y profesional
       const audio = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3");
       audio.play();
     } catch (e) {
-      console.log("El navegador bloqueó el sonido automático");
+      console.log("El navegador bloqueÃ³ el sonido automÃ¡tico");
     }
   }
 
@@ -5479,7 +5479,7 @@
       }
       showToast("Alertas silenciadas en este dispositivo.");
     } catch (_error) {
-      showToast("Alertas silenciadas. Si alguna queda activa, cerrá y abrí la app.");
+      showToast("Alertas silenciadas. Si alguna queda activa, cerrÃ¡ y abrÃ­ la app.");
     } finally {
       updatePushNotificationsButton();
       if (activeScreen === "settings") renderSettings();
@@ -5527,14 +5527,14 @@
     const allowPlanClear = Boolean(cleanUpdates.__allowPlanClear);
     delete cleanUpdates.__allowPlanClear;
     if (!allowPlanClear && wouldClearLastPlanAssignment(id, cleanUpdates)) {
-      const error = new Error("Bloqueado: Plan Mañana no puede quedar vacio salvo usando Limpiar hoja.");
+      const error = new Error("Bloqueado: Plan MaÃ±ana no puede quedar vacio salvo usando Limpiar hoja.");
       showToast(error.message);
       throw error;
     }
     const token = await getSessionToken();
     if (!token) {
       const error = new Error("Sesion requerida.");
-      showToast("Volvé a iniciar sesión.");
+      showToast("VolvÃ© a iniciar sesiÃ³n.");
       throw error;
     }
 
@@ -5570,13 +5570,13 @@
     registerServiceWorker();
 
     if (!supabase) {
-      el.loginError.textContent = "Falta cargar Supabase. Revisá supabase-config.js.";
+      el.loginError.textContent = "Falta cargar Supabase. RevisÃ¡ supabase-config.js.";
       setScreen("auth", { replaceHistory: true });
       return;
     }
 
     if (!config.url || !config.anonKey || config.url.includes("your-project") || config.anonKey.includes("your-anon")) {
-      el.loginError.textContent = "Configurá los valores de Supabase en supabase-config.js antes de usar la app.";
+      el.loginError.textContent = "ConfigurÃ¡ los valores de Supabase en supabase-config.js antes de usar la app.";
       setScreen("auth", { replaceHistory: true });
       return;
     }
@@ -5901,19 +5901,19 @@
     // Armamos un solo texto con todo para que la base de datos no se queje
     let fallaCompleta = `${fallaOriginal} | Prioridad: ${prioridad}`;
     if (notas) fallaCompleta += ` | Obs: ${notas}`;
-    if (valorHorometro) fallaCompleta += ` | Horómetro: ${valorHorometro}`;
+    if (valorHorometro) fallaCompleta += ` | HorÃ³metro: ${valorHorometro}`;
     
     const report = {
       id: uid(),
       equipment: normalizeEquipment(form.get("equipment")),
-      location: form.get("location")?.trim() || "Sin ubicación",
+      location: form.get("location")?.trim() || "Sin ubicaciÃ³n",
       deviation: fallaCompleta,
       status: form.get("status") || "Pendiente",
       mechanic_id: form.get("mechanic") || null,
       mechanic_ids: form.get("mechanic") ? [form.get("mechanic")] : [],
       created_at: new Date().toISOString(),
       created_by: state.currentUser.id
-      // Fijate que acá borramos por completo la línea de "hourmeter"
+      // Fijate que acÃ¡ borramos por completo la lÃ­nea de "hourmeter"
     };
 
     try {
@@ -5939,7 +5939,7 @@
       el.immediateForm.reset();
       if (el.reportPaste) el.reportPaste.value = "";
       
-      showToast("¡Reporte guardado con éxito!");
+      showToast("Â¡Reporte guardado con Ã©xito!");
       
     } catch (error) {
       console.error("Error inesperado:", error);
@@ -5947,12 +5947,12 @@
     }
   });
 
-  // 2. BOTÓN DE WHATSAPP (Procesa el texto y dispara el formulario de arriba)
+  // 2. BOTÃ“N DE WHATSAPP (Procesa el texto y dispara el formulario de arriba)
   el.processReportBtn?.addEventListener("click", () => {
     const texto = el.reportPaste.value.trim();
 
     if (!texto) {
-      showToast("Pegá primero un reporte.");
+      showToast("PegÃ¡ primero un reporte.");
       return;
     }
 
@@ -5966,11 +5966,11 @@
       return;
     }
 
-    // 2. DETECTAR UBICACIÓN (Súper flexible: acepta "Ubicacio", "Ubicació", "Ubi", "Ubic", etc.)
-    const regexUbicacion = /(?:ubicaci[oóu]n?|ubicasio?n?|ubcacio?n?|ubica|ub|ubi|lugar|sector|zona)[\s*:-]*([^\n\r]+)/i;
+    // 2. DETECTAR UBICACIÃ“N (SÃºper flexible: acepta "Ubicacio", "UbicaciÃ³", "Ubi", "Ubic", etc.)
+    const regexUbicacion = /(?:ubicaci[oÃ³u]n?|ubicasio?n?|ubcacio?n?|ubica|ub|ubi|lugar|sector|zona)[\s*:-]*([^\n\r]+)/i;
     const ubicacionEncontrada = texto.match(regexUbicacion);
     const ubicacionManual = el.immediateForm.elements.location?.value?.trim();
-    let ubicacion = "Sin ubicación";
+    let ubicacion = "Sin ubicaciÃ³n";
 
     if (ubicacionEncontrada) {
       ubicacion = ubicacionEncontrada[1].trim().replace(/[.,]+$/, "");
@@ -5980,7 +5980,7 @@
 
     // 3. DETECTAR FALLA
     const fallaEncontrada = texto.match(
-      /(?:falla(?:\s+detectada)?|desv[ií]o|detalle|problema)[\s*:-]*([\s\S]*?)(?=\n\s*(?:estado|obs\.?|observaci[oó]n|adjuntar|ubicaci[oó]n|lugar)\s*:|$)/i
+      /(?:falla(?:\s+detectada)?|desv[iÃ­]o|detalle|problema)[\s*:-]*([\s\S]*?)(?=\n\s*(?:estado|obs\.?|observaci[oÃ³]n|adjuntar|ubicaci[oÃ³]n|lugar)\s*:|$)/i
     );
     const fallaManual = el.immediateForm.elements.deviation?.value?.trim();
     const falla = fallaEncontrada 
@@ -6013,7 +6013,7 @@
       el.immediateForm.elements.status.value = estado;
     }
 
-    // Dispara el guardado automáticamente
+    // Dispara el guardado automÃ¡ticamente
     el.immediateForm.requestSubmit();
   });
 
@@ -6181,7 +6181,7 @@
     if (!state.currentUser) return;
     const payload = batteryPayloadFromForm(el.batteryForm);
     if (!payload.equipment || !payload.batteries || !payload.mechanic_id) {
-      showToast("Completa interno, mecánico y baterías.");
+      showToast("Completa interno, mecÃ¡nico y baterÃ­as.");
       return;
     }
     const { error } = await supabase.from("battery_records").insert({
@@ -6191,13 +6191,13 @@
       created_at: new Date().toISOString()
     });
     if (error) {
-      showToast("No se pudo guardar batería: " + error.message);
+      showToast("No se pudo guardar baterÃ­a: " + error.message);
       return;
     }
     el.batteryForm.reset();
     if (el.batteryForm.elements.date) el.batteryForm.elements.date.value = new Date().toISOString().slice(0, 10);
     await refreshAllData();
-    showToast("Registro de batería guardado.");
+    showToast("Registro de baterÃ­a guardado.");
   });
 
   el.fleetForm.addEventListener("submit", async (event) => {
@@ -6223,13 +6223,13 @@
     const password = form.get("password").trim();
     const specialtyInput = form.get("specialty").trim();
 
-    // 1. Verificamos que TODOS los campos estén llenos
+    // 1. Verificamos que TODOS los campos estÃ©n llenos
     if (!name || !username || !password || !specialtyInput) {
       el.userFeedback.textContent = "Completa nombre, usuario, contrasena y especialidad.";
       return;
     }
 
-    // 2. Si pasó, recién ahí definimos los roles
+    // 2. Si pasÃ³, reciÃ©n ahÃ­ definimos los roles
   const role = (specialtyInput === "admin2") ? "admin2" : "mecanico";
     const specialty = (specialtyInput === "admin2") ? "Administracion" : specialtyInput;
     const accountStatus = "activo";
@@ -6238,7 +6238,7 @@
     const sessionResult = await supabase.auth.getSession();
     const token = sessionResult.data?.session?.access_token;
     if (!token) {
-      el.userFeedback.textContent = "Volvé a iniciar sesión como administrador.";
+      el.userFeedback.textContent = "VolvÃ© a iniciar sesiÃ³n como administrador.";
       return;
     }
 
@@ -6258,11 +6258,11 @@
 
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      el.userFeedback.textContent = result.error || "No se pudo crear el mecánico.";
+      el.userFeedback.textContent = result.error || "No se pudo crear el mecÃ¡nico.";
       return;
     }
 
-    el.userFeedback.textContent = `Usuario creado: ${username}. Entra con usuario y contraseña, sin correo.`;
+    el.userFeedback.textContent = `Usuario creado: ${username}. Entra con usuario y contraseÃ±a, sin correo.`;
     el.userForm.reset();
     await refreshAllData();
   });
@@ -6288,25 +6288,25 @@
     const password = form.get("password").trim();
 
     if (!usuario || !password) {
-  el.loginError.textContent = "Ingresá usuario y contraseña.";
+  el.loginError.textContent = "IngresÃ¡ usuario y contraseÃ±a.";
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      el.loginError.textContent = "Usuario o contraseña incorrectos.";
+      el.loginError.textContent = "Usuario o contraseÃ±a incorrectos.";
       return;
     }
 
     await loadCurrentUser(data.user.id);
     if (!state.currentUser || state.currentUser.status !== "aprobado") {
-      el.loginError.textContent = "Tu cuenta está pendiente de aprobación.";
+      el.loginError.textContent = "Tu cuenta estÃ¡ pendiente de aprobaciÃ³n.";
       await supabase.auth.signOut();
       state.currentUser = null;
       return;
     }
 
     if (state.currentUser.accountStatus === "inactivo") {
-      el.loginError.textContent = "Tu usuario está inactivo. Consultá al administrador.";
+      el.loginError.textContent = "Tu usuario estÃ¡ inactivo. ConsultÃ¡ al administrador.";
       await supabase.auth.signOut();
       state.currentUser = null;
       return;
@@ -6319,7 +6319,7 @@
 
   el.registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    el.registerFeedback.textContent = "Las cuentas las crea el administrador desde Gestión de mecánicos.";
+    el.registerFeedback.textContent = "Las cuentas las crea el administrador desde GestiÃ³n de mecÃ¡nicos.";
   });
 
   el.activeReportSearch?.addEventListener("input", () => {
@@ -6340,7 +6340,7 @@ if (false && supabase) supabase
     'postgres_changes', 
     { event: '*', schema: 'public', table: 'reports' }, 
     (payload) => {
-      console.log('¡Cambio en reportes detectado en tiempo real!');
+      console.log('Â¡Cambio en reportes detectado en tiempo real!');
       refreshAllData();
     }
   )
@@ -6399,7 +6399,7 @@ supabase
     'postgres_changes', 
     { event: 'INSERT', schema: 'public', table: 'notifications' }, 
     (payload) => {
-      console.log("🔥 SUPABASE MANDÓ ALGO:", payload.new);
+      console.log("ðŸ”¥ SUPABASE MANDÃ“ ALGO:", payload.new);
       
       const noti = payload.new;
       
@@ -6415,13 +6415,13 @@ supabase
         makeNoise = true;
       }
 
-      showToast("🔔 " + noti.text);
+      showToast("ðŸ”” " + noti.text);
       
       if (makeNoise) {
         playNotificationSound();
       }
 
-      // --- NUEVO: GLOBITO ROJO Y NOTIFICACIÓN DEL CELULAR ---
+      // --- NUEVO: GLOBITO ROJO Y NOTIFICACIÃ“N DEL CELULAR ---
 
       // 1. Sumar 1 al globito rojo estilo Facebook
       const badge = document.getElementById('badgeNotificaciones');
@@ -6430,9 +6430,9 @@ supabase
         badge.innerText = parseInt(badge.innerText || 0) + 1;
       }
 
-      // 2. Mandar notificación a la barra del sistema (Compu y Celu)
+      // 2. Mandar notificaciÃ³n a la barra del sistema (Compu y Celu)
       if ("Notification" in window && Notification.permission === "granted") {
-        const titulo = "Gestión de Flota";
+        const titulo = "GestiÃ³n de Flota";
         const opciones = {
           body: noti.text,
           icon: "/assets/icons/icon-cholo-192.png",
@@ -6444,15 +6444,15 @@ supabase
           navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification(titulo, opciones);
           }).catch(() => {
-            // Si falla, intentamos el método directo
+            // Si falla, intentamos el mÃ©todo directo
             try { new Notification(titulo, opciones); } catch(e) {}
           });
         } else {
-          // Método clásico para la computadora
+          // MÃ©todo clÃ¡sico para la computadora
           try {
             new Notification(titulo, opciones);
           } catch (e) {
-            console.log("Fallo al crear notificación directa:", e);
+            console.log("Fallo al crear notificaciÃ³n directa:", e);
           }
         }
       }
