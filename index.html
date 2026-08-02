@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#020b14">
+  <meta name="theme-color" content="#F5F7FA">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Flota Cholo">
@@ -13,7 +13,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-cholo-32.png">
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon-cholo.png">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="styles.css?v=20260801-copy-performance-fix">
+  <link rel="stylesheet" href="styles.css?v=20260802-mobile-home-redesign">
 </head>
 <body>
   <main class="app">
@@ -138,16 +138,35 @@
     <section id="homeScreen" class="screen">
       <section class="feed-hero">
         <strong id="welcomeText">Hola</strong>
-        <p>Trabajos, pedidos y alertas del día en un solo lugar.</p>
+        <p>Gestion de taller y flota</p>
+      </section>
+
+      <section class="mobile-primary-action" aria-label="Accion principal">
+        <button id="mobileNewReportBtn" data-screen="mechanic" type="button">
+          <span aria-hidden="true">+</span>
+          Cargar nuevo reporte
+        </button>
       </section>
 
       <section id="mobileHomeSummary" class="mobile-home-summary" aria-label="Resumen movil">
         <div id="mobileStats" class="mobile-stats"></div>
-        <button class="mobile-highlight" data-screen="immediate" type="button">
-          <span>Reportes activos</span>
-          <strong id="mobileActiveCount">0</strong>
-          <small>Ver tablero</small>
-        </button>
+      </section>
+
+      <section id="mobilePlanCard" class="mobile-plan-card" aria-label="Plan de manana"></section>
+
+      <section class="mobile-active-work" aria-label="Trabajos activos">
+        <div class="mobile-section-title">
+          <span>Trabajos activos</span>
+          <button data-screen="immediate" type="button">Ver todos</button>
+        </div>
+        <div id="mobileActiveJobsList" class="mobile-active-jobs-list"></div>
+      </section>
+
+      <section class="mobile-secondary-shortcuts" aria-label="Accesos secundarios">
+        <button data-screen="fleet" type="button">Equipos</button>
+        <button data-screen="orders" type="button">Repuestos</button>
+        <button data-screen="history" type="button">Historial</button>
+        <button data-screen="locations" type="button">Ubicaciones</button>
       </section>
 
       <section id="mobileAssignedBlock" class="mobile-assigned-block mechanic-only">
@@ -536,10 +555,11 @@
       </section>
     </section>
     <button id="installAppBtn" class="install-app-btn hidden" type="button">Instalar app</button>
+    <button id="mobileFabReport" class="mobile-fab-report" data-screen="mechanic" type="button" aria-label="Cargar nuevo reporte">+</button>
     <nav class="mobile-bottom-nav" aria-label="Navegacion movil">
       <button data-screen="home" type="button"><span>Inicio</span></button>
-      <button id="mobileReportsNavBtn" data-screen="immediate" type="button"><span id="mobileReportsNavLabel">Reportes</span></button>
-      <button data-screen="tomorrow" type="button"><span>Plan Mañana</span></button>
+      <button id="mobileReportsNavBtn" data-screen="immediate" type="button"><span id="mobileReportsNavLabel">Trabajos</span></button>
+      <button data-screen="tomorrow" type="button"><span>Equipos</span></button>
       <button data-mobile-more type="button"><span>Más</span></button>
     </nav>
     </div>
@@ -556,7 +576,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260713-4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="app.js?v=20260801-copy-performance-fix"></script>
+  <script src="app.js?v=20260802-mobile-home-redesign"></script>
   <dialog id="modal-eliminar-operativo" style="background-color: #1a1e23; color: white; border: 1px solid #444; border-radius: 12px; padding: 25px; text-align: center; max-width: 320px; box-shadow: 0px 10px 30px rgba(0,0,0,0.8); font-family: sans-serif;">
   <h3 style="margin-top: 0; color: #ff4d4d; font-size: 22px;">⚠️ ¿Eliminar?</h3>
   <p style="color: #ccc; font-size: 16px;">El reporte de <strong><span id="equipo-modal"></span></strong> se borrará para siempre.</p>

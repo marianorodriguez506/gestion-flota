@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: dark;
   --bg: #111827;
   --panel: #1f2937;
@@ -23,6 +23,530 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
+}
+
+/* Mobile CMMS visual system - Inicio */
+.mobile-primary-action,
+.mobile-plan-card,
+.mobile-active-work,
+.mobile-secondary-shortcuts,
+.mobile-fab-report {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  :root {
+    --cmms-bg: #F5F7FA;
+    --cmms-surface: #FFFFFF;
+    --cmms-primary: #1677E8;
+    --cmms-text: #17202A;
+    --cmms-muted: #667085;
+    --cmms-border: #E4E7EC;
+    --cmms-fs: #D92D20;
+    --cmms-obs: #F79009;
+    --cmms-op: #12B76A;
+    --cmms-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 8px 18px rgba(16, 24, 40, .06);
+  }
+
+  body.logged-in {
+    background: var(--cmms-bg) !important;
+    color: var(--cmms-text) !important;
+    font-family: Inter, Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body.logged-in .app {
+    max-width: 520px;
+    min-height: 100dvh;
+    padding: 0 14px calc(92px + env(safe-area-inset-bottom)) !important;
+    background: var(--cmms-bg) !important;
+  }
+
+  body[data-screen="home"] .topbar {
+    min-height: 54px;
+    justify-content: flex-end;
+    padding: 8px 0 2px;
+    background: var(--cmms-bg) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-screen="home"] .topbar-title,
+  body[data-screen="home"] #backBtn,
+  body[data-screen="home"] #logoutBtn {
+    display: none !important;
+  }
+
+  body.logged-in #notificationsBtn,
+  body.logged-in #pushNotificationsBtn {
+    min-width: 48px;
+    min-height: 48px;
+    border: 1px solid var(--cmms-border) !important;
+    border-radius: 10px !important;
+    background: var(--cmms-surface) !important;
+    color: var(--cmms-text) !important;
+    box-shadow: none !important;
+  }
+
+  #homeScreen.active {
+    display: grid;
+    gap: 14px;
+  }
+
+  body[data-screen="home"] .feed-hero {
+    margin: 0;
+    padding: 2px 2px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    color: var(--cmms-text) !important;
+    box-shadow: none !important;
+  }
+
+  body[data-screen="home"] .feed-hero::before,
+  body[data-screen="home"] .feed-hero::after {
+    display: none !important;
+  }
+
+  body[data-screen="home"] .feed-hero strong {
+    display: block;
+    color: var(--cmms-text) !important;
+    font-size: clamp(25px, 7vw, 34px);
+    line-height: 1.05;
+    font-weight: 850;
+    letter-spacing: 0;
+  }
+
+  body[data-screen="home"] .feed-hero p {
+    margin-top: 6px;
+    color: var(--cmms-muted) !important;
+    font-size: 15px;
+    line-height: 1.35;
+    font-weight: 600;
+  }
+
+  .mobile-primary-action {
+    display: block;
+  }
+
+  .mobile-primary-action button {
+    width: 100%;
+    min-height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: 1px solid var(--cmms-primary);
+    border-radius: 10px;
+    background: var(--cmms-primary);
+    color: #FFFFFF;
+    box-shadow: 0 8px 18px rgba(22, 119, 232, .18);
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .mobile-primary-action span {
+    width: 24px;
+    height: 24px;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 999px;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  #mobileHomeSummary.mobile-home-summary {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mobile-status-card {
+    min-height: 104px;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    gap: 7px;
+    padding: 12px 10px;
+    border: 1px solid var(--cmms-border);
+    border-top: 3px solid var(--cmms-primary);
+    border-radius: 12px;
+    background: var(--cmms-surface);
+    box-shadow: var(--cmms-shadow);
+  }
+
+  .mobile-status-card.tone-danger { border-top-color: var(--cmms-fs); }
+  .mobile-status-card.tone-warn { border-top-color: var(--cmms-obs); }
+  .mobile-status-card.tone-ok { border-top-color: var(--cmms-op); }
+  .mobile-status-card.tone-info { border-top-color: var(--cmms-primary); }
+
+  .mobile-status-icon {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    color: var(--cmms-primary);
+  }
+
+  .mobile-status-card.tone-danger .mobile-status-icon,
+  .mobile-status-card.tone-danger strong { color: var(--cmms-fs); }
+  .mobile-status-card.tone-warn .mobile-status-icon,
+  .mobile-status-card.tone-warn strong { color: var(--cmms-obs); }
+  .mobile-status-card.tone-ok .mobile-status-icon,
+  .mobile-status-card.tone-ok strong { color: var(--cmms-op); }
+
+  .mobile-status-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-status-card strong {
+    color: var(--cmms-primary);
+    font-size: 26px;
+    line-height: 1;
+    font-weight: 850;
+  }
+
+  .mobile-status-card small {
+    min-width: 0;
+    color: var(--cmms-muted);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  .mobile-plan-card {
+    display: block;
+  }
+
+  .mobile-plan-card button {
+    width: 100%;
+    min-height: 86px;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--cmms-border);
+    border-radius: 12px;
+    background: var(--cmms-surface);
+    color: var(--cmms-text);
+    text-align: left;
+    box-shadow: var(--cmms-shadow);
+  }
+
+  .mobile-plan-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #EEF5FF;
+    color: var(--cmms-primary);
+  }
+
+  .mobile-plan-icon svg {
+    width: 28px;
+    height: 28px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-plan-card strong {
+    display: block;
+    color: var(--cmms-text);
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 850;
+  }
+
+  .mobile-plan-card small {
+    display: block;
+    margin-top: 4px;
+    color: var(--cmms-muted);
+    font-size: 13px;
+    line-height: 1.25;
+    font-weight: 650;
+  }
+
+  .mobile-plan-card em {
+    color: var(--cmms-primary);
+    font-style: normal;
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .mobile-active-work {
+    display: block;
+  }
+
+  body[data-screen="home"] .mobile-section-title {
+    margin: 4px 0 10px;
+    color: var(--cmms-text);
+    font-size: 18px;
+    line-height: 1.2;
+    font-weight: 850;
+  }
+
+  body[data-screen="home"] .mobile-section-title button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--cmms-border);
+    border-radius: 10px;
+    background: var(--cmms-surface);
+    color: var(--cmms-primary);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .mobile-active-jobs-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobile-work-card {
+    width: 100%;
+    min-height: 112px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 13px;
+    border: 1px solid var(--cmms-border);
+    border-left: 4px solid var(--cmms-fs);
+    border-radius: 12px;
+    background: var(--cmms-surface);
+    color: var(--cmms-text);
+    text-align: left;
+    box-shadow: var(--cmms-shadow);
+  }
+
+  .mobile-work-card.status-obs { border-left-color: var(--cmms-obs); }
+  .mobile-work-card.status-op { border-left-color: var(--cmms-op); }
+
+  .mobile-work-main {
+    min-width: 0;
+  }
+
+  .mobile-work-main strong {
+    display: block;
+    color: var(--cmms-text);
+    font-size: 18px;
+    line-height: 1.1;
+    font-weight: 850;
+  }
+
+  .mobile-work-main span {
+    display: -webkit-box;
+    margin-top: 5px;
+    overflow: hidden;
+    color: var(--cmms-muted);
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 600;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .mobile-work-status {
+    align-self: start;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: #FEF3F2;
+    color: var(--cmms-fs);
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .mobile-work-card.status-obs .mobile-work-status {
+    background: #FFF6ED;
+    color: var(--cmms-obs);
+  }
+
+  .mobile-work-card.status-op .mobile-work-status {
+    background: #ECFDF3;
+    color: var(--cmms-op);
+  }
+
+  .mobile-work-meta {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+    color: var(--cmms-muted);
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  .mobile-work-meta span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-secondary-shortcuts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .mobile-secondary-shortcuts button {
+    min-height: 70px;
+    padding: 8px 6px;
+    border: 1px solid var(--cmms-border);
+    border-radius: 12px;
+    background: var(--cmms-surface);
+    color: var(--cmms-text);
+    box-shadow: var(--cmms-shadow);
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 800;
+  }
+
+  body[data-screen="home"] .mobile-assigned-block,
+  body[data-screen="home"] .quick-actions {
+    display: none !important;
+  }
+
+  body[data-screen="home"] #desktopDashboard {
+    display: none !important;
+  }
+
+  .mobile-tools-panel {
+    margin: 0 0 12px;
+  }
+
+  .mobile-tools-panel > summary {
+    min-height: 64px;
+    border: 1px solid var(--cmms-border) !important;
+    border-radius: 12px !important;
+    background: var(--cmms-surface) !important;
+    color: var(--cmms-text) !important;
+    box-shadow: var(--cmms-shadow) !important;
+  }
+
+  .mobile-tools-panel > summary span {
+    color: var(--cmms-text) !important;
+  }
+
+  .mobile-tools-panel > summary small {
+    color: var(--cmms-muted) !important;
+  }
+
+  .mobile-bottom-nav {
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 12px;
+    min-height: 66px;
+    padding: 6px;
+    border: 1px solid var(--cmms-border) !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, .96) !important;
+    box-shadow: 0 -4px 18px rgba(16, 24, 40, .08) !important;
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-bottom-nav button {
+    min-height: 54px;
+    border-radius: 10px !important;
+    color: var(--cmms-muted) !important;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .mobile-bottom-nav button::before {
+    margin-bottom: 3px;
+    color: currentColor;
+    font-size: 18px;
+  }
+
+  .mobile-bottom-nav [data-screen="home"]::before { content: "âŒ‚"; }
+  .mobile-bottom-nav [data-screen="immediate"]::before,
+  .mobile-bottom-nav [data-screen="myJobs"]::before { content: "â–¤"; }
+  .mobile-bottom-nav [data-screen="fleet"]::before { content: "â–§"; }
+  .mobile-bottom-nav [data-mobile-more]::before { content: "â€¢â€¢â€¢"; letter-spacing: 2px; }
+
+  .mobile-bottom-nav button.active {
+    background: #EEF5FF !important;
+    color: var(--cmms-primary) !important;
+  }
+
+  .mobile-fab-report {
+    position: fixed;
+    right: 22px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    z-index: 36;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--cmms-primary);
+    border-radius: 16px;
+    background: var(--cmms-primary);
+    color: #FFFFFF;
+    box-shadow: 0 10px 22px rgba(22, 119, 232, .24);
+    font-size: 30px;
+    line-height: 1;
+    font-weight: 500;
+  }
+
+  input,
+  select,
+  textarea,
+  .card,
+  .panel,
+  .list-item,
+  .module-btn,
+  .quick-btn {
+    border-color: var(--cmms-border) !important;
+    border-radius: 12px !important;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 48px;
+    background: #FFFFFF !important;
+    color: var(--cmms-text) !important;
+  }
+
+  button,
+  .primary,
+  .secondary {
+    min-height: 48px;
+    border-radius: 10px !important;
+    transition-duration: 180ms !important;
+  }
+
+  .offline-banner,
+  .toast {
+    border-radius: 10px !important;
+    box-shadow: 0 8px 18px rgba(16, 24, 40, .12) !important;
+  }
 }
 
 body.theme-light {
@@ -80,11 +604,11 @@ body.theme-light .settings-tile {
 
 @media (max-width: 899px) {
   .mobile-bottom-nav [data-screen="mechanic"]::before {
-    content: "▤";
+    content: "â–¤";
   }
 
   .mobile-bottom-nav [data-screen="myJobs"]::before {
-    content: "▦";
+    content: "â–¦";
   }
 }
 
@@ -1305,7 +1829,7 @@ label {
 }
 
 .report-menu-modal .modal-actions.action-menu button::after {
-  content: "›";
+  content: "â€º";
   margin-left: auto;
   color: rgba(203, 213, 225, .7);
   font-weight: 900;
@@ -2749,19 +3273,19 @@ body.theme-light .fleet-search-input {
   }
 
   .mobile-bottom-nav [data-screen="home"]::before {
-    content: "⌂";
+    content: "âŒ‚";
   }
 
   .mobile-bottom-nav [data-screen="immediate"]::before {
-    content: "▤";
+    content: "â–¤";
   }
 
   .mobile-bottom-nav [data-screen="tomorrow"]::before {
-    content: "□";
+    content: "â–¡";
   }
 
   .mobile-bottom-nav [data-mobile-more]::before {
-    content: "•••";
+    content: "â€¢â€¢â€¢";
     letter-spacing: 2px;
   }
 
@@ -4712,5 +5236,193 @@ body.theme-cholo-light #usersBtn {
     border-radius: 20px !important;
     font-size: 16px;
     font-weight: 950;
+  }
+}
+
+/* Final mobile CMMS overrides: this must stay at the end of the file. */
+@media (max-width: 899px) {
+  body.logged-in,
+  body.theme-cholo.logged-in,
+  body.theme-cholo-light.logged-in,
+  body.theme-light.logged-in {
+    background: #F5F7FA !important;
+    color: #17202A !important;
+    font-family: Inter, Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  }
+
+  body.logged-in .app {
+    background: #F5F7FA !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body[data-screen="home"] .topbar {
+    min-height: 54px !important;
+    justify-content: flex-end !important;
+    padding: 8px 0 2px !important;
+    background: #F5F7FA !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body[data-screen="home"] .topbar-title,
+  body[data-screen="home"] #backBtn,
+  body[data-screen="home"] #logoutBtn,
+  body[data-screen="home"] #desktopDashboard,
+  body[data-screen="home"] .quick-actions,
+  body[data-screen="home"] .mobile-assigned-block {
+    display: none !important;
+  }
+
+  body[data-screen="home"] .feed-hero {
+    margin: 0 !important;
+    padding: 2px 2px 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body[data-screen="home"] .feed-hero::before,
+  body[data-screen="home"] .feed-hero::after {
+    display: none !important;
+  }
+
+  body[data-screen="home"] .feed-hero strong {
+    color: #17202A !important;
+    font-size: clamp(25px, 7vw, 34px) !important;
+    line-height: 1.05 !important;
+    font-weight: 850 !important;
+    letter-spacing: 0 !important;
+  }
+
+  body[data-screen="home"] .feed-hero p,
+  .mobile-work-main span,
+  .mobile-work-meta,
+  .mobile-plan-card small,
+  .mobile-status-card small,
+  .mobile-tools-panel > summary small {
+    color: #667085 !important;
+  }
+
+  .mobile-primary-action,
+  .mobile-plan-card,
+  .mobile-active-work,
+  .mobile-secondary-shortcuts,
+  .mobile-fab-report {
+    display: block !important;
+  }
+
+  #mobileHomeSummary.mobile-home-summary {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .mobile-status-card,
+  .mobile-plan-card button,
+  .mobile-work-card,
+  .mobile-secondary-shortcuts button,
+  .mobile-tools-panel > summary {
+    border: 1px solid #E4E7EC !important;
+    border-radius: 12px !important;
+    background: #FFFFFF !important;
+    color: #17202A !important;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 8px 18px rgba(16, 24, 40, .06) !important;
+  }
+
+  .mobile-status-card {
+    min-height: 104px !important;
+    border-top-width: 3px !important;
+  }
+
+  .mobile-status-card.tone-danger { border-top-color: #D92D20 !important; }
+  .mobile-status-card.tone-warn { border-top-color: #F79009 !important; }
+  .mobile-status-card.tone-ok { border-top-color: #12B76A !important; }
+  .mobile-status-card.tone-info { border-top-color: #1677E8 !important; }
+
+  .mobile-primary-action button {
+    width: 100% !important;
+    min-height: 52px !important;
+    border: 1px solid #1677E8 !important;
+    border-radius: 10px !important;
+    background: #1677E8 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 8px 18px rgba(22, 119, 232, .18) !important;
+  }
+
+  .mobile-plan-card button {
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) auto !important;
+    min-height: 86px !important;
+  }
+
+  .mobile-work-card {
+    min-height: 112px !important;
+    border-left: 4px solid #D92D20 !important;
+  }
+
+  .mobile-work-card.status-obs { border-left-color: #F79009 !important; }
+  .mobile-work-card.status-op { border-left-color: #12B76A !important; }
+
+  .mobile-secondary-shortcuts {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 9px !important;
+  }
+
+  .mobile-bottom-nav,
+  body.theme-cholo .mobile-bottom-nav,
+  body.theme-cholo-light .mobile-bottom-nav,
+  body.theme-light .mobile-bottom-nav {
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    border: 1px solid #E4E7EC !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, .96) !important;
+    box-shadow: 0 -4px 18px rgba(16, 24, 40, .08) !important;
+  }
+
+  .mobile-bottom-nav button {
+    min-height: 54px !important;
+    border-radius: 10px !important;
+    color: #667085 !important;
+  }
+
+  .mobile-bottom-nav button.active {
+    background: #EEF5FF !important;
+    color: #1677E8 !important;
+  }
+
+  .mobile-bottom-nav [data-screen="home"]::before { content: "âŒ‚" !important; }
+  .mobile-bottom-nav [data-screen="immediate"]::before,
+  .mobile-bottom-nav [data-screen="myJobs"]::before { content: "â–¤" !important; }
+  .mobile-bottom-nav [data-screen="fleet"]::before { content: "â–§" !important; }
+  .mobile-bottom-nav [data-mobile-more]::before { content: "â€¢â€¢â€¢" !important; letter-spacing: 2px !important; }
+
+  .mobile-fab-report {
+    position: fixed !important;
+    right: 22px !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    z-index: 36 !important;
+    width: 56px !important;
+    height: 56px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid #1677E8 !important;
+    border-radius: 16px !important;
+    background: #1677E8 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 10px 22px rgba(22, 119, 232, .24) !important;
+    font-size: 30px !important;
+  }
+
+  body:not(.logged-in) .mobile-fab-report,
+  body[data-screen="auth"] .mobile-fab-report {
+    display: none !important;
   }
 }

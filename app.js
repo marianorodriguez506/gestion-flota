@@ -139,6 +139,8 @@
     desktopActivity: document.getElementById("desktopActivity"),
     mobileStats: document.getElementById("mobileStats"),
     mobileActiveCount: document.getElementById("mobileActiveCount"),
+    mobilePlanCard: document.getElementById("mobilePlanCard"),
+    mobileActiveJobsList: document.getElementById("mobileActiveJobsList"),
     mobileAssignedBlock: document.getElementById("mobileAssignedBlock"),
     mobileAssignedList: document.getElementById("mobileAssignedList"),
     mobileToolsPanel: document.getElementById("mobileToolsPanel"),
@@ -2511,6 +2513,7 @@
     }
 
     activeScreen = name;
+    document.body.dataset.screen = name;
     Object.values(screens).forEach((screen) => {
       document.getElementById(screen.id).classList.remove("active");
     });
@@ -2570,13 +2573,13 @@
     el.usersBtn.style.display = isAdmin() ? "block" : "none";
     if (el.locationsBtn) el.locationsBtn.style.display = isLoggedIn() ? "block" : "none";
     if (el.mobileReportsNavBtn && el.mobileReportsNavLabel) {
-      el.mobileReportsNavBtn.dataset.screen = isAdmin() ? "immediate" : "mechanic";
-      el.mobileReportsNavLabel.textContent = isAdmin() ? "Reportes" : "Reportes nuevos";
+      el.mobileReportsNavBtn.dataset.screen = isAdmin() ? "immediate" : "myJobs";
+      el.mobileReportsNavLabel.textContent = "Trabajos";
     }
     if (el.mobileWorkNavBtn) {
-      el.mobileWorkNavBtn.dataset.screen = isAdmin() ? "tomorrow" : "myJobs";
+      el.mobileWorkNavBtn.dataset.screen = "fleet";
       const label = el.mobileWorkNavBtn.querySelector("span");
-      if (label) label.textContent = isAdmin() ? "Plan Mañana" : "Mis trabajos";
+      if (label) label.textContent = "Equipos";
     }
     updateMobileMoreDuplicates();
     applyPermissionsToControls();
@@ -2611,6 +2614,110 @@
     node.querySelector("strong").textContent = value;
     node.querySelector("span").textContent = label;
     return node;
+  }
+
+  function mobileLineIcon(name) {
+    const icons = {
+      fs: `<path d="M12 12l24 24"></path><path d="M36 12L12 36"></path><path d="M17 9l22 22"></path><path d="M9 17l22 22"></path>`,
+      obs: `<path d="M4 24s8-12 20-12 20 12 20 12-8 12-20 12S4 24 4 24z"></path><circle cx="24" cy="24" r="5"></circle>`,
+      op: `<circle cx="24" cy="24" r="18"></circle><path d="M15 24l6 6 13-14"></path>`,
+      plan: `<rect x="9" y="11" width="30" height="28" rx="4"></rect><path d="M16 7v8"></path><path d="M32 7v8"></path><path d="M9 20h30"></path>`,
+      pin: `<path d="M24 43s13-12 13-24a13 13 0 0 0-26 0c0 12 13 24 13 24z"></path><circle cx="24" cy="19" r="4"></circle>`,
+      user: `<circle cx="24" cy="16" r="7"></circle><path d="M10 40c2-9 8-14 14-14s12 5 14 14"></path>`,
+      plus: `<path d="M24 10v28"></path><path d="M10 24h28"></path>`
+    };
+    return `<svg viewBox="0 0 48 48" aria-hidden="true">${icons[name] || icons.op}</svg>`;
+  }
+
+  function mobileStatusCard(label, value, tone, iconName) {
+    const node = document.createElement("article");
+    node.className = `mobile-status-card tone-${tone}`;
+    node.innerHTML = `
+      <span class="mobile-status-icon">${mobileLineIcon(iconName)}</span>
+      <strong></strong>
+      <small></small>
+    `;
+    node.querySelector("strong").textContent = value;
+    node.querySelector("small").textContent = label;
+    return node;
+  }
+
+  function mobileWorkCard(report) {
+    const node = document.createElement("button");
+    const status = displayStatus(report.status);
+    const age = reportAgeDays(report);
+    node.type = "button";
+    node.className = `mobile-work-card ${reportStatusClass(report)}`;
+    node.innerHTML = `
+      <div class="mobile-work-main">
+        <strong></strong>
+        <span></span>
+      </div>
+      <span class="mobile-work-status"></span>
+      <div class="mobile-work-meta">
+        <span class="mobile-work-location"></span>
+        <span class="mobile-work-assigned"></span>
+        <span class="mobile-work-time"></span>
+      </div>
+    `;
+    node.querySelector(".mobile-work-main strong").textContent = report.equipment || "Sin interno";
+    node.querySelector(".mobile-work-main span").textContent = reportDeviationSummary(report);
+    node.querySelector(".mobile-work-status").textContent = status;
+    node.querySelector(".mobile-work-location").textContent = report.location || "Sin ubicacion";
+    node.querySelector(".mobile-work-assigned").textContent = reportAssignedNames(report, { short: true });
+    node.querySelector(".mobile-work-time").textContent = age ? `${age} d` : (formatDateTime(report.createdAt) || "Hoy");
+    node.addEventListener("click", () => showReportDetails(report));
+    return node;
+  }
+
+  function renderMobileHome({ active, fs, obs, operative, workers, own }) {
+    const mobileRows = isAdmin()
+      ? [
+        ["FS", fs.length, "danger", "fs"],
+        ["OBS", obs.length, "warn", "obs"],
+        ["OP", operative.length, "ok", "op"]
+      ]
+      : [
+        ["Mis trabajos", own.length, "info", "user"],
+        ["FS", own.filter((report) => reportStatusBucket(report) === "FS").length, "danger", "fs"],
+        ["OBS", own.filter((report) => reportStatusBucket(report) === "OBS").length, "warn", "obs"]
+      ];
+
+    if (el.mobileStats) {
+      el.mobileStats.innerHTML = "";
+      mobileRows.forEach(([label, value, tone, iconName]) => {
+        el.mobileStats.appendChild(mobileStatusCard(label, value, tone, iconName));
+      });
+    }
+
+    const plan = planReports();
+    const planWorkerCount = new Set(plan.flatMap(reportMechanicIds)).size;
+    if (el.mobilePlanCard) {
+      const target = isAdmin() ? "tomorrow" : "myJobs";
+      el.mobilePlanCard.innerHTML = `
+        <button type="button" data-plan-target="${target}">
+          <span class="mobile-plan-icon">${mobileLineIcon("plan")}</span>
+          <span>
+            <strong>${isAdmin() ? "Plan de manana" : "Mis trabajos"}</strong>
+            <small>${plan.length} equipos · ${isAdmin() ? `${planWorkerCount} mecanicos` : "asignados"}</small>
+          </span>
+          <em>${isAdmin() ? "Ver planificacion" : "Ver trabajos"}</em>
+        </button>
+      `;
+      el.mobilePlanCard.querySelector("button")?.addEventListener("click", () => setScreen(target));
+    }
+
+    if (el.mobileActiveJobsList) {
+      const jobs = (isAdmin() ? active : own).slice(0, 6);
+      el.mobileActiveJobsList.innerHTML = "";
+      if (!jobs.length) {
+        el.mobileActiveJobsList.appendChild(empty(isAdmin() ? "No hay trabajos activos." : "No tenes trabajos asignados."));
+      } else {
+        jobs.forEach((report) => el.mobileActiveJobsList.appendChild(mobileWorkCard(report)));
+      }
+    }
+
+    if (el.mobileActiveCount) el.mobileActiveCount.textContent = active.length;
   }
 
   function mobileAssignedCard(report) {
@@ -2793,13 +2900,7 @@
         ["Plan", planReports().length, "Equipos del dia", "ok", "check"]
       ];
 
-    if (el.mobileStats) {
-      el.mobileStats.innerHTML = "";
-      statRows.forEach(([label, value, _detail, tone]) => {
-        el.mobileStats.appendChild(mobileStatPill(label.replace("Reportes ", ""), value, tone));
-      });
-    }
-    if (el.mobileActiveCount) el.mobileActiveCount.textContent = active.length;
+    renderMobileHome({ active, fs, obs, operative, workers, own });
     renderMobileAssigned();
 
     if (!el.desktopStats || !el.desktopReportPreview || !el.desktopActivity) return;
